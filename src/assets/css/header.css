@@ -1,0 +1,36 @@
+.header-box {
+  height: var(--headerSize);
+  padding: 0 3%;
+  box-shadow: 0 2px 4px -1px rgb(0 0 0 / 20%), 0 4px 5px 0 rgb(0 0 0 / 14%),
+    0 1px 10px 0 rgb(0 0 0 / 12%);
+}
+
+.header-box .logo {
+  max-width: 100px;
+  max-height: 50px;
+  object-fit: contain;
+}
+
+.header-box .nav-list {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+}
+.header-box .nav-list li {
+  margin-left: 25px;
+}
+
+.header-box .avatar {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  cursor: pointer;
+  border-radius: 50%;
+}
+
+.header-box .pi-bell {
+  font-size: 1.5rem;
+  position: relative;
+  top: 5px;
+  cursor: pointer;
+}
