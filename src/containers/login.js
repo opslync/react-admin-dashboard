@@ -59,8 +59,8 @@ export default function LoginPage() {
     <div className="form-box">
       <div className="fullHeight p-ai-center p-d-flex p-jc-center">
         <div className="shadow card m-3 px-3 py-4 px-sm-4 py-sm-5">
-          <h4 className="text-center">Sign in to App</h4>
-          <p className="text-center mb-3">Enter your details below.</p>
+          <h3 className="text-center text-md">Sign in to OpsLync</h3>
+          <p className="text-center mb-3"></p>
           <FormikProvider value={formik}>
             <Form onSubmit={handleSubmit} className="p-fluid">
               <div className="p-field">

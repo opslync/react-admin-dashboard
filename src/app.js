@@ -8,11 +8,13 @@ import ToastManager from "./components/toast";
 
 // pages
 import DashboardPage from "./containers/dashboard";
+import ProjectPage from "./containers/project";
 import RegisterPage from "./containers/register";
 import ForgotpasswordPage from "./containers/forgotpassword";
 import ChangepasswordPage from "./containers/changepassword";
 import NotfoundPage from "./containers/notfound";
 import UserProfilePage from "./containers/userprofile";
+import AppPage from "./containers/AppPage";
 
 function App() {
   return (
@@ -25,6 +27,8 @@ function App() {
           <Route exact path="/forgot-password" component={ForgotpasswordPage} />
           <Route exact path="/change-password" component={ChangepasswordPage} />
           <PrivateRoute exact path="/dashboard" component={DashboardPage} />
+          <PrivateRoute exact path="/apps" component={AppPage} />
+          <PrivateRoute exact path="/project" component={ProjectPage} />
           <PrivateRoute exact path="/user-profile" component={UserProfilePage} />
           <Route path="*" component={NotfoundPage} />
         </Switch>

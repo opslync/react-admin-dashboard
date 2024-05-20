@@ -18,7 +18,7 @@ export default function RegisterPage() {
   const dispatch = useDispatch();
   const history = useHistory();
   // const { isRegistered } = useSelector((state) => state.registration);
-  const isRegistered = useSelector(selectIsRegistered);
+  // const isRegistered = useSelector(selectIsRegistered);
 
   const RegistrationSchema = Yup.object().shape({
     username: Yup.string().required("name is required"),
@@ -30,11 +30,11 @@ export default function RegisterPage() {
   });
 
 
-  useEffect(() => {
-    if (isRegistered) {
-      history.push("/login");
-    }
-  }, [isRegistered, history]);
+  // useEffect(() => {
+  //   if (isRegistered) {
+  //     history.push("/login");
+  //   }
+  // }, [isRegistered, history]);
 
   const formik = useFormik({
     initialValues: {
@@ -70,8 +70,8 @@ export default function RegisterPage() {
     <div className="form-box">
       <div className="fullHeight p-ai-center p-d-flex p-jc-center">
         <div className="shadow card m-3 px-3 py-4 px-sm-4 py-sm-5">
-          <h4 className="text-center">Sign Up to App</h4>
-          <p className="text-center mb-3">Enter your details below.</p>
+          <h4 className="text-center">Sign Up to Opslync</h4>
+          <p className="text-center mb-3"></p>
           <FormikProvider value={formik}>
             <Form onSubmit={handleSubmit} className="p-fluid">
               <div className="p-field">
