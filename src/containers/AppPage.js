@@ -1,14 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { getMethod, postMethod } from "../library/api";
+import { getMethod, postMethod, deleteMethod } from "../library/api";
 import SetupAppForm from '../components/SetupAppForm'; // Adjust the import path as needed
+import ConfirmModal from '../components/ConfirmModal';
 import { appCreate, listApps } from '../library/constant';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faTrash } from '@fortawesome/free-solid-svg-icons';
 
 const AppPage = () => {
   const [isSetupModalOpen, setIsSetupModalOpen] = useState(false);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [setupErrorMessage, setSetupErrorMessage] = useState('');
   const [apps, setApps] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [appIdToDelete, setAppIdToDelete] = useState(null);
 
   useEffect(() => {
     // Fetch the list of apps from the API
@@ -47,6 +52,25 @@ const AppPage = () => {
       setError('Failed to setup app. Please try again.');
     }
   };
+  const handleOpenConfirmModal = (appId) => {
+    setAppIdToDelete(appId);
+    setIsConfirmModalOpen(true);
+  };
+
+  const handleCloseConfirmModal = () => {
+    setIsConfirmModalOpen(false);
+    setAppIdToDelete(null);
+  };
+  const handleDeleteApp = async () => {
+    try {
+      await deleteMethod(`app/${appIdToDelete}`);
+      setApps(apps.filter(app => app.id !== appIdToDelete)); // Remove the app from the list
+      handleCloseConfirmModal();
+    } catch (error) {
+      console.error('Failed to delete app:', error);
+      setError('Failed to delete app. Please try again.');
+    }
+  };
 
 //   return (
 //     <div className="flex flex-col lg:ml-64 p-4 relative min-h-screen">
@@ -81,9 +105,15 @@ return (
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {apps.map((app) => (
-            <div key={app.id} className="bg-white p-4 rounded shadow-md">
+            <div key={app.id} className="bg-white p-4 rounded shadow-md flex flex-col relative">
               <h2 className="text-xl font-semibold mb-2">{app.name}</h2>
               <p>{app.description}</p>
+              <button
+                onClick={() => handleOpenConfirmModal(app.id)}
+                className="absolute top-2 right-2 text-red-500"
+              >
+                <FontAwesomeIcon icon={faTrash} />
+              </button>
             </div>
           ))}
         </div>
@@ -92,6 +122,12 @@ return (
       {isSetupModalOpen && (
         <SetupAppForm onSubmit={handleSetupApp} onClose={handleCloseSetupModal} />
       )}
+      <ConfirmModal
+        isOpen={isConfirmModalOpen}
+        onClose={handleCloseConfirmModal}
+        onConfirm={handleDeleteApp}
+        message="Are you sure you want to delete this app?"
+      />
     </div>
   );
 };

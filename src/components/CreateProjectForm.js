@@ -1,10 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const CreateProjectForm = ({ onSubmit, onClose }) => {
   const [name, setProjectName] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  let isMounted = true;
+
+  useEffect(() => {
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -13,11 +20,17 @@ const CreateProjectForm = ({ onSubmit, onClose }) => {
     
     try {
       await onSubmit({ name, description });
-      onClose();
+      if (isMounted) {
+        onClose();
+      }
     } catch (err) {
-      setError('Failed to create project. Please try again.');
+        if (isMounted) {
+            setError('Failed to create project. Please try again.');
+          }
     } finally {
-      setLoading(false);
+        if (isMounted) {
+            setLoading(false);
+          }
     }
   };
 
