@@ -20,8 +20,18 @@ const AppPage = () => {
     const fetchApps = async () => {
       try {
         const response = await getMethod(listApps);
+        const mappedApps = response.data.map(app => ({
+          id: app.ID,
+          name: app.name,
+          description: app.description,
+          repoUrl: app.repoUrl,
+          projectId: app.projectId,
+          createdAt: app.CreatedAt,
+          updatedAt: app.UpdatedAt,
+          deletedAt: app.DeletedAt
+        }));
         console.log('App Setup:', response);
-        setApps(response.data);
+        setApps(mappedApps);
         setLoading(false);
       } catch (err) {
         setError('Failed to fetch apps. Please try again.');
@@ -44,7 +54,17 @@ const AppPage = () => {
     console.log('App Data to Save:', data);
     try {
       const response = await postMethod(appCreate, data);
-      setApps([...apps, response]);
+      const newApp = {
+        id: response.ID,
+        name: response.name,
+        description: response.description,
+        repoUrl: response.repoUrl,
+        projectId: response.projectId,
+        createdAt: response.CreatedAt,
+        updatedAt: response.UpdatedAt,
+        deletedAt: response.DeletedAt
+      };
+      setApps([...apps, newApp]);
       console.log('App Setup:', response);
       handleCloseSetupModal();
     } catch (error) {
@@ -53,6 +73,7 @@ const AppPage = () => {
     }
   };
   const handleOpenConfirmModal = (appId) => {
+    console.log('Opening confirm modal for app ID:', appId); // Debugging step
     setAppIdToDelete(appId);
     setIsConfirmModalOpen(true);
   };
@@ -63,9 +84,13 @@ const AppPage = () => {
   };
   const handleDeleteApp = async () => {
     try {
+      if (appIdToDelete) {
       await deleteMethod(`app/${appIdToDelete}`);
       setApps(apps.filter(app => app.id !== appIdToDelete)); // Remove the app from the list
       handleCloseConfirmModal();
+    } else {
+      console.error('No app ID to delete.');
+    }
     } catch (error) {
       console.error('Failed to delete app:', error);
       setError('Failed to delete app. Please try again.');

@@ -6,10 +6,18 @@ import axios from 'axios';
 const SetupAppForm = ({ onSubmit, onClose }) => {
   const [name, setAppName] = useState('');
   const [appDescription, setAppDescription] = useState('');
+  const [repoUrl, setRepoUrl] = useState('');
   const [selectedProject, setSelectedProject] = useState('');
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  let isMounted = true;
+
+  useEffect(() => {
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     // Fetch the list of projects
@@ -30,14 +38,14 @@ const SetupAppForm = ({ onSubmit, onClose }) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    
+
     try {
-      await onSubmit({ name, appDescription, projectId: selectedProject });
-      onClose();
+      await onSubmit({ name, description: appDescription, repoUrl, projectId: selectedProject });
+      if (isMounted) onClose();
     } catch (err) {
-      setError('Failed to setup app. Please try again.');
+      if (isMounted) setError('Failed to setup app. Please try again.');
     } finally {
-      setLoading(false);
+      if (isMounted) setLoading(false);
     }
   };
 
@@ -58,10 +66,19 @@ const SetupAppForm = ({ onSubmit, onClose }) => {
           </div>
           <div className="mb-4">
             <label className="block text-sm font-medium mb-1">App Description</label>
-            <input
-              type="text"
+            <textarea
               value={appDescription}
               onChange={(e) => setAppDescription(e.target.value)}
+              className="w-full border border-gray-300 p-2 rounded"
+              required
+            />
+          </div>
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-1">Repository URL</label>
+            <input
+              type="text"
+              value={repoUrl}
+              onChange={(e) => setRepoUrl(e.target.value)}
               className="w-full border border-gray-300 p-2 rounded"
               required
             />
@@ -94,8 +111,9 @@ const SetupAppForm = ({ onSubmit, onClose }) => {
             <button
               type="submit"
               className="bg-blue-500 text-white px-3 py-2 rounded"
+              disabled={loading}
             >
-              Setup
+              {loading ? 'Setting up...' : 'Setup'}
             </button>
           </div>
         </form>
