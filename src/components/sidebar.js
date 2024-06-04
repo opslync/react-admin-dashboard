@@ -50,8 +50,8 @@ export default function SideBar() {
 
 const menus = [
   {
-    name: "Dashboard",
-    route: "/dashboard",
+    name: "Overview",
+    route: "/deployments",
     icon: <DashboardIcon />,
     iconType: "component",
   },
@@ -64,6 +64,12 @@ const menus = [
   {
     name: "Apps",
     route: "/apps",
+    icon: <DashboardIcon />,
+    iconType: "component",
+  },
+  {
+    name: "Setting",
+    route: "/settings",
     icon: <DashboardIcon />,
     iconType: "component",
   },

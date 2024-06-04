@@ -33,7 +33,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (isLogged) {
-      history.push("/dashboard");
+      history.push("/deployments");
     }
   }, [isLogged, history]);
 

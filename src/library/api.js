@@ -68,26 +68,21 @@ export const postMethod = async (url, data) => {
   }
 };
 
-export const putMethod = async (url) => {
+export const putMethod = async (url, data) => {
   const token = getToken() || "";
   try {
-    axios
-      .put(baseUrl + url, {
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      })
-      .then(function (response) {
-        return response;
-      })
-      .catch(function (error) {
-        console.log(error);
-        return error;
-      });
+    const response = await axios.put(baseUrl + url, data, {
+    // },  {
+      headers: {
+        'Authorization': `Bearer ${token}` 
+      }
+    });
+    console.log("Response from putMethod:", response); // Log the response data debug
+    return response; // Return the response data
   } catch (error) {
-    console.log(error);
-    return error;
+    console.error("Error in putMethod:", error); // Log any errors during the request
+    throw error; // Throw the error to be handled by the caller
+    // return response;
   }
 };
 

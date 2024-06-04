@@ -15,6 +15,10 @@ import ChangepasswordPage from "./containers/changepassword";
 import NotfoundPage from "./containers/notfound";
 import UserProfilePage from "./containers/userprofile";
 import AppPage from "./containers/AppPage";
+import AppDetailPage from "./containers/AppDetailPage";
+import ProjectDetailPage from "./containers/ProjectDetailPage";
+import DeploymentHistoryPage from "./containers/DeploymentHistoryPage";
+import GitUserPage from "./containers/GitUserPage";
 
 function App() {
   return (
@@ -27,6 +31,11 @@ function App() {
           <Route exact path="/forgot-password" component={ForgotpasswordPage} />
           <Route exact path="/change-password" component={ChangepasswordPage} />
           <PrivateRoute exact path="/dashboard" component={DashboardPage} />
+          <PrivateRoute exact path="/settings" component={GitUserPage} />
+          <PrivateRoute exact path="/deployments" component={DeploymentHistoryPage} />
+          <PrivateRoute path="/app/:appId" component={AppDetailPage} />
+          <PrivateRoute path="/project/:projectId/apps" component={ProjectDetailPage} />
+          <PrivateRoute path="/project/:projectId/apps" component={AppPage} />
           <PrivateRoute exact path="/apps" component={AppPage} />
           <PrivateRoute exact path="/project" component={ProjectPage} />
           <PrivateRoute exact path="/user-profile" component={UserProfilePage} />

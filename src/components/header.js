@@ -29,7 +29,7 @@ export default function Header() {
           label: "Home",
           icon: "pi pi-home",
           command: (e) => {
-            history.push("/dashboard");
+            history.push("/deployments");
           },
         },
         {

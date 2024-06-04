@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { getMethod, postMethod, deleteMethod } from "../library/api";
 import SetupAppForm from '../components/SetupAppForm'; // Adjust the import path as needed
 import ConfirmModal from '../components/ConfirmModal';
@@ -97,22 +98,6 @@ const AppPage = () => {
     }
   };
 
-//   return (
-//     <div className="flex flex-col lg:ml-64 p-4 relative min-h-screen">
-//       <h1 className="text-2xl mb-4"></h1>
-//       <button
-//         onClick={handleOpenSetupModal}
-//         className="absolute top-4 left-4 bg-blue-500 text-white px-2 py-1 rounded text-md"
-//       >
-//         Setup App
-//       </button>
-      
-//       {isSetupModalOpen && (
-//         <SetupAppForm onSubmit={handleSetupApp} onClose={handleCloseSetupModal} />
-//       )}
-//     </div>
-//   );
-// };
 return (
     <div className="flex flex-col lg:ml-64 p-4 relative min-h-screen">
       <h1 className="text-2xl mb-4">Apps</h1>
@@ -131,7 +116,9 @@ return (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {apps.map((app) => (
             <div key={app.id} className="bg-white p-4 rounded shadow-md flex flex-col relative">
-              <h2 className="text-xl font-semibold mb-2">{app.name}</h2>
+              <Link to={`/app/${app.id}`} className="text-xl font-semibold mb-2 hover:underline">
+                {app.name}
+              </Link>
               <p>{app.description}</p>
               <button
                 onClick={() => handleOpenConfirmModal(app.id)}
@@ -144,6 +131,7 @@ return (
         </div>
       )}
 
+      
       {isSetupModalOpen && (
         <SetupAppForm onSubmit={handleSetupApp} onClose={handleCloseSetupModal} />
       )}
