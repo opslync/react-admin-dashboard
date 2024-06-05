@@ -1,83 +1,40 @@
-import { createAsyncThunk, createSelector, createSlice } from "@reduxjs/toolkit";
-import { postMethod } from "../api";
-import { RegisterUrl } from "../constant";
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { postMethod } from '../api';
+import { RegisterUrl, registerUrl } from '../constant';
 
-const initialState = {
-  value: {
-  isRegistered: false,
-  registrationData: null,
+export const registerUser = createAsyncThunk('registration/registerUser', async (data) => {
+  const response = await postMethod(RegisterUrl, data);
+  console.log("response from registrer ", response.data)
+  return response.data;
+});
+
+const registrationSlice = createSlice({
+  name: 'registration',
+  initialState: {
+    isRegistered: false,
+    registrationData: null,
+    error: null,
   },
-};
-
-export const registerUser = createAsyncThunk(
-  "registration/register",
-  async (data, thunkAPI) => {
-    try {
-      const response = await postMethod(RegisterUrl, data);
-      console.log("status code", response.status)
-      if (response.status === 200) {
-        // Assuming the response structure includes registration data
-        return { isRegistered: true, registrationData: response.data };
-      } else {
-        return thunkAPI.rejectWithValue(response.data); // Handle non-200 status codes
-      }
-    } catch (error) {
-      return thunkAPI.rejectWithValue(error.message); // Handle network errors or exceptions
-    }
-  }
-);
-
-// // Selector for isRegistered
-const selectRegistration = (state) => state.registration;
-export const selectIsRegistered = createSelector(
-  [selectRegistration],
-  (registration) => registration.value.isRegistered
-);
-//Adding Iselect
-
-// const selectAuthenticationState = (state) => state.authentication;
-
-// export const selectIsLogged = createSelector(
-//   [selectAuthenticationState],
-//   (authentication) => authentication.value.isLogged
-// );
-
-
-export const registrationSlice = createSlice({
-  name: "registration",
-  initialState,
   reducers: {
-    updateRegistration: (state, action) => {
-      state.value.isRegistered = true;
-      state.value.registrationData = action.payload;
+    resetRegistration: (state) => {
+      state.isRegistered = false;
+      state.registrationData = null;
+      state.error = null;
     },
   },
-  extraReducers: {
-    [registerUser.fulfilled]: (state, action) => {
-      state.value.isRegistered = true;
-      state.value.registrationData = action.payload;
-    },
-    [registerUser.rejected]: (state) => {
-      state.value.isRegistered = false;
-      state.value.registrationData = null;
-    },
-    [registerUser.pending]: (state) => {
-      state.value.isRegistered = false;
-      state.value.registrationData = null;
-    },
+  extraReducers: (builder) => {
+    builder
+      .addCase(registerUser.fulfilled, (state, action) => {
+        state.isRegistered = true;
+        state.registrationData = action.payload;
+      })
+      .addCase(registerUser.rejected, (state, action) => {
+        state.isRegistered = false;
+        state.error = action.error.message;
+      });
   },
 });
 
-export const { updateRegistration } = registrationSlice.actions;
-
-
-
-// export const selectRegistrationState = (state) => state.registration.isRegistered;
-
-// export const selectIsRegistered = createSelector(
-//   [selectRegistrationState],
-//   (registration) => registration.value.isRegistered
-// );
-
+export const { resetRegistration } = registrationSlice.actions;
+export const selectIsRegistered = (state) => state.registration.isRegistered;
 export default registrationSlice.reducer;
-

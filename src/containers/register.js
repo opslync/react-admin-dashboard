@@ -1,67 +1,44 @@
-import React, { useEffect } from "react";
+import React from "react";
 import { InputText } from "primereact/inputtext";
 import { Password } from "primereact/password";
 import { Button } from "primereact/button";
-import { InputMask } from "primereact/inputmask";
 import { classNames } from "primereact/utils";
 import "../assets/css/login.css";
-import { useDispatch, useSelector } from "react-redux";
-import { registerUser, selectIsRegistered } from "../library/store/registration";
+import { useDispatch } from "react-redux";
+import { registerUser } from "../library/store/registration";
 import { useHistory } from "react-router-dom";
-
 import * as Yup from "yup";
 import { useFormik, Form, FormikProvider } from "formik";
 import { Link } from "react-router-dom";
-import { CheckToken } from "../library/helper";
 
 export default function RegisterPage() {
   const dispatch = useDispatch();
   const history = useHistory();
-  // const { isRegistered } = useSelector((state) => state.registration);
-  // const isRegistered = useSelector(selectIsRegistered);
 
   const RegistrationSchema = Yup.object().shape({
-    username: Yup.string().required("name is required"),
-    location: Yup.string(),
-    email: Yup.string(),
-    phone: Yup.string(),
-    deviceID: Yup.string(),
-    password: Yup.string().required("password is required"),
+    username: Yup.string().required("Username is required"),
+    email: Yup.string().email("Invalid email address").required("Email is required"),
+    password: Yup.string().min(6, "Password must be at least 6 characters").required("Password is required"),
+    confirmPassword: Yup.string()
+      .oneOf([Yup.ref('password'), null], 'Passwords must match')
+      .required('Confirm password is required'),
   });
-
-
-  // useEffect(() => {
-  //   if (isRegistered) {
-  //     history.push("/login");
-  //   }
-  // }, [isRegistered, history]);
 
   const formik = useFormik({
     initialValues: {
       username: "",
-      location: "",
       email: "",
-      phone: "",
-      deviceID: "",
       password: "",
+      confirmPassword: "",
     },
     validationSchema: RegistrationSchema,
-
     onSubmit: (data) => {
       console.log(data);
       dispatch(registerUser(data));
-
       setTimeout(() => {
         formik.setSubmitting(false);
       }, 2000);
     },
-    // onSubmit: (data) => {
-    //   console.log(data);
-
-    //   setTimeout(() => {
-    //     formik.setSubmitting(false);
-    //   }, 2000);
-    // },
   });
 
   const { errors, touched, isSubmitting, handleSubmit } = formik;
@@ -78,24 +55,35 @@ export default function RegisterPage() {
                 <span className="p-float-label">
                   <InputText
                     id="username"
-                    username="username"
+                    name="username"
                     value={formik.values.username}
                     onChange={formik.handleChange}
-                    className={classNames({
-                      "p-invalid": Boolean(touched.username && errors.username),
-                    })}
+                    className={classNames({ "p-invalid": Boolean(touched.username && errors.username) })}
                   />
-                  <label
-                    htmlFor="username"
-                    className={classNames({
-                      "p-error": Boolean(touched.username && errors.username),
-                    })}
-                  >
-                    User ID*
+                  <label htmlFor="username" className={classNames({ "p-error": Boolean(touched.username && errors.username) })}>
+                    Username*
                   </label>
                 </span>
                 {Boolean(touched.username && errors.username) && (
-                  <small className="p-error">{formik.errors["name"]}</small>
+                  <small className="p-error">{formik.errors.username}</small>
+                )}
+              </div>
+
+              <div className="p-field">
+                <span className="p-float-label">
+                  <InputText
+                    id="email"
+                    name="email"
+                    value={formik.values.email}
+                    onChange={formik.handleChange}
+                    className={classNames({ "p-invalid": Boolean(touched.email && errors.email) })}
+                  />
+                  <label htmlFor="email" className={classNames({ "p-error": Boolean(touched.email && errors.email) })}>
+                    Email*
+                  </label>
+                </span>
+                {Boolean(touched.email && errors.email) && (
+                  <small className="p-error">{formik.errors.email}</small>
                 )}
               </div>
 
@@ -108,47 +96,34 @@ export default function RegisterPage() {
                     feedback={false}
                     value={formik.values.password}
                     onChange={formik.handleChange}
-                    className={classNames({
-                      "p-invalid": Boolean(touched.password && errors.password),
-                    })}
+                    className={classNames({ "p-invalid": Boolean(touched.password && errors.password) })}
                   />
-                  <label
-                    htmlFor="password"
-                    className={classNames({
-                      "p-error": Boolean(touched.password && errors.password),
-                    })}
-                  >
+                  <label htmlFor="password" className={classNames({ "p-error": Boolean(touched.password && errors.password) })}>
                     Password*
                   </label>
                 </span>
                 {Boolean(touched.password && errors.password) && (
-                  <small className="p-error">{formik.errors["password"]}</small>
+                  <small className="p-error">{formik.errors.password}</small>
                 )}
               </div>
 
               <div className="p-field">
                 <span className="p-float-label">
-                  <InputMask
-                    id="phone"
-                    name="phone"
-                    mask="(999) 999-9999"
-                    value={formik.values.phone}
+                  <Password
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    toggleMask
+                    feedback={false}
+                    value={formik.values.confirmPassword}
                     onChange={formik.handleChange}
-                    className={classNames({
-                      "p-invalid": Boolean(touched.phone && errors.phone),
-                    })}
+                    className={classNames({ "p-invalid": Boolean(touched.confirmPassword && errors.confirmPassword) })}
                   />
-                  <label
-                    htmlFor="phone"
-                    className={classNames({
-                      "p-error": Boolean(touched.phone && errors.phone),
-                    })}
-                  >
-                    Phone
+                  <label htmlFor="confirmPassword" className={classNames({ "p-error": Boolean(touched.confirmPassword && errors.confirmPassword) })}>
+                    Confirm Password*
                   </label>
                 </span>
-                {Boolean(touched.phone && errors.phone) && (
-                  <small className="p-error">{formik.errors["phone"]}</small>
+                {Boolean(touched.confirmPassword && errors.confirmPassword) && (
+                  <small className="p-error">{formik.errors.confirmPassword}</small>
                 )}
               </div>
 
@@ -166,7 +141,7 @@ export default function RegisterPage() {
               <div className="signupBox mt-3 text-center">
                 Already have an account? <Link to="/login">Log In</Link>
               </div>
-              
+
             </Form>
           </FormikProvider>
         </div>

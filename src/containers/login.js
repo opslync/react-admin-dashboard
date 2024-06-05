@@ -12,7 +12,7 @@ import { useHistory } from "react-router-dom";
 
 import { CheckToken } from "../library/helper";
 import { authenticateUser, selectIsLogged } from "../library/store/authentication";
-import { useDispatch,  useSelector} from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 
 export default function LoginPage() {
   const history = useHistory();
@@ -80,7 +80,7 @@ export default function LoginPage() {
                       "p-error": Boolean(touched.username && errors.username),
                     })}
                   >
-                    User ID*
+                    Username*
                   </label>
                 </span>
                 {Boolean(touched.username && errors.username) && (
