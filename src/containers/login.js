@@ -1,41 +1,25 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { InputText } from "primereact/inputtext";
 import { Password } from "primereact/password";
 import { Button } from "primereact/button";
 import { classNames } from "primereact/utils";
 import "../assets/css/login.css";
-
+import { useDispatch } from "react-redux";
+import { authenticateUser } from "../library/store/authentication";
+import { useHistory } from "react-router-dom";
 import * as Yup from "yup";
 import { useFormik, Form, FormikProvider } from "formik";
 import { Link } from "react-router-dom";
-import { useHistory } from "react-router-dom";
-
-import { CheckToken } from "../library/helper";
-import { authenticateUser, selectIsLogged } from "../library/store/authentication";
-import { useDispatch, useSelector } from "react-redux";
 
 export default function LoginPage() {
-  const history = useHistory();
   const dispatch = useDispatch();
-  const isLogged = useSelector(selectIsLogged);
-
+  const history = useHistory();
+  const [loginError, setLoginError] = useState('');
 
   const LoginSchema = Yup.object().shape({
-    username: Yup.string().required("name is required"),
-    password: Yup.string().required("password is required"),
+    username: Yup.string().required("Username is required"),
+    password: Yup.string().required("Password is required"),
   });
-
-  // useEffect(() => {
-  //   if (CheckToken()) {
-  //     history.push("/dashboard");
-  //   }
-  // }, []);
-
-  useEffect(() => {
-    if (isLogged) {
-      history.push("/deployments");
-    }
-  }, [isLogged, history]);
 
   const formik = useFormik({
     initialValues: {
@@ -43,13 +27,17 @@ export default function LoginPage() {
       password: "",
     },
     validationSchema: LoginSchema,
-    onSubmit: (data) => {
-      console.log(data);
-      dispatch(authenticateUser(data));
-
-      setTimeout(() => {
-        formik.setSubmitting(false);
-      }, 2000);
+    onSubmit: async (data, { setSubmitting }) => {
+      try {
+        const response = await dispatch(authenticateUser(data)).unwrap();
+        if (response && response.token) {
+          history.push("/deployments");
+        }
+      } catch (err) {
+        setLoginError('Username or password is incorrect.');
+      } finally {
+        setSubmitting(false);
+      }
     },
   });
 
@@ -59,7 +47,7 @@ export default function LoginPage() {
     <div className="form-box">
       <div className="fullHeight p-ai-center p-d-flex p-jc-center">
         <div className="shadow card m-3 px-3 py-4 px-sm-4 py-sm-5">
-          <h3 className="text-center text-md">Sign in to OpsLync</h3>
+          <h4 className="text-center">Sign in to Opslync</h4>
           <p className="text-center mb-3"></p>
           <FormikProvider value={formik}>
             <Form onSubmit={handleSubmit} className="p-fluid">
@@ -70,21 +58,14 @@ export default function LoginPage() {
                     name="username"
                     value={formik.values.username}
                     onChange={formik.handleChange}
-                    className={classNames({
-                      "p-invalid": Boolean(touched.username && errors.username),
-                    })}
+                    className={classNames({ "p-invalid": Boolean(touched.username && errors.username) })}
                   />
-                  <label
-                    htmlFor="name"
-                    className={classNames({
-                      "p-error": Boolean(touched.username && errors.username),
-                    })}
-                  >
+                  <label htmlFor="username" className={classNames({ "p-error": Boolean(touched.username && errors.username) })}>
                     Username*
                   </label>
                 </span>
                 {Boolean(touched.username && errors.username) && (
-                  <small className="p-error">{formik.errors["username"]}</small>
+                  <small className="p-error">{formik.errors.username}</small>
                 )}
               </div>
 
@@ -97,29 +78,22 @@ export default function LoginPage() {
                     feedback={false}
                     value={formik.values.password}
                     onChange={formik.handleChange}
-                    className={classNames({
-                      "p-invalid": Boolean(touched.password && errors.password),
-                    })}
+                    className={classNames({ "p-invalid": Boolean(touched.password && errors.password) })}
                   />
-                  <label
-                    htmlFor="password"
-                    className={classNames({
-                      "p-error": Boolean(touched.password && errors.password),
-                    })}
-                  >
+                  <label htmlFor="password" className={classNames({ "p-error": Boolean(touched.password && errors.password) })}>
                     Password*
                   </label>
                 </span>
                 {Boolean(touched.password && errors.password) && (
-                  <small className="p-error">{formik.errors["password"]}</small>
+                  <small className="p-error">{formik.errors.password}</small>
                 )}
               </div>
 
-              <div className="forgotPassword text-right">
-                <Link to="/forgot-password">
-                  <u>Forgot Password</u>
-                </Link>
-              </div>
+              {loginError && (
+                <div className="p-field">
+                  <small className="p-error">{loginError}</small>
+                </div>
+              )}
 
               <div className="submitBtnBox">
                 <Button

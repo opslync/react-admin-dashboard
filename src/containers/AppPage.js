@@ -6,6 +6,7 @@ import ConfirmModal from '../components/ConfirmModal';
 import { appCreate, listApps } from '../library/constant';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrash } from '@fortawesome/free-solid-svg-icons';
+import { Card, CardContent, CardActions, Typography, Button, IconButton, CircularProgress, Grid, Modal, Box } from '@mui/material';
 
 const AppPage = () => {
   const [isSetupModalOpen, setIsSetupModalOpen] = useState(false);
@@ -73,6 +74,7 @@ const AppPage = () => {
       setError('Failed to setup app. Please try again.');
     }
   };
+
   const handleOpenConfirmModal = (appId) => {
     console.log('Opening confirm modal for app ID:', appId); // Debugging step
     setAppIdToDelete(appId);
@@ -83,58 +85,80 @@ const AppPage = () => {
     setIsConfirmModalOpen(false);
     setAppIdToDelete(null);
   };
+
   const handleDeleteApp = async () => {
     try {
       if (appIdToDelete) {
-      await deleteMethod(`app/${appIdToDelete}`);
-      setApps(apps.filter(app => app.id !== appIdToDelete)); // Remove the app from the list
-      handleCloseConfirmModal();
-    } else {
-      console.error('No app ID to delete.');
-    }
+        await deleteMethod(`app/${appIdToDelete}`);
+        setApps(apps.filter(app => app.id !== appIdToDelete)); // Remove the app from the list
+        handleCloseConfirmModal();
+      } else {
+        console.error('No app ID to delete.');
+      }
     } catch (error) {
       console.error('Failed to delete app:', error);
       setError('Failed to delete app. Please try again.');
     }
   };
 
-return (
-    <div className="flex flex-col lg:ml-64 p-4 relative min-h-screen">
-      <h1 className="text-2xl mb-4">Apps</h1>
-      <button
-        onClick={handleOpenSetupModal}
-        className="absolute top-4 right-4 bg-blue-500 text-white px-2 py-1 rounded text-md"
-      >
-        + Setup App
-      </button>
+  return (
+    <div className="flex flex-col lg:ml-64 p-4 relative min-h-screen bg-gray-100">
+      <div className="flex justify-between items-center mb-4">
+        <Typography variant="h4" className="mb-4">Apps</Typography>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleOpenSetupModal}
+          className="absolute top-4 right-4"
+        >
+          + Setup App
+        </Button>
+      </div>
 
       {loading ? (
-        <p>Loading...</p>
-      ) : error ? (
-        <p className="text-red-500">{error}</p>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {apps.map((app) => (
-            <div key={app.id} className="bg-white p-4 rounded shadow-md flex flex-col relative">
-              <Link to={`/app/${app.id}`} className="text-xl font-semibold mb-2 hover:underline">
-                {app.name}
-              </Link>
-              <p>{app.description}</p>
-              <button
-                onClick={() => handleOpenConfirmModal(app.id)}
-                className="absolute top-2 right-2 text-red-500"
-              >
-                <FontAwesomeIcon icon={faTrash} />
-              </button>
-            </div>
-          ))}
+        <div className="flex justify-center items-center h-full">
+          <CircularProgress />
         </div>
+      ) : error ? (
+        <Typography color="error">{error}</Typography>
+      ) : (
+        <Grid container spacing={3}>
+          {apps.map((app) => (
+            <Grid item xs={12} sm={6} md={4} key={app.id}>
+              <Card className="relative">
+                <CardContent>
+                  <Typography variant="h6" component={Link} to={`/app/${app.id}`} className="text-xl font-semibold mb-2 hover:underline">
+                    {app.name}
+                  </Typography>
+                  <Typography>{app.description}</Typography>
+                </CardContent>
+                <CardActions>
+                  <IconButton
+                    onClick={() => handleOpenConfirmModal(app.id)}
+                    className="text-red-500 hover:text-red-600"
+                  >
+                    <FontAwesomeIcon icon={faTrash} />
+                  </IconButton>
+                </CardActions>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
       )}
 
-      
-      {isSetupModalOpen && (
-        <SetupAppForm onSubmit={handleSetupApp} onClose={handleCloseSetupModal} />
-      )}
+      <Modal
+        open={isSetupModalOpen}
+        onClose={handleCloseSetupModal}
+        aria-labelledby="setup-app-modal-title"
+        aria-describedby="setup-app-modal-description"
+      >
+        <Box className="absolute top-1/4 left-1/4 w-1/2 bg-white p-4 rounded shadow-lg">
+          <Typography variant="h6" id="setup-app-modal-title" className="mb-4">Setup App</Typography>
+          <SetupAppForm onSubmit={handleSetupApp} onClose={handleCloseSetupModal} />
+          {setupErrorMessage && <Typography color="error">{setupErrorMessage}</Typography>}
+        </Box>
+      </Modal>
+
       <ConfirmModal
         isOpen={isConfirmModalOpen}
         onClose={handleCloseConfirmModal}
@@ -144,6 +168,5 @@ return (
     </div>
   );
 };
-
 
 export default AppPage;

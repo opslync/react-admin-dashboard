@@ -113,8 +113,8 @@ const AppDetailPage = () => {
   if (error) return <p className="text-red-500">{error}</p>;
 
   return (
-    <div className="flex flex-col p-6 bg-gray-100 min-h-screen">
-      <button onClick={handleBack} className="bg-gray-300 text-gray-800 px-4 py-2 rounded mb-4 self-start hover:bg-gray-400">
+    <div className="flex justify-between items-center mb-4">
+      <button onClick={handleBack} className="bg-gray-300 text-gray-800 px-4 py-2 rounded mb-8 self-start hover:bg-gray-400">
         Back to Apps
       </button>
       {app && (

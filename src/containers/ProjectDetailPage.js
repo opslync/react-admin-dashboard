@@ -45,10 +45,10 @@ const ProjectDetailPage = () => {
                 <CardContent>
                   <Typography variant="h6" className="mb-2">{app.name}</Typography>
                   <Typography className="mb-4">{app.description}</Typography>
-                  <Button 
-                    component={Link} 
-                    to={`/app/${app.ID}`} 
-                    variant="contained" 
+                  <Button
+                    component={Link}
+                    to={`/app/${app.ID}`}
+                    variant="contained"
                     color="primary"
                   >
                     View Details
@@ -61,14 +61,16 @@ const ProjectDetailPage = () => {
           <Typography>No apps found for this project.</Typography>
         )}
       </div>
-      <Button 
-        component={Link} 
-        to="/project" 
-        variant="contained" 
-        className="bg-gray-300 text-gray-800 hover:bg-gray-400"
-      >
-        Back to Projects
-      </Button>
+      <div className="flex justify-between items-center mb-4" >
+        <Button
+          component={Link}
+          to="/project"
+          variant="contained"
+          className="bg-gray-300 text-gray-800 hover:bg-gray-400"
+        >
+          Back to Projects
+        </Button>
+      </div>
     </div>
   );
 };

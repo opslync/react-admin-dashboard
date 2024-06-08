@@ -69,15 +69,17 @@ const GitUserPage = () => {
 
   return (
     <div className="flex flex-col lg:ml-64 p-6 bg-gray-100 min-h-screen">
-      <Typography variant="h4" className="mb-6">Git Users</Typography>
-      <Button
-        variant="contained"
-        color="primary"
-        onClick={handleOpenGitModal}
-        className="mb-4"
-      >
-        Git Connect
-      </Button>
+      <div className="flex justify-between items-center mb-4" >
+        <Typography variant="h4" className="mb-6">Git Users</Typography>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleOpenGitModal}
+          className="mb-4"
+        >
+          Git Connect
+        </Button>
+      </div>
       <Card>
         <CardContent>
           <Typography variant="h5" className="mb-4">User Details</Typography>

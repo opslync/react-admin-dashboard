@@ -1,14 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import moment from 'moment';
-import { getMethod } from '../library/api';
-import { Card, CardContent, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from '@mui/material';
+import {
+  Card,
+  CardContent,
+  Typography,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  CircularProgress,
+} from '@mui/material';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { getMethod } from '../library/api';
 
 const DeploymentHistoryPage = () => {
   const [deployments, setDeployments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [statusMap, setStatusMap] = useState({});
 
   useEffect(() => {
     // Fetch deployment history
@@ -26,8 +39,34 @@ const DeploymentHistoryPage = () => {
     fetchDeploymentHistory();
   }, []);
 
+  useEffect(() => {
+    const fetchStatus = async () => {
+      try {
+        const statusPromises = deployments.map(async (deployment) => {
+          const response = await getMethod(`pod/status?appName=${deployment.releaseName}`);
+          return { releaseName: deployment.releaseName, status: response.data[0].status };
+        });
+        const statusResults = await Promise.all(statusPromises);
+        const statusMap = statusResults.reduce((map, { releaseName, status }) => {
+          map[releaseName] = status;
+          return map;
+        }, {});
+        setStatusMap(statusMap);
+      } catch (err) {
+        console.error('Failed to fetch pod status:', err);
+      }
+    };
+
+    if (deployments.length) {
+      fetchStatus();
+      const intervalId = setInterval(fetchStatus, 300000); // Fetch status every 5 minutes
+      return () => clearInterval(intervalId); // Cleanup interval on component unmount
+    }
+  }, [deployments]);
+
   const statusCounts = deployments.reduce((acc, deployment) => {
-    acc[deployment.status] = (acc[deployment.status] || 0) + 1;
+    const status = statusMap[deployment.releaseName] || 'Unknown';
+    acc[status] = (acc[status] || 0) + 1;
     return acc;
   }, {});
 
@@ -38,12 +77,12 @@ const DeploymentHistoryPage = () => {
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
-  if (loading) return <p>Loading...</p>;
-  if (error) return <p className="text-red-500">{error}</p>;
+  if (loading) return <Typography>Loading...</Typography>;
+  if (error) return <Typography color="error">{error}</Typography>;
 
   return (
     <div className="flex flex-col lg:ml-64 p-6 bg-gray-100 min-h-screen">
-      <Typography variant="h4" className="mb-6"></Typography>
+      <Typography variant="h4" className="mb-6">Deployment History</Typography>
       <Card className="mb-6">
         <CardContent>
           <Typography variant="h5" className="mb-4">Deployment Status Chart</Typography>
@@ -75,10 +114,10 @@ const DeploymentHistoryPage = () => {
             <Table>
               <TableHead>
                 <TableRow>
-                  
+
                   <TableCell>App Name</TableCell>
+                  <TableCell>CommitId</TableCell>
                   <TableCell>When</TableCell>
-                  <TableCell>CommitID</TableCell>
                   <TableCell>User</TableCell>
                   <TableCell>Status</TableCell>
                 </TableRow>
@@ -86,11 +125,12 @@ const DeploymentHistoryPage = () => {
               <TableBody>
                 {deployments.map((deployment) => (
                   <TableRow key={deployment.ID}>
+
                     <TableCell>{deployment.releaseName}</TableCell>
-                    <TableCell>{moment(deployment.CreatedAt).format('MMMM Do YYYY, h:mm:ss a')}</TableCell>
                     <TableCell>{deployment.tag}</TableCell>
+                    <TableCell>{moment(deployment.CreatedAt).format('MMMM Do YYYY, h:mm:ss a')}</TableCell>
                     <TableCell>{deployment.username}</TableCell>
-                    <TableCell>{deployment.status}</TableCell>
+                    <TableCell>{statusMap[deployment.releaseName] || 'Unknown'}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
