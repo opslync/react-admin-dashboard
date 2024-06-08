@@ -14,6 +14,7 @@ const AppDetailPage = () => {
   const [updatedRepoUrl, setUpdatedRepoUrl] = useState('');
   const [logs, setLogs] = useState([]);
   const [buildId, setBuildId] = useState(null);
+  const [showLogs, setShowLogs] = useState(false); // State to manage log visibility
   const ws = useRef(null);
 
   useEffect(() => {
@@ -109,11 +110,15 @@ const AppDetailPage = () => {
     history.goBack();
   };
 
+  const toggleLogs = () => {
+    setShowLogs(!showLogs);
+  };
+
   if (loading) return <p>Loading...</p>;
   if (error) return <p className="text-red-500">{error}</p>;
 
   return (
-    <div className="flex justify-between items-center mb-4">
+    <div className="flex flex-col items-center mb-4">
       <button onClick={handleBack} className="bg-gray-300 text-gray-800 px-4 py-2 rounded mb-8 self-start hover:bg-gray-400">
         Back to Apps
       </button>
@@ -166,12 +171,16 @@ const AppDetailPage = () => {
               </div>
               {buildId && (
                 <div className="mt-6">
-                  <h2 className="text-2xl font-semibold mb-4">Build Logs</h2>
-                  <div className="bg-black text-white p-4 rounded-lg h-64 overflow-y-scroll">
-                    {logs.map((log, index) => (
-                      <div key={index} className="whitespace-pre-wrap">{log}</div>
-                    ))}
-                  </div>
+                  <button onClick={toggleLogs} className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 mb-4">
+                    {showLogs ? 'Hide Logs' : 'Show Logs'}
+                  </button>
+                  {showLogs && (
+                    <div className="bg-black text-white p-4 rounded-lg h-64 overflow-y-scroll">
+                      {logs.map((log, index) => (
+                        <div key={index} className="whitespace-pre-wrap">{log}</div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </>
