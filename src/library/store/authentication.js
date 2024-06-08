@@ -84,7 +84,7 @@ export const authenticationSlice = createSlice({
       localStorage.setItem("username", action.payload.username);
     },
     [authenticateUser.rejected]: (state, action) => {
-      state.vlaue.isLogged = false;
+      state.value.isLogged = false;
       state.value.username = null;
       state.value.token = null;
       localStorage.removeItem("token");

@@ -1,4 +1,4 @@
-.sidebarWrapper {
+/* .sidebarWrapper {
   box-shadow: 2px 0 4px -1px rgba(0, 0, 0, 20%), 4px 0 5px 0 rgba(0, 0, 0, 14%),
     1px 0 10px 0 rgba(0, 0, 0, 12%);
 }
@@ -12,4 +12,55 @@
 
 a.active {
   color: red;
+} */
+
+
+.sidebar {
+  width: 64px;
+  transition: width 0.3s;
+}
+
+.sidebar:hover {
+  width: 256px; /* Adjust based on your preferred expanded width */
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  padding-left: 20px; /* Ensure padding is sufficient to show the full icon */
+  transition: width 0.3s; /* Smooth transition for width change */
+}
+
+.menu-item > svg {
+  margin-left: -20px; /* Move icons to the left */
+}
+
+.sidebar:hover .menu-item > svg {
+  margin-left: 0; /* Reset margin when expanded */
+}
+
+.menu-text {
+  display: none;
+}
+
+.sidebar:hover .menu-text {
+  display: inline;
+  margin-left: 8px; /* Adjust based on your preferred spacing */
+}
+
+.menu-item.active {
+  width: 26px; /* Reduced width for the active item */
+}
+
+.sidebar:hover .menu-item.active {
+  width: 240px; /* Adjust based on your preferred expanded width for the active item */
+}
+
+.menu-item.active > svg {
+  margin-left: -8px; /* Adjust if needed to ensure the icon is visible */
+}
+
+.sidebar:hover .menu-item.active > svg {
+  margin-left: 0; /* Reset margin when expanded */
 }
