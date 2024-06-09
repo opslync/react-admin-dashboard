@@ -17,30 +17,30 @@ const AppPage = () => {
   const [error, setError] = useState('');
   const [appIdToDelete, setAppIdToDelete] = useState(null);
 
-  useEffect(() => {
-    // Fetch the list of apps from the API
-    const fetchApps = async () => {
-      try {
-        const response = await getMethod(listApps);
-        const mappedApps = response.data.map(app => ({
-          id: app.ID,
-          name: app.name,
-          description: app.description,
-          repoUrl: app.repoUrl,
-          projectId: app.projectId,
-          createdAt: app.CreatedAt,
-          updatedAt: app.UpdatedAt,
-          deletedAt: app.DeletedAt
-        }));
-        console.log('App Setup:', response);
-        setApps(mappedApps);
-        setLoading(false);
-      } catch (err) {
-        setError('Failed to fetch apps. Please try again.');
-        setLoading(false);
-      }
-    };
 
+  // Fetch the list of apps from the API
+  const fetchApps = async () => {
+    try {
+      const response = await getMethod(listApps);
+      const mappedApps = response.data.map(app => ({
+        id: app.ID,
+        name: app.name,
+        description: app.description,
+        repoUrl: app.repoUrl,
+        projectId: app.projectId,
+        createdAt: app.CreatedAt,
+        updatedAt: app.UpdatedAt,
+        deletedAt: app.DeletedAt
+      }));
+      console.log('App Setup:', response);
+      setApps(mappedApps);
+      setLoading(false);
+    } catch (err) {
+      setError('Failed to fetch apps. Please try again.');
+      setLoading(false);
+    }
+  };
+  useEffect(() => {
     fetchApps();
   }, []);
 
@@ -69,6 +69,7 @@ const AppPage = () => {
       setApps([...apps, newApp]);
       console.log('App Setup:', response);
       handleCloseSetupModal();
+      fetchApps();
     } catch (error) {
       console.error('Failed to setup app:', error);
       setError('Failed to setup app. Please try again.');

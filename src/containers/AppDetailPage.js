@@ -16,6 +16,7 @@ const AppDetailPage = () => {
   const [buildId, setBuildId] = useState(null);
   const [showLogs, setShowLogs] = useState(false); // State to manage log visibility
   const ws = useRef(null);
+  const isMounted = useRef(false); // To track if the component is mounted
 
   useEffect(() => {
     // Fetch app details
@@ -33,6 +34,9 @@ const AppDetailPage = () => {
     };
 
     fetchAppDetails();
+    return () => {
+      isMounted.current = false; // Set to false when component unmounts
+    };
   }, [appId]);
 
   useEffect(() => {
