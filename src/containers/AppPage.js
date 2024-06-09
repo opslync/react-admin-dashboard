@@ -16,6 +16,7 @@ const AppPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [appIdToDelete, setAppIdToDelete] = useState(null);
+  const [value, setValue] = useState(0);
 
 
   // Fetch the list of apps from the API
@@ -102,6 +103,8 @@ const AppPage = () => {
     }
   };
 
+
+
   return (
     <div className="flex flex-col lg:ml-64 p-4 relative min-h-screen bg-gray-100">
       <div className="flex justify-between items-center mb-4">
@@ -128,7 +131,7 @@ const AppPage = () => {
             <Grid item xs={12} sm={6} md={4} key={app.id}>
               <Card className="relative">
                 <CardContent>
-                  <Typography variant="h6" component={Link} to={`/app/${app.id}`} className="text-xl font-semibold mb-2 hover:underline">
+                  <Typography variant="h6" component={Link} to={`/app/${app.id}/details`} className="text-xl font-semibold mb-2 hover:underline">
                     {app.name}
                   </Typography>
                   <Typography>{app.description}</Typography>

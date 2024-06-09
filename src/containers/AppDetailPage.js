@@ -1,11 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useHistory } from 'react-router-dom';
+import { useParams, useHistory, Link, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { getMethod, postMethod, putMethod } from '../library/api';
+import { AppBar, Tabs, Tab, Typography, Button, Box, Toolbar } from '@mui/material';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faTrash } from '@fortawesome/free-solid-svg-icons';
+
 
 const AppDetailPage = () => {
   const { appId } = useParams();
   const history = useHistory();
+  const location = useLocation();
   const [app, setApp] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -15,6 +20,7 @@ const AppDetailPage = () => {
   const [logs, setLogs] = useState([]);
   const [buildId, setBuildId] = useState(null);
   const [showLogs, setShowLogs] = useState(false); // State to manage log visibility
+  const [tabValue, setTabValue] = useState(0);
   const ws = useRef(null);
   const isMounted = useRef(false); // To track if the component is mounted
 
@@ -118,14 +124,55 @@ const AppDetailPage = () => {
     setShowLogs(!showLogs);
   };
 
+  const handleTabChange = (event, newValue) => {
+    setTabValue(newValue);
+    const paths = [
+      "/overview",
+      `/app/${appId}/details`,
+      `/app/${appId}/build-deploy`,
+      "/build-history",
+      "/deployment-history",
+      "/deployment-metrics",
+      "/app-configuration",
+    ];
+    history.push(paths[newValue]);
+  };
+
+  useEffect(() => {
+    const paths = [
+      "/overview",
+      `/app/${appId}/details`,
+      `/app/${appId}/build-deploy`,
+      "/build-history",
+      "/deployment-history",
+      "/deployment-metrics",
+      "/app-configuration",
+    ];
+    const activeTab = paths.indexOf(location.pathname);
+    setTabValue(activeTab);
+  }, [location.pathname, appId]);
+
   if (loading) return <p>Loading...</p>;
   if (error) return <p className="text-red-500">{error}</p>;
 
   return (
-    <div className="flex flex-col items-center mb-4">
-      <button onClick={handleBack} className="bg-gray-300 text-gray-800 px-4 py-2 rounded mb-8 self-start hover:bg-gray-400">
+    <div className="flex flex-col lg:ml-64 p-4 relative min-h-screen bg-gray-100">
+      <AppBar position="static" color="default" className="mb-4">
+        <Toolbar>
+          <Tabs value={tabValue} onChange={handleTabChange} aria-label="app detail tabs">
+            <Tab label="Overview" />
+            <Tab label="App Details" />
+            <Tab label="Build & Deploy" />
+            <Tab label="Build History" />
+            <Tab label="Deployment History" />
+            <Tab label="Deployment Metrics" />
+            <Tab label="App Configuration" />
+          </Tabs>
+        </Toolbar>
+      </AppBar>
+      {/* <button onClick={handleBack} className="bg-gray-300 text-gray-800 px-4 py-2 rounded mb-8 self-start hover:bg-gray-400">
         Back to Apps
-      </button>
+      </button> */}
       {app && (
         <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-2xl mx-auto">
           <h1 className="text-3xl font-semibold mb-4">{isEditing ? 'Edit App' : app.name}</h1>
@@ -194,5 +241,6 @@ const AppDetailPage = () => {
     </div>
   );
 };
+
 
 export default AppDetailPage;
