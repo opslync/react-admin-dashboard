@@ -70,7 +70,7 @@ const GitUserPage = () => {
   return (
     <div className="flex flex-col lg:ml-64 p-6 bg-gray-100 min-h-screen">
       <div className="flex justify-between items-center mb-4" >
-        <Typography variant="h4" className="mb-6">Git Users</Typography>
+        <Typography variant="h4" className="mb-6">Git Account</Typography>
         <Button
           variant="contained"
           color="primary"
