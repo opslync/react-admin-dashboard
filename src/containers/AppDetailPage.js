@@ -76,7 +76,7 @@ const AppDetailPage = () => {
   const handleBuild = async () => {
     try {
       console.log('Building app...');
-      const response = await postMethod('app/build', { repoUrl: app.repoUrl });
+      const response = await postMethod(`app/${appId}/build`, { repoUrl: app.repoUrl });
       setBuildId(response.data.buildId);
       console.log('Build response:', response.data);
       // Handle success, show notification, etc.
@@ -127,11 +127,10 @@ const AppDetailPage = () => {
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
     const paths = [
-      "/overview",
       `/app/${appId}/details`,
       `/app/${appId}/build-deploy`,
-      "/build-history",
-      "/deployment-history",
+      `/app/${appId}/build-history`,
+      `/app/${appId}/deployment-history`,
       "/deployment-metrics",
       "/app-configuration",
     ];
@@ -140,11 +139,10 @@ const AppDetailPage = () => {
 
   useEffect(() => {
     const paths = [
-      "/overview",
       `/app/${appId}/details`,
       `/app/${appId}/build-deploy`,
-      "/build-history",
-      "/deployment-history",
+      `/app/${appId}/build-history`,
+      `/app/${appId}/deployment-history`,
       "/deployment-metrics",
       "/app-configuration",
     ];
@@ -160,7 +158,6 @@ const AppDetailPage = () => {
       <AppBar position="static" color="default" className="mb-4">
         <Toolbar>
           <Tabs value={tabValue} onChange={handleTabChange} aria-label="app detail tabs">
-            <Tab label="Overview" />
             <Tab label="App Details" />
             <Tab label="Build & Deploy" />
             <Tab label="Build History" />

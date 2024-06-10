@@ -17,11 +17,10 @@ const BuildDeployPage = () => {
     const handleTabChange = (event, newValue) => {
         setTabValue(newValue);
         const paths = [
-            "/overview",
             `/app/${appId}/details`,
             `/app/${appId}/build-deploy`,
-            "/build-history",
-            "/deployment-history",
+            `/app/${appId}/build-history`,
+            `/app/${appId}/deployment-history`,
             "/deployment-metrics",
             "/app-configuration",
         ];
@@ -58,11 +57,10 @@ const BuildDeployPage = () => {
 
     useEffect(() => {
         const paths = [
-            "/overview",
             `/app/${appId}/details`,
             `/app/${appId}/build-deploy`,
-            "/build-history",
-            "/deployment-history",
+            `/app/${appId}/build-history`,
+            `/app/${appId}/deployment-history`,
             "/deployment-metrics",
             "/app-configuration",
         ];
@@ -75,7 +73,6 @@ const BuildDeployPage = () => {
             <AppBar position="static" color="default" className="mb-4">
                 <Toolbar>
                     <Tabs value={tabValue} onChange={handleTabChange} aria-label="build and deploy tabs">
-                        <Tab label="Overview" />
                         <Tab label="App Details" />
                         <Tab label="Build & Deploy" />
                         <Tab label="Build History" />
