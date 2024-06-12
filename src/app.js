@@ -19,7 +19,10 @@ import AppPage from "./containers/AppPage";
 import AppDetailPage from "./containers/AppDetailPage";
 import ProjectDetailPage from "./containers/ProjectDetailPage";
 import DeploymentHistoryPage from "./containers/DeploymentHistoryPage";
+import DeploymentHistory from "./containers/DeploymentHistory";
 import GitUserPage from "./containers/GitUserPage";
+import BuildDeployPage from "./containers/BuildDeployPage";
+import BuildHistoryPage from "./containers/BuildHistoryPage";
 
 function App() {
   return (
@@ -34,7 +37,10 @@ function App() {
           <PrivateRoute exact path="/dashboard" component={DashboardPage} />
           <PrivateRoute exact path="/settings" component={GitUserPage} />
           <PrivateRoute exact path="/deployments" component={DeploymentHistoryPage} />
-          <PrivateRoute path="/app/:appId" component={AppDetailPage} />
+          <PrivateRoute path="/app/:appId/details" component={AppDetailPage} />
+          <PrivateRoute path="/app/:appId/build-deploy" component={BuildDeployPage} />
+          <PrivateRoute path="/app/:appId/deployment-history" component={DeploymentHistory} />
+          <PrivateRoute path="/app/:appId/build-history" component={BuildHistoryPage} />
           <PrivateRoute path="/project/:projectId/apps" component={ProjectDetailPage} />
           <PrivateRoute path="/project/:projectId/apps" component={AppPage} />
           <PrivateRoute exact path="/apps" component={AppPage} />

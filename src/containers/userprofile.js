@@ -173,10 +173,11 @@ const UserProfilePage = () => {
             <div className="submitBtnBox text-center">
               <Button
                 type="submit"
-                label="Save"
+                label="Update"
                 iconPos="right"
                 loading={isSubmitting}
                 className="mt-4 submitBtn"
+                color="primary"
                 disabled={isSubmitting}
               />
             </div>

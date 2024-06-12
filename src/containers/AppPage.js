@@ -16,31 +16,32 @@ const AppPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [appIdToDelete, setAppIdToDelete] = useState(null);
+  const [value, setValue] = useState(0);
 
+
+  // Fetch the list of apps from the API
+  const fetchApps = async () => {
+    try {
+      const response = await getMethod(listApps);
+      const mappedApps = response.data.map(app => ({
+        id: app.ID,
+        name: app.name,
+        description: app.description,
+        repoUrl: app.repoUrl,
+        projectId: app.projectId,
+        createdAt: app.CreatedAt,
+        updatedAt: app.UpdatedAt,
+        deletedAt: app.DeletedAt
+      }));
+      console.log('App Setup:', response);
+      setApps(mappedApps);
+      setLoading(false);
+    } catch (err) {
+      setError('Failed to fetch apps. Please try again.');
+      setLoading(false);
+    }
+  };
   useEffect(() => {
-    // Fetch the list of apps from the API
-    const fetchApps = async () => {
-      try {
-        const response = await getMethod(listApps);
-        const mappedApps = response.data.map(app => ({
-          id: app.ID,
-          name: app.name,
-          description: app.description,
-          repoUrl: app.repoUrl,
-          projectId: app.projectId,
-          createdAt: app.CreatedAt,
-          updatedAt: app.UpdatedAt,
-          deletedAt: app.DeletedAt
-        }));
-        console.log('App Setup:', response);
-        setApps(mappedApps);
-        setLoading(false);
-      } catch (err) {
-        setError('Failed to fetch apps. Please try again.');
-        setLoading(false);
-      }
-    };
-
     fetchApps();
   }, []);
 
@@ -69,6 +70,7 @@ const AppPage = () => {
       setApps([...apps, newApp]);
       console.log('App Setup:', response);
       handleCloseSetupModal();
+      fetchApps();
     } catch (error) {
       console.error('Failed to setup app:', error);
       setError('Failed to setup app. Please try again.');
@@ -101,6 +103,8 @@ const AppPage = () => {
     }
   };
 
+
+
   return (
     <div className="flex flex-col lg:ml-64 p-4 relative min-h-screen bg-gray-100">
       <div className="flex justify-between items-center mb-4">
@@ -127,7 +131,7 @@ const AppPage = () => {
             <Grid item xs={12} sm={6} md={4} key={app.id}>
               <Card className="relative">
                 <CardContent>
-                  <Typography variant="h6" component={Link} to={`/app/${app.id}`} className="text-xl font-semibold mb-2 hover:underline">
+                  <Typography variant="h6" component={Link} to={`/app/${app.id}/details`} className="text-xl font-semibold mb-2 hover:underline">
                     {app.name}
                   </Typography>
                   <Typography>{app.description}</Typography>

@@ -4,7 +4,10 @@ import { Sidebar } from "primereact/sidebar";
 import { useDispatch, useSelector } from "react-redux";
 import { closeSideBar } from "../library/store/sidebar";
 import "../assets/css/menu.css";
-import { DashboardIcon } from "../assets/icons";
+import FolderOpenIcon from '@mui/icons-material/FolderOpen';
+import SettingsIcon from '@mui/icons-material/Settings';
+import AppsIcon from '@mui/icons-material/Apps';
+import DashboardIcon from '@mui/icons-material/Dashboard';
 import { MenuIcon } from "@heroicons/react/outline";
 
 export default function SideBar() {
@@ -58,19 +61,19 @@ const menus = [
   {
     name: "Project",
     route: "/project",
-    icon: <DashboardIcon />,
+    icon: <FolderOpenIcon />,
     iconType: "component",
   },
   {
     name: "Apps",
     route: "/apps",
-    icon: <DashboardIcon />,
+    icon: <AppsIcon />,
     iconType: "component",
   },
   {
     name: "Setting",
     route: "/settings",
-    icon: <DashboardIcon />,
+    icon: <SettingsIcon />,
     iconType: "component",
   },
 ];
