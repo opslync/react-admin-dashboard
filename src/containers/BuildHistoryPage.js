@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import moment from 'moment';
 import {
     Card,
@@ -12,15 +11,16 @@ import {
     TableHead,
     TableRow,
     Paper,
-    CircularProgress,
     AppBar,
     Tabs,
     Tab,
     Toolbar,
+    Modal,
+    Box,
+    Button,
 } from '@mui/material';
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { getMethod } from '../library/api';
-import { useParams, Link, useHistory, useLocation } from 'react-router-dom';
+import { useParams, useHistory, useLocation } from 'react-router-dom';
 
 const BuildHistoryPage = () => {
     const { appId } = useParams();
@@ -29,13 +29,14 @@ const BuildHistoryPage = () => {
     const [builds, setBuilds] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [statusMap, setStatusMap] = useState({});
     const [tabValue, setTabValue] = useState(3); // Default to "Build History"
+    const [open, setOpen] = useState(false);
+    const [selectedLogs, setSelectedLogs] = useState('');
 
     useEffect(() => {
         const fetchBuildHistory = async () => {
             try {
-                const response = await getMethod('builds');
+                const response = await getMethod(`app/${appId}/build-history`);
                 setBuilds(response.data);
                 setLoading(false);
             } catch (err) {
@@ -45,32 +46,7 @@ const BuildHistoryPage = () => {
         };
 
         fetchBuildHistory();
-    }, []);
-
-    useEffect(() => {
-        const fetchStatus = async () => {
-            try {
-                const statusPromises = builds.map(async (build) => {
-                    const response = await getMethod(`build/status?buildId=${build.ID}`);
-                    return { buildId: build.ID, status: response.data.status };
-                });
-                const statusResults = await Promise.all(statusPromises);
-                const statusMap = statusResults.reduce((map, { buildId, status }) => {
-                    map[buildId] = status;
-                    return map;
-                }, {});
-                setStatusMap(statusMap);
-            } catch (err) {
-                console.error('Failed to fetch build status:', err);
-            }
-        };
-
-        if (builds.length) {
-            fetchStatus();
-            const intervalId = setInterval(fetchStatus, 300000); // Fetch status every 5 minutes
-            return () => clearInterval(intervalId); // Cleanup interval on component unmount
-        }
-    }, [builds]);
+    }, [appId]);
 
     const handleTabChange = (event, newValue) => {
         setTabValue(newValue);
@@ -98,18 +74,15 @@ const BuildHistoryPage = () => {
         setTabValue(activeTab);
     }, [location.pathname, appId]);
 
-    const statusCounts = builds.reduce((acc, build) => {
-        const status = statusMap[build.ID] || 'Unknown';
-        acc[status] = (acc[status] || 0) + 1;
-        return acc;
-    }, {});
+    const handleOpen = (logs) => {
+        setSelectedLogs(logs);
+        setOpen(true);
+    };
 
-    const chartData = Object.keys(statusCounts).map(status => ({
-        name: status,
-        value: statusCounts[status]
-    }));
-
-    const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+    const handleClose = () => {
+        setOpen(false);
+        setSelectedLogs('');
+    };
 
     if (loading) return <Typography>Loading...</Typography>;
     if (error) return <Typography color="error">{error}</Typography>;
@@ -131,50 +104,30 @@ const BuildHistoryPage = () => {
             <Typography variant="h4" className="mb-6">Build History</Typography>
             <Card className="mb-6">
                 <CardContent>
-                    <Typography variant="h5" className="mb-4">Build Status Chart</Typography>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <PieChart>
-                            <Pie
-                                data={chartData}
-                                cx="50%"
-                                cy="50%"
-                                outerRadius={80}
-                                fill="#8884d8"
-                                dataKey="value"
-                                label
-                            >
-                                {chartData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                ))}
-                            </Pie>
-                            <Tooltip />
-                            <Legend />
-                        </PieChart>
-                    </ResponsiveContainer>
-                </CardContent>
-            </Card>
-            <Card>
-                <CardContent>
                     <Typography variant="h5" className="mb-4">Build Details</Typography>
                     <TableContainer component={Paper}>
                         <Table>
                             <TableHead>
                                 <TableRow>
                                     <TableCell>Build ID</TableCell>
-                                    <TableCell>App Name</TableCell>
                                     <TableCell>Commit ID</TableCell>
                                     <TableCell>When</TableCell>
                                     <TableCell>Status</TableCell>
+                                    <TableCell>Logs</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
                                 {builds.map((build) => (
-                                    <TableRow key={build.ID}>
-                                        <TableCell>{build.ID}</TableCell>
-                                        <TableCell>{build.appName}</TableCell>
-                                        <TableCell>{build.commitId}</TableCell>
-                                        <TableCell>{moment(build.CreatedAt).format('MMMM Do YYYY, h:mm:ss a')}</TableCell>
-                                        <TableCell>{statusMap[build.ID] || 'Unknown'}</TableCell>
+                                    <TableRow key={build.buildId}>
+                                        <TableCell>{build.buildId}</TableCell>
+                                        <TableCell>{build.commitID}</TableCell>
+                                        <TableCell>{moment(build.createdAt).format('MMMM Do YYYY, h:mm:ss a')}</TableCell>
+                                        <TableCell>{build.status}</TableCell>
+                                        <TableCell>
+                                            <Button variant="contained" color="primary" size="small" onClick={() => handleOpen(build.logs)}>
+                                                View Logs
+                                            </Button>
+                                        </TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>
@@ -182,6 +135,24 @@ const BuildHistoryPage = () => {
                     </TableContainer>
                 </CardContent>
             </Card>
+            <Modal
+                open={open}
+                onClose={handleClose}
+                aria-labelledby="log-modal-title"
+                aria-describedby="log-modal-description"
+            >
+                <Box className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-11/12 max-w-3xl bg-white p-4 rounded shadow-lg overflow-y-auto max-h-96">
+                    <Typography id="log-modal-title" variant="h6" component="h2" className="mb-4">
+                        Build Logs
+                    </Typography>
+                    <Typography id="log-modal-description" component="pre" className="bg-gray-100 p-2 rounded max-w-lg overflow-x-auto whitespace-pre-wrap">
+                        {selectedLogs}
+                    </Typography>
+                    <Button onClick={handleClose} className="mt-4 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">
+                        Close
+                    </Button>
+                </Box>
+            </Modal>
         </div>
     );
 };

@@ -1,128 +1,71 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useHistory, Link, useLocation } from 'react-router-dom';
-import axios from 'axios';
-import { getMethod, postMethod, putMethod } from '../library/api';
-import { AppBar, Tabs, Tab, Typography, Button, Box, Toolbar } from '@mui/material';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTrash } from '@fortawesome/free-solid-svg-icons';
-
+import React, { useState, useEffect } from 'react';
+import { useParams, useHistory, useLocation } from 'react-router-dom';
+import { getMethod } from '../library/api';
+import moment from 'moment';
+import {
+  Card,
+  CardContent,
+  Typography,
+  Grid,
+  AppBar,
+  Tabs,
+  Tab,
+  Toolbar,
+  Box,
+  CircularProgress,
+} from '@mui/material';
 
 const AppDetailPage = () => {
   const { appId } = useParams();
   const history = useHistory();
   const location = useLocation();
-  const [app, setApp] = useState(null);
+  const [appStatus, setAppStatus] = useState('');
+  const [deployments, setDeployments] = useState([]);
+  const [statusMap, setStatusMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [isEditing, setIsEditing] = useState(false);
-  const [updatedName, setUpdatedName] = useState('');
-  const [updatedRepoUrl, setUpdatedRepoUrl] = useState('');
-  const [logs, setLogs] = useState([]);
-  const [buildId, setBuildId] = useState(null);
-  const [showLogs, setShowLogs] = useState(false); // State to manage log visibility
-  const [tabValue, setTabValue] = useState(0);
-  const ws = useRef(null);
-  const isMounted = useRef(false); // To track if the component is mounted
+  const [tabValue, setTabValue] = useState(1); // Default to "App Details"
 
   useEffect(() => {
-    // Fetch app details
-    const fetchAppDetails = async () => {
+    // Fetch deployment history
+    const fetchDeploymentHistory = async () => {
       try {
-        const response = await getMethod(`app/${appId}`);
-        setApp(response.data);
-        setUpdatedName(response.data.name);
-        setUpdatedRepoUrl(response.data.repoUrl);
+        const response = await getMethod('deployments');
+        setDeployments(response.data);
         setLoading(false);
       } catch (err) {
-        setError('Failed to fetch app details. Please try again.');
+        setError('Failed to fetch deployment history. Please try again.');
         setLoading(false);
       }
     };
 
-    fetchAppDetails();
-    return () => {
-      isMounted.current = false; // Set to false when component unmounts
-    };
-  }, [appId]);
+    fetchDeploymentHistory();
+  }, []);
 
   useEffect(() => {
-    if (buildId) {
-      ws.current = new WebSocket(`ws://localhost:8080/api/app/ws/${buildId}`);
+    const fetchStatus = async () => {
+      try {
+        const statusPromises = deployments.map(async (deployment) => {
+          const response = await getMethod(`pod/status?appName=${deployment.releaseName}`);
+          return { releaseName: deployment.releaseName, status: response.data[0].status };
+        });
+        const statusResults = await Promise.all(statusPromises);
+        const statusMap = statusResults.reduce((map, { releaseName, status }) => {
+          map[releaseName] = status;
+          return map;
+        }, {});
+        setStatusMap(statusMap);
+      } catch (err) {
+        console.error('Failed to fetch pod status:', err);
+      }
+    };
 
-      ws.current.onopen = () => {
-        console.log('WebSocket connection opened');
-      };
-
-      ws.current.onmessage = (event) => {
-        setLogs((prevLogs) => [...prevLogs, event.data]);
-      };
-
-      ws.current.onerror = (error) => {
-        console.error('WebSocket error:', error);
-      };
-
-      ws.current.onclose = () => {
-        console.log('WebSocket connection closed');
-      };
-
-      return () => {
-        if (ws.current) {
-          ws.current.close();
-        }
-      };
+    if (deployments.length) {
+      fetchStatus();
+      const intervalId = setInterval(fetchStatus, 300000); // Fetch status every 5 minutes
+      return () => clearInterval(intervalId); // Cleanup interval on component unmount
     }
-  }, [buildId]);
-
-  const handleBuild = async () => {
-    try {
-      console.log('Building app...');
-      const response = await postMethod(`app/${appId}/build`, { repoUrl: app.repoUrl });
-      setBuildId(response.data.buildId);
-      console.log('Build response:', response.data);
-      // Handle success, show notification, etc.
-    } catch (error) {
-      console.error('Failed to build app:', error);
-      setError('Failed to build app. Please try again.');
-    }
-  };
-
-  const handleDeploy = async () => {
-    try {
-      // Implement deploy functionality here
-      console.log('Deploying app...');
-      // Add your deploy API call here
-    } catch (error) {
-      console.error('Failed to deploy app:', error);
-      setError('Failed to deploy app. Please try again.');
-    }
-  };
-
-  const handleSave = async () => {
-    try {
-      const response = await putMethod(`app/${appId}`, {
-        name: updatedName,
-        repoUrl: updatedRepoUrl
-      });
-      setApp(response.data);
-      setIsEditing(false);
-      console.log('App updated:', response.data);
-    } catch (error) {
-      console.error('Failed to update app:', error);
-      setError('Failed to update app. Please try again.');
-    }
-  };
-
-  const toggleEdit = () => {
-    setIsEditing(!isEditing);
-  };
-
-  const handleBack = () => {
-    history.goBack();
-  };
-
-  const toggleLogs = () => {
-    setShowLogs(!showLogs);
-  };
+  }, [deployments]);
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
@@ -150,11 +93,15 @@ const AppDetailPage = () => {
     setTabValue(activeTab);
   }, [location.pathname, appId]);
 
-  if (loading) return <p>Loading...</p>;
-  if (error) return <p className="text-red-500">{error}</p>;
+  // Find the latest deployment for the appId
+  const latestDeployment = deployments
+    .sort((a, b) => new Date(b.CreatedAt) - new Date(a.CreatedAt))[0];
+
+  if (loading) return <CircularProgress />;
+  if (error) return <Typography color="error">{error}</Typography>;
 
   return (
-    <div className="flex flex-col lg:ml-64 p-4 relative min-h-screen bg-gray-100">
+    <div className="flex flex-col lg:ml-64 p-4 bg-gray-100 min-h-screen">
       <AppBar position="static" color="default" className="mb-4">
         <Toolbar>
           <Tabs value={tabValue} onChange={handleTabChange} aria-label="app detail tabs">
@@ -167,77 +114,46 @@ const AppDetailPage = () => {
           </Tabs>
         </Toolbar>
       </AppBar>
-      {/* <button onClick={handleBack} className="bg-gray-300 text-gray-800 px-4 py-2 rounded mb-8 self-start hover:bg-gray-400">
-        Back to Apps
-      </button> */}
-      {app && (
-        <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-2xl mx-auto">
-          <h1 className="text-3xl font-semibold mb-4">{isEditing ? 'Edit App' : app.name}</h1>
-          {isEditing ? (
-            <div className="flex flex-col space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">App Name</label>
-                <input
-                  type="text"
-                  value={updatedName}
-                  onChange={(e) => setUpdatedName(e.target.value)}
-                  className="w-full border border-gray-300 p-2 rounded"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Repository URL</label>
-                <input
-                  type="text"
-                  value={updatedRepoUrl}
-                  onChange={(e) => setUpdatedRepoUrl(e.target.value)}
-                  className="w-full border border-gray-300 p-2 rounded"
-                />
-              </div>
-              <div className="flex space-x-4">
-                <button onClick={handleSave} className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
-                  Save
-                </button>
-                <button onClick={toggleEdit} className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : (
-            <>
-              <p className="mb-4 text-gray-700">{app.description}</p>
-              <p className="mb-4 text-gray-700">{app.repoUrl}</p>
-              <div className="flex space-x-4">
-                <button onClick={handleBuild} className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
-                  Build
-                </button>
-                <button onClick={handleDeploy} className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
-                  Deploy
-                </button>
-                <button onClick={toggleEdit} className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">
-                  Edit
-                </button>
-              </div>
-              {buildId && (
-                <div className="mt-6">
-                  <button onClick={toggleLogs} className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 mb-4">
-                    {showLogs ? 'Hide Logs' : 'Show Logs'}
-                  </button>
-                  {showLogs && (
-                    <div className="bg-black text-white p-4 rounded-lg h-64 overflow-y-scroll">
-                      {logs.map((log, index) => (
-                        <div key={index} className="whitespace-pre-wrap">{log}</div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+      <Grid container spacing={3}>
+        <Grid item xs={12} sm={4}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>Application Status</Typography>
+              <Typography variant="body2" color="textSecondary">{statusMap[appId] || 'Unknown'}</Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} sm={4}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>Deployment Status</Typography>
+              {latestDeployment ? (
+                <>
+                  <Typography variant="body2" color="textSecondary">{latestDeployment.status}</Typography>
+                </>
+              ) : (
+                <Typography variant="body2" color="textSecondary">No deployments found</Typography>
               )}
-            </>
-          )}
-        </div>
-      )}
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} sm={4}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>Deployed Commit</Typography>
+              {latestDeployment ? (
+                <>
+                  <Typography variant="body2" color="textSecondary">{latestDeployment.tag}</Typography>
+                </>
+              ) : (
+                <Typography variant="body2" color="textSecondary">No commit found</Typography>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
     </div>
   );
 };
-
 
 export default AppDetailPage;

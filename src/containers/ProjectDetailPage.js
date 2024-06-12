@@ -47,7 +47,7 @@ const ProjectDetailPage = () => {
                   <Typography className="mb-4">{app.description}</Typography>
                   <Button
                     component={Link}
-                    to={`/app/${app.ID}`}
+                    to={`/app/${app.ID}/details`}
                     variant="contained"
                     color="primary"
                   >
