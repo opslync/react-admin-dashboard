@@ -30,7 +30,7 @@ const AppDetailPage = () => {
     // Fetch deployment history
     const fetchDeploymentHistory = async () => {
       try {
-        const response = await getMethod('deployments');
+        const response = await getMethod(`app/${appId}/deployments`);
         setDeployments(response.data);
         setLoading(false);
       } catch (err) {
@@ -109,7 +109,7 @@ const AppDetailPage = () => {
             <Tab label="Build & Deploy" />
             <Tab label="Build History" />
             <Tab label="Deployment History" />
-            <Tab label="Deployment Metrics" />
+            <Tab label="Metrics" />
             <Tab label="App Configuration" />
           </Tabs>
         </Toolbar>

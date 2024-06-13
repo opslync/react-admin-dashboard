@@ -1,11 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useHistory, Link, useLocation } from 'react-router-dom';
-import axios from 'axios';
+import { useParams, useHistory, useLocation } from 'react-router-dom';
 import { getMethod, postMethod, putMethod } from '../library/api';
-import { AppBar, Tabs, Tab, Typography, Button, Box, Toolbar } from '@mui/material';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTrash } from '@fortawesome/free-solid-svg-icons';
-
+import { AppBar, Tabs, Tab, Typography, Button, Box, Toolbar, CircularProgress } from '@mui/material';
 
 const BuildDeployPage = () => {
     const { appId } = useParams();
@@ -21,8 +17,8 @@ const BuildDeployPage = () => {
     const [buildId, setBuildId] = useState(null);
     const [showLogs, setShowLogs] = useState(false); // State to manage log visibility
     const [tabValue, setTabValue] = useState(0);
+    const [isDeploying, setIsDeploying] = useState(false); // State for deploy spinner
     const ws = useRef(null);
-    const isMounted = useRef(false); // To track if the component is mounted
 
     useEffect(() => {
         // Fetch app details
@@ -40,9 +36,6 @@ const BuildDeployPage = () => {
         };
 
         fetchAppDetails();
-        return () => {
-            isMounted.current = false; // Set to false when component unmounts
-        };
     }, [appId]);
 
     useEffect(() => {
@@ -79,7 +72,6 @@ const BuildDeployPage = () => {
             const response = await postMethod(`app/${appId}/build`, { repoUrl: app.repoUrl });
             setBuildId(response.data.buildId);
             console.log('Build response:', response.data);
-            // Handle success, show notification, etc.
         } catch (error) {
             console.error('Failed to build app:', error);
             setError('Failed to build app. Please try again.');
@@ -87,13 +79,28 @@ const BuildDeployPage = () => {
     };
 
     const handleDeploy = async () => {
+        setIsDeploying(true);
         try {
-            // Implement deploy functionality here
             console.log('Deploying app...');
-            // Add your deploy API call here
+            const deployData = {
+                releaseName: app.name,
+                releaseNamespace: "default",
+                chartPath: "./chart/opslync-chart-0.1.0.tgz",
+                values: {
+                    fullnameOverride: app.name,
+                    tag: "latest"
+                }
+            };
+            const response = await postMethod(`app/${appId}/deploy`, deployData);
+            if (response.status === 200) {
+                console.log('Deploy response:', response.data);
+                // Handle success, show notification, etc.
+            }
         } catch (error) {
             console.error('Failed to deploy app:', error);
             setError('Failed to deploy app. Please try again.');
+        } finally {
+            setIsDeploying(false);
         }
     };
 
@@ -150,8 +157,8 @@ const BuildDeployPage = () => {
         setTabValue(activeTab);
     }, [location.pathname, appId]);
 
-    if (loading) return <p>Loading...</p>;
-    if (error) return <p className="text-red-500">{error}</p>;
+    if (loading) return <CircularProgress />;
+    if (error) return <Typography color="error">{error}</Typography>;
 
     return (
         <div className="flex flex-col lg:ml-64 p-4 relative min-h-screen bg-gray-100">
@@ -162,14 +169,11 @@ const BuildDeployPage = () => {
                         <Tab label="Build & Deploy" />
                         <Tab label="Build History" />
                         <Tab label="Deployment History" />
-                        <Tab label="Deployment Metrics" />
+                        <Tab label="Metrics" />
                         <Tab label="App Configuration" />
                     </Tabs>
                 </Toolbar>
             </AppBar>
-            {/* <button onClick={handleBack} className="bg-gray-300 text-gray-800 px-4 py-2 rounded mb-8 self-start hover:bg-gray-400">
-        Back to Apps
-      </button> */}
             {app && (
                 <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-2xl mx-auto">
                     <h1 className="text-3xl font-semibold mb-4">{isEditing ? 'Edit App' : app.name}</h1>
@@ -210,9 +214,17 @@ const BuildDeployPage = () => {
                                 <button onClick={handleBuild} className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
                                     Build
                                 </button>
-                                <button onClick={handleDeploy} className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
-                                    Deploy
-                                </button>
+                                <Button
+                                    variant="contained"
+                                    color="primary"
+                                    size="small"
+                                    onClick={handleDeploy}
+                                    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                                    disabled={isDeploying}
+                                    startIcon={isDeploying && <CircularProgress size={20} />}
+                                >
+                                    {isDeploying ? 'Deploying...' : 'Deploy'}
+                                </Button>
                                 <button onClick={toggleEdit} className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">
                                     Edit
                                 </button>
@@ -238,6 +250,5 @@ const BuildDeployPage = () => {
         </div>
     );
 };
-
 
 export default BuildDeployPage;

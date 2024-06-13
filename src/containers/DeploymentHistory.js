@@ -35,7 +35,7 @@ const DeploymentHistory = () => {
   useEffect(() => {
     const fetchDeploymentHistory = async () => {
       try {
-        const response = await getMethod('deployments');
+        const response = await getMethod(`app/${appId}/deployments`);
         setDeployments(response.data);
         setLoading(false);
       } catch (err) {
@@ -45,7 +45,7 @@ const DeploymentHistory = () => {
     };
 
     fetchDeploymentHistory();
-  }, []);
+  }, [appId]);
 
   useEffect(() => {
     const fetchStatus = async () => {
@@ -123,7 +123,7 @@ const DeploymentHistory = () => {
             <Tab label="Build & Deploy" />
             <Tab label="Build History" />
             <Tab label="Deployment History" />
-            <Tab label="Deployment Metrics" />
+            <Tab label="Metrics" />
             <Tab label="App Configuration" />
           </Tabs>
         </Toolbar>

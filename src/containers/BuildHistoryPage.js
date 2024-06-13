@@ -96,7 +96,7 @@ const BuildHistoryPage = () => {
                         <Tab label="Build & Deploy" />
                         <Tab label="Build History" />
                         <Tab label="Deployment History" />
-                        <Tab label="Deployment Metrics" />
+                        <Tab label="Metrics" />
                         <Tab label="App Configuration" />
                     </Tabs>
                 </Toolbar>
