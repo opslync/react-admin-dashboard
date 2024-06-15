@@ -128,31 +128,6 @@ const DeploymentHistory = () => {
           </Tabs>
         </Toolbar>
       </AppBar>
-      {/* <Typography variant="h4" className="mb-6">Deployment History</Typography>
-      <Card className="mb-6">
-        <CardContent>
-          <Typography variant="h5" className="mb-4">Deployment Status Chart</Typography>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={chartData}
-                cx="50%"
-                cy="50%"
-                outerRadius={80}
-                fill="#8884d8"
-                dataKey="value"
-                label
-              >
-                {chartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card> */}
       <Card>
         <CardContent>
           <Typography variant="h5" className="mb-4">Deployment Details</Typography>
@@ -172,7 +147,7 @@ const DeploymentHistory = () => {
                   <TableRow key={deployment.ID}>
                     <TableCell>{deployment.releaseName}</TableCell>
                     <TableCell>{deployment.tag}</TableCell>
-                    <TableCell>{moment(deployment.CreatedAt).format('MMMM Do YYYY, h:mm:ss a')}</TableCell>
+                    <TableCell>{deployment.CreatedAt}</TableCell>
                     <TableCell>{deployment.username}</TableCell>
                     <TableCell>{statusMap[deployment.releaseName] || 'Unknown'}</TableCell>
                   </TableRow>

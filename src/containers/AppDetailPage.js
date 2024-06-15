@@ -11,7 +11,6 @@ import {
   Tabs,
   Tab,
   Toolbar,
-  Box,
   CircularProgress,
 } from '@mui/material';
 
@@ -19,7 +18,6 @@ const AppDetailPage = () => {
   const { appId } = useParams();
   const history = useHistory();
   const location = useLocation();
-  const [appStatus, setAppStatus] = useState('');
   const [deployments, setDeployments] = useState([]);
   const [statusMap, setStatusMap] = useState({});
   const [loading, setLoading] = useState(true);
@@ -40,7 +38,7 @@ const AppDetailPage = () => {
     };
 
     fetchDeploymentHistory();
-  }, []);
+  }, [appId]);
 
   useEffect(() => {
     const fetchStatus = async () => {
@@ -93,9 +91,16 @@ const AppDetailPage = () => {
     setTabValue(activeTab);
   }, [location.pathname, appId]);
 
-  // Find the latest deployment for the appId
-  const latestDeployment = deployments
-    .sort((a, b) => new Date(b.CreatedAt) - new Date(a.CreatedAt))[0];
+  const statusCounts = deployments.reduce((acc, deployment) => {
+    const status = statusMap[deployment.releaseName] || 'Unknown';
+    acc[status] = (acc[status] || 0) + 1;
+    return acc;
+  }, {});
+
+  const chartData = Object.keys(statusCounts).map(status => ({
+    name: status,
+    value: statusCounts[status]
+  }));
 
   if (loading) return <CircularProgress />;
   if (error) return <Typography color="error">{error}</Typography>;
@@ -109,45 +114,36 @@ const AppDetailPage = () => {
             <Tab label="Build & Deploy" />
             <Tab label="Build History" />
             <Tab label="Deployment History" />
-            <Tab label="Metrics" />
+            <Tab label="Deployment Metrics" />
             <Tab label="App Configuration" />
           </Tabs>
         </Toolbar>
       </AppBar>
+      <Typography variant="h4" className="mb-6">App Details</Typography>
       <Grid container spacing={3}>
-        <Grid item xs={12} sm={4}>
+        <Grid item xs={12} sm={6}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>Application Status</Typography>
-              <Typography variant="body2" color="textSecondary">{statusMap[appId] || 'Unknown'}</Typography>
+              <Grid container spacing={2}>
+                {chartData.map((data, index) => (
+                  <Grid item key={index} >
+                    <Typography variant="body2" color="textSecondary">
+                      {deployments.length > 0 ? data.name : 'Unknown'}
+                    </Typography>
+                  </Grid>
+                ))}
+              </Grid>
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={4}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>Deployment Status</Typography>
-              {latestDeployment ? (
-                <>
-                  <Typography variant="body2" color="textSecondary">{latestDeployment.status}</Typography>
-                </>
-              ) : (
-                <Typography variant="body2" color="textSecondary">No deployments found</Typography>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={4}>
+        <Grid item xs={12} sm={6}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>Deployed Commit</Typography>
-              {latestDeployment ? (
-                <>
-                  <Typography variant="body2" color="textSecondary">{latestDeployment.tag}</Typography>
-                </>
-              ) : (
-                <Typography variant="body2" color="textSecondary">No commit found</Typography>
-              )}
+              <Typography variant="body2" color="textSecondary">
+                {deployments.length > 0 ? deployments[0].tag : 'No commit found'}
+              </Typography>
             </CardContent>
           </Card>
         </Grid>
