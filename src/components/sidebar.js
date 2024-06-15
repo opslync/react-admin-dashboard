@@ -72,7 +72,7 @@ const menus = [
   },
   {
     name: "Setting",
-    route: "/settings",
+    route: "/settings/git-account",
     icon: <SettingsIcon />,
     iconType: "component",
   },

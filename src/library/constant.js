@@ -7,3 +7,4 @@ export const projectCreate = "project/create"
 export const appCreate = "app/create"
 export const listProject = "projects"
 export const listApps = "apps"
+export const containerRegistry = 'container/account';
