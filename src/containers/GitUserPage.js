@@ -62,7 +62,7 @@ const GitUserPage = () => {
   // Fetch Git user details
   const fetchGitUsers = async () => {
     try {
-      const response = await getMethod('githubuser');
+      const response = await getMethod('githubusers');
       setUsers(response.data);
       setLoading(false);
     } catch (err) {

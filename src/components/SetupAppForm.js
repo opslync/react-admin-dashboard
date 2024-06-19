@@ -1,21 +1,27 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { listProject } from '../library/constant';
 import { getMethod } from "../library/api";
-import axios from 'axios';
+import { MenuItem, Select, InputLabel, FormControl } from '@mui/material';
+import { useHistory } from 'react-router-dom';
 
 const SetupAppForm = ({ onSubmit, onClose }) => {
   const [name, setAppName] = useState('');
   const [appDescription, setAppDescription] = useState('');
   const [repoUrl, setRepoUrl] = useState('');
   const [selectedProject, setSelectedProject] = useState('');
+  const [selectedGitAccount, setSelectedGitAccount] = useState('github-public');
+  const [selectedRegistry, setSelectedRegistry] = useState('docker-hub');
   const [projects, setProjects] = useState([]);
+  const [gitAccounts, setGitAccounts] = useState([{ id: 'github-public', username: 'GitHub Public' }]);
+  const [containerRegistries, setContainerRegistries] = useState([{ id: 'docker-hub', username: 'Docker Hub' }]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  let isMounted = true;
+  const isMounted = useRef(true);
+  const history = useHistory();
 
   useEffect(() => {
     return () => {
-      isMounted = false;
+      isMounted.current = false;
     };
   }, []);
 
@@ -25,13 +31,43 @@ const SetupAppForm = ({ onSubmit, onClose }) => {
       try {
         const response = await getMethod(listProject);
         console.log('Projects fetched successfully:', response);
-        setProjects(response.data);
+        if (isMounted.current) {
+          setProjects(response.data);
+        }
       } catch (err) {
         console.error('Failed to fetch projects:', err);
       }
     };
 
+    // Fetch the list of GitHub accounts
+    const fetchGitAccounts = async () => {
+      try {
+        const response = await getMethod('githubusers');
+        console.log('Git accounts fetched successfully:', response);
+        if (isMounted.current) {
+          setGitAccounts([{ id: 'github-public', username: 'GitHub Public' }, ...response.data]);
+        }
+      } catch (err) {
+        console.error('Failed to fetch Git accounts:', err);
+      }
+    };
+
+    // Fetch the list of container registries
+    const fetchContainerRegistries = async () => {
+      try {
+        const response = await getMethod('container/account');
+        console.log('Container registries fetched successfully:', response);
+        if (isMounted.current) {
+          setContainerRegistries([{ id: 'docker-hub', username: 'Docker Hub' }, ...response.data]);
+        }
+      } catch (err) {
+        console.error('Failed to fetch container registries:', err);
+      }
+    };
+
     fetchProjects();
+    fetchGitAccounts();
+    fetchContainerRegistries();
   }, []);
 
   const handleSubmit = async (e) => {
@@ -40,13 +76,21 @@ const SetupAppForm = ({ onSubmit, onClose }) => {
     setError(null);
 
     try {
-      await onSubmit({ name, description: appDescription, repoUrl, projectId: selectedProject });
-      if (isMounted) onClose();
+      await onSubmit({ name, description: appDescription, repoUrl, projectId: selectedProject, gitAccount: selectedGitAccount, containerRegistry: selectedRegistry });
+      if (isMounted.current) onClose();
     } catch (err) {
-      if (isMounted) setError('Failed to setup app. Please try again.');
+      if (isMounted.current) setError('Failed to setup app. Please try again.');
     } finally {
-      if (isMounted) setLoading(false);
+      if (isMounted.current) setLoading(false);
     }
+  };
+
+  const handleAddGitAccount = () => {
+    history.push("/settings/git-account");
+  };
+
+  const handleAddContainerRegistry = () => {
+    history.push("/settings/container-oci-registry");
   };
 
   return (
@@ -74,16 +118,6 @@ const SetupAppForm = ({ onSubmit, onClose }) => {
             />
           </div>
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-1">Repository URL</label>
-            <input
-              type="text"
-              value={repoUrl}
-              onChange={(e) => setRepoUrl(e.target.value)}
-              className="w-full border border-gray-300 p-2 rounded"
-              required
-            />
-          </div>
-          <div className="mb-4">
             <label className="block text-sm font-medium mb-1">Select Project</label>
             <select
               value={selectedProject}
@@ -99,6 +133,75 @@ const SetupAppForm = ({ onSubmit, onClose }) => {
               ))}
             </select>
           </div>
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-1">Git Account</label>
+            <FormControl fullWidth>
+              <Select
+                value={selectedGitAccount}
+                onChange={(e) => setSelectedGitAccount(e.target.value)}
+                className="w-full border border-gray-300  rounded"
+                required
+              >
+                <MenuItem value="github-public">
+                  <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" alt="GitHub" className="w-4 h-4 inline mr-2" />
+                  GitHub Public
+                </MenuItem>
+                {gitAccounts.map((account) => (
+                  account.id !== 'github-public' && (
+                    <MenuItem key={account.id} value={account.username}>
+                      <img src="https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png" alt="GitHub" className="w-4 h-4 inline mr-2" />
+                      {account.username}
+                    </MenuItem>
+                  )
+                ))}
+                <MenuItem value="add-git-account" onClick={handleAddGitAccount}>
+                  <span className="text-blue-500 flex items-center">
+                    <span className="mr-1">+</span> Add Git Account
+                  </span>
+                </MenuItem>
+              </Select>
+            </FormControl>
+          </div>
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-1">Git Repo URL (use https)</label>
+            <input
+              type="text"
+              value={repoUrl}
+              onChange={(e) => setRepoUrl(e.target.value)}
+              className="w-full border border-gray-300 p-2 rounded"
+              required
+            />
+          </div>
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-1">Container Registry</label>
+            <FormControl fullWidth>
+              <Select
+                value={selectedRegistry}
+                onChange={(e) => setSelectedRegistry(e.target.value)}
+                className="w-full border border-gray-300  rounded"
+                required
+              >
+                <MenuItem value="docker-hub">
+                  <img src="https://img.icons8.com/?size=100&id=22797&format=png&color=000000" alt="Docker Hub" className="w-4 h-4 inline mr-2" />
+                  Default
+                </MenuItem>
+                {containerRegistries.map((registry) => (
+                  registry.id !== 'docker-hub' && (
+                    <MenuItem key={registry.id} value={registry.username}>
+                      <img src="https://img.icons8.com/?size=100&id=22797&format=png&color=000000" alt="Docker Hub" className="w-4 h-4 inline mr-2" />
+                      {registry.username}
+                    </MenuItem>
+                  )
+                ))}
+                <MenuItem value="add-container-registry" onClick={handleAddContainerRegistry}>
+                  <span className="text-blue-500 flex items-center">
+                    <span className="mr-1">+</span> Add Container Registry
+                  </span>
+                </MenuItem>
+              </Select>
+            </FormControl>
+          </div>
+
           {error && <div className="text-red-500 mb-4">{error}</div>}
           <div className="flex justify-end">
             <button
