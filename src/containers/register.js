@@ -10,12 +10,14 @@ import { useHistory } from "react-router-dom";
 import * as Yup from "yup";
 import { useFormik, Form, FormikProvider } from "formik";
 import { Link } from "react-router-dom";
-import { Dialog, Typography } from "@mui/material";
+import { Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from "@mui/material";
 
 export default function RegisterPage() {
   const dispatch = useDispatch();
   const history = useHistory();
   const [openDialog, setOpenDialog] = useState(false);
+  const [dialogMessage, setDialogMessage] = useState('');
+  const [isError, setIsError] = useState(false);
 
   const RegistrationSchema = Yup.object().shape({
     username: Yup.string().required("Username is required"),
@@ -34,14 +36,27 @@ export default function RegisterPage() {
       confirmPassword: "",
     },
     validationSchema: RegistrationSchema,
-    onSubmit: (data) => {
+    onSubmit: async (data) => {
       console.log(data);
-      dispatch(registerUser(data));
-      setOpenDialog(true);
-      setTimeout(() => {
+      try {
+        const response = await dispatch(registerUser(data)).unwrap();
+        setDialogMessage('Account created successfully! ');
+        setIsError(false);
+        setOpenDialog(true);
+        setTimeout(() => {
+          formik.setSubmitting(false);
+          history.push('/login');
+        }, 1000); // 3-second delay before redirect
+      } catch (error) {
+        if (error.message.includes('Request failed with status code 400')) {
+          setDialogMessage('Error: Username already exists.');
+        } else {
+          setDialogMessage(`Error: ${error.message}`);
+        }
+        setIsError(true);
+        setOpenDialog(true);
         formik.setSubmitting(false);
-        history.push('/login');
-      }, 1000); // 3-second delay before redirect
+      }
     },
   });
 
@@ -152,11 +167,15 @@ export default function RegisterPage() {
       </div>
 
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
-        <div className="p-4">
-          <Typography variant="h6" className="mb-4">
-            Account Created Successfully!
-          </Typography>
-        </div>
+        <DialogTitle>{isError ? 'Error' : 'Success'}</DialogTitle>
+        <DialogContent>
+          <DialogContentText>{dialogMessage}</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDialog(false)} color="primary">
+            Close
+          </Button>
+        </DialogActions>
       </Dialog>
     </div>
   );
