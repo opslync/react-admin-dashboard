@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { InputText } from "primereact/inputtext";
 import { Password } from "primereact/password";
 import { Button } from "primereact/button";
@@ -10,10 +10,12 @@ import { useHistory } from "react-router-dom";
 import * as Yup from "yup";
 import { useFormik, Form, FormikProvider } from "formik";
 import { Link } from "react-router-dom";
+import { Dialog, Typography } from "@mui/material";
 
 export default function RegisterPage() {
   const dispatch = useDispatch();
   const history = useHistory();
+  const [openDialog, setOpenDialog] = useState(false);
 
   const RegistrationSchema = Yup.object().shape({
     username: Yup.string().required("Username is required"),
@@ -35,9 +37,11 @@ export default function RegisterPage() {
     onSubmit: (data) => {
       console.log(data);
       dispatch(registerUser(data));
+      setOpenDialog(true);
       setTimeout(() => {
         formik.setSubmitting(false);
-      }, 2000);
+        history.push('/login');
+      }, 1000); // 3-second delay before redirect
     },
   });
 
@@ -146,6 +150,14 @@ export default function RegisterPage() {
           </FormikProvider>
         </div>
       </div>
+
+      <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
+        <div className="p-4">
+          <Typography variant="h6" className="mb-4">
+            Account Created Successfully!
+          </Typography>
+        </div>
+      </Dialog>
     </div>
   );
 }
