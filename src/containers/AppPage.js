@@ -156,7 +156,7 @@ const AppPage = () => {
         aria-labelledby="setup-app-modal-title"
         aria-describedby="setup-app-modal-description"
       >
-        <Box className="absolute top-1/4 left-1/4 w-1/2 bg-white p-4 rounded shadow-lg">
+        <Box className="absolute flex">
           <Typography variant="h6" id="setup-app-modal-title" className="mb-4">Setup App</Typography>
           <SetupAppForm onSubmit={handleSetupApp} onClose={handleCloseSetupModal} />
           {setupErrorMessage && <Typography color="error">{setupErrorMessage}</Typography>}
