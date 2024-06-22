@@ -58,19 +58,19 @@ const ContainerRegistryPage = () => {
         setTabValue(activeTab);
     }, [location.pathname]);
 
-    useEffect(() => {
-        // Fetch container registry details
-        const fetchRegistries = async () => {
-            try {
-                const response = await getMethod('container/account');
-                setRegistries(response.data);
-                setLoading(false);
-            } catch (err) {
-                setError('Failed to fetch container registry details. Please try again.');
-                setLoading(false);
-            }
-        };
 
+    // Fetch container registry details
+    const fetchRegistries = async () => {
+        try {
+            const response = await getMethod('container/account');
+            setRegistries(response.data);
+            setLoading(false);
+        } catch (err) {
+            setError('Failed to fetch container registry details. Please try again.');
+            setLoading(false);
+        }
+    };
+    useEffect(() => {
         fetchRegistries();
     }, []);
 
@@ -116,6 +116,7 @@ const ContainerRegistryPage = () => {
             await deleteMethod(`container/account?username=${username}`);
             setRegistries(registries.filter(registry => registry.registryUrl !== registryUrl));
             handleCloseConfirmModal();
+            fetchRegistries();
         } catch (err) {
             setError('Failed to delete registry. Please try again.');
         }

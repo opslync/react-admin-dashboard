@@ -26,7 +26,7 @@ const AppMetricsPage = () => {
             `/app/${appId}/build-history`,
             `/app/${appId}/deployment-history`,
             `/app/${appId}/metrics`,
-            "/app-configuration",
+            `/app/${appId}/app-configuration`,
         ];
         history.push(paths[newValue]);
     };
@@ -38,7 +38,7 @@ const AppMetricsPage = () => {
             `/app/${appId}/build-history`,
             `/app/${appId}/deployment-history`,
             `/app/${appId}/metrics`,
-            "/app-configuration",
+            `/app/${appId}/app-configuration`,
         ];
         const activeTab = paths.indexOf(location.pathname);
         setTabValue(activeTab);

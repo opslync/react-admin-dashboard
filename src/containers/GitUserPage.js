@@ -42,7 +42,6 @@ const GitUserPage = () => {
     setTabValue(newValue);
     const paths = [
       '/settings/git-account',
-      // '/settings/host-url',
       '/settings/container-oci-registry',
     ];
     history.push(paths[newValue]);
@@ -51,14 +50,12 @@ const GitUserPage = () => {
   useEffect(() => {
     const paths = [
       '/settings/git-account',
-      // '/settings/host-url',
       '/settings/container-oci-registry',
     ];
     const activeTab = paths.indexOf(location.pathname);
     setTabValue(activeTab);
   }, [location.pathname]);
 
-  // useEffect(() => {
   // Fetch Git user details
   const fetchGitUsers = async () => {
     try {
@@ -70,12 +67,14 @@ const GitUserPage = () => {
       setLoading(false);
     }
   };
+
   useEffect(() => {
     fetchGitUsers();
   }, []);
 
   const handleOpenGitModal = () => {
     setIsGitModalOpen(true);
+    setGitErrorMessage('');
   };
 
   const handleCloseGitModal = () => {
@@ -115,6 +114,7 @@ const GitUserPage = () => {
       await deleteMethod(`githubuser/delete?username=${selectedUser.username}`);
       setUsers(users.filter(user => user.id !== selectedUser.id));
       handleCloseConfirmModal();
+      fetchGitUsers();
     } catch (err) {
       setError('Failed to delete user. Please try again.');
     }
@@ -129,7 +129,6 @@ const GitUserPage = () => {
         <Toolbar>
           <Tabs value={tabValue} onChange={handleTabChange} aria-label="settings tabs">
             <Tab label="Git Account" />
-            {/* <Tab label="Host URL" /> */}
             <Tab label="Container/OCI Registry" />
           </Tabs>
         </Toolbar>
@@ -181,9 +180,12 @@ const GitUserPage = () => {
         aria-labelledby="simple-modal-title"
         aria-describedby="simple-modal-description"
       >
-        <Box className="absolute flex">
-          <GitDetailsForm onSubmit={handleSaveGitDetails} onClose={handleCloseGitModal} />
-          {gitErrorMessage && <Typography color="error">{gitErrorMessage}</Typography>}
+        <Box className="absolute top-1/4 left-1/4 w-1/2 bg-white p-4 rounded shadow-lg">
+          <GitDetailsForm
+            onSubmit={handleSaveGitDetails}
+            onClose={handleCloseGitModal}
+            errorMessage={gitErrorMessage} // Pass the error message as a prop to GitDetailsForm
+          />
         </Box>
       </Modal>
       <Modal
