@@ -55,8 +55,8 @@ const BuildHistoryPage = () => {
             `/app/${appId}/build-deploy`,
             `/app/${appId}/build-history`,
             `/app/${appId}/deployment-history`,
-            "/deployment-metrics",
-            "/app-configuration",
+            `/app/${appId}/metrics`,
+            `/app/${appId}/app-configuration`,
         ];
         history.push(paths[newValue]);
     };
@@ -67,8 +67,8 @@ const BuildHistoryPage = () => {
             `/app/${appId}/build-deploy`,
             `/app/${appId}/build-history`,
             `/app/${appId}/deployment-history`,
-            "/deployment-metrics",
-            "/app-configuration",
+            `/app/${appId}/metrics`,
+            `/app/${appId}/app-configuration`,
         ];
         const activeTab = paths.indexOf(location.pathname);
         setTabValue(activeTab);
@@ -96,7 +96,7 @@ const BuildHistoryPage = () => {
                         <Tab label="Build & Deploy" />
                         <Tab label="Build History" />
                         <Tab label="Deployment History" />
-                        <Tab label="Deployment Metrics" />
+                        <Tab label="Metrics" />
                         <Tab label="App Configuration" />
                     </Tabs>
                 </Toolbar>

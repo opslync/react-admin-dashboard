@@ -9,7 +9,7 @@ const GitDetailsForm = ({ onSubmit, onClose, errorMessage }) => {
     e.preventDefault();
     setLoading(true);
     onSubmit({ username, githubToken })
-    .finally(() => setLoading(false));
+      .finally(() => setLoading(false));
   };
 
   return (

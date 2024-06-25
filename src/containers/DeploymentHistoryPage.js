@@ -130,7 +130,8 @@ const DeploymentHistoryPage = () => {
                     <TableCell>{deployment.tag}</TableCell>
                     <TableCell>{moment(deployment.CreatedAt).format('MMMM Do YYYY, h:mm:ss a')}</TableCell>
                     <TableCell>{deployment.username}</TableCell>
-                    <TableCell>{statusMap[deployment.releaseName] || 'Unknown'}</TableCell>
+                    <TableCell>{deployment.status}</TableCell>
+                    {/* <TableCell>{statusMap[deployment.releaseName] || 'Unknown'}</TableCell> */}
                   </TableRow>
                 ))}
               </TableBody>

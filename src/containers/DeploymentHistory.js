@@ -35,7 +35,7 @@ const DeploymentHistory = () => {
   useEffect(() => {
     const fetchDeploymentHistory = async () => {
       try {
-        const response = await getMethod('deployments');
+        const response = await getMethod(`app/${appId}/deployments`);
         setDeployments(response.data);
         setLoading(false);
       } catch (err) {
@@ -45,7 +45,7 @@ const DeploymentHistory = () => {
     };
 
     fetchDeploymentHistory();
-  }, []);
+  }, [appId]);
 
   useEffect(() => {
     const fetchStatus = async () => {
@@ -79,8 +79,8 @@ const DeploymentHistory = () => {
       `/app/${appId}/build-deploy`,
       `/app/${appId}/build-history`,
       `/app/${appId}/deployment-history`,
-      "/deployment-metrics",
-      "/app-configuration",
+      `/app/${appId}/metrics`,
+      `/app/${appId}/app-configuration`,
     ];
     history.push(paths[newValue]);
   };
@@ -91,8 +91,8 @@ const DeploymentHistory = () => {
       `/app/${appId}/build-deploy`,
       `/app/${appId}/build-history`,
       `/app/${appId}/deployment-history`,
-      "/deployment-metrics",
-      "/app-configuration",
+      `/app/${appId}/metrics`,
+      `/app/${appId}/app-configuration`,
     ];
     const activeTab = paths.indexOf(location.pathname);
     setTabValue(activeTab);
@@ -123,36 +123,11 @@ const DeploymentHistory = () => {
             <Tab label="Build & Deploy" />
             <Tab label="Build History" />
             <Tab label="Deployment History" />
-            <Tab label="Deployment Metrics" />
+            <Tab label="Metrics" />
             <Tab label="App Configuration" />
           </Tabs>
         </Toolbar>
       </AppBar>
-      {/* <Typography variant="h4" className="mb-6">Deployment History</Typography>
-      <Card className="mb-6">
-        <CardContent>
-          <Typography variant="h5" className="mb-4">Deployment Status Chart</Typography>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={chartData}
-                cx="50%"
-                cy="50%"
-                outerRadius={80}
-                fill="#8884d8"
-                dataKey="value"
-                label
-              >
-                {chartData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card> */}
       <Card>
         <CardContent>
           <Typography variant="h5" className="mb-4">Deployment Details</Typography>
@@ -172,7 +147,7 @@ const DeploymentHistory = () => {
                   <TableRow key={deployment.ID}>
                     <TableCell>{deployment.releaseName}</TableCell>
                     <TableCell>{deployment.tag}</TableCell>
-                    <TableCell>{moment(deployment.CreatedAt).format('MMMM Do YYYY, h:mm:ss a')}</TableCell>
+                    <TableCell>{deployment.CreatedAt}</TableCell>
                     <TableCell>{deployment.username}</TableCell>
                     <TableCell>{statusMap[deployment.releaseName] || 'Unknown'}</TableCell>
                   </TableRow>
