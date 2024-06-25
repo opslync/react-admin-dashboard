@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useHistory, useLocation } from 'react-router-dom';
-import { getMethod, postMethod } from '../library/api';
+import { getMethod, putMethod } from '../library/api';
+import { useFormik, FormikProvider, Form } from 'formik';
+import * as Yup from 'yup';
 import {
     Card,
     CardContent,
@@ -10,72 +12,62 @@ import {
     Tabs,
     Tab,
     Toolbar,
-    Button,
-    Box,
-    Modal,
     CircularProgress,
-    TextField
+    TextField,
+    Button,
 } from '@mui/material';
+
+const validateKeyValuePairs = (data) => {
+    if (!data) return false;
+    const lines = data.split('\n');
+    for (let line of lines) {
+        if (line.trim() === '') continue; // Skip empty lines
+        if (!line.includes(':')) return false;
+        const [key, value] = line.split(':').map(part => part.trim());
+        if (!key || !value) return false;
+    }
+    return true;
+};
 
 const AppConfigurationPage = () => {
     const { appId } = useParams();
     const history = useHistory();
     const location = useLocation();
-    const [deployments, setDeployments] = useState([]);
-    const [statusMap, setStatusMap] = useState({});
+    const [appDetails, setAppDetails] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [tabValue, setTabValue] = useState(5); // Default to "App Configuration"
-
-    // State for ConfigMap modal
-    const [isConfigMapModalOpen, setIsConfigMapModalOpen] = useState(false);
-    const [configMapData, setConfigMapData] = useState('');
-    const [configMapErrorMessage, setConfigMapErrorMessage] = useState('');
-
-    // State for Secrets modal
-    const [isSecretModalOpen, setIsSecretModalOpen] = useState(false);
-    const [secretData, setSecretData] = useState('');
-    const [secretErrorMessage, setSecretErrorMessage] = useState('');
+    const [configMap, setConfigMap] = useState('');
 
     useEffect(() => {
-        const fetchDeploymentHistory = async () => {
+        // Fetch app details
+        const fetchAppDetails = async () => {
             try {
-                const response = await getMethod(`app/${appId}/deployments`);
-                setDeployments(response.data);
+                const response = await getMethod(`app/${appId}`);
+                setAppDetails(response.data);
                 setLoading(false);
             } catch (err) {
-                setError('Failed to fetch deployment history. Please try again.');
+                setError('Failed to fetch app details. Please try again.');
                 setLoading(false);
             }
         };
 
-        fetchDeploymentHistory();
+        // Fetch ConfigMap data
+        const fetchConfigMap = async () => {
+            try {
+                const response = await getMethod(`app/${appId}/configmap`);
+                const formattedData = Object.entries(response.data)
+                    .map(([key, value]) => `${key}: ${value}`)
+                    .join('\n');
+                setConfigMap(formattedData || ''); // Ensure an empty string if data is undefined
+            } catch (err) {
+                setError('Failed to fetch ConfigMap data. Please try again.');
+            }
+        };
+
+        fetchAppDetails();
+        fetchConfigMap();
     }, [appId]);
-
-    useEffect(() => {
-        const fetchStatus = async () => {
-            try {
-                const statusPromises = deployments.map(async (deployment) => {
-                    const response = await getMethod(`pod/status?appName=${deployment.releaseName}`);
-                    return { releaseName: deployment.releaseName, status: response.data[0].status };
-                });
-                const statusResults = await Promise.all(statusPromises);
-                const statusMap = statusResults.reduce((map, { releaseName, status }) => {
-                    map[releaseName] = status;
-                    return map;
-                }, {});
-                setStatusMap(statusMap);
-            } catch (err) {
-                console.error('Failed to fetch pod status:', err);
-            }
-        };
-
-        if (deployments.length) {
-            fetchStatus();
-            const intervalId = setInterval(fetchStatus, 300000); // Fetch status every 5 minutes
-            return () => clearInterval(intervalId); // Cleanup interval on component unmount
-        }
-    }, [deployments]);
 
     const handleTabChange = (event, newValue) => {
         setTabValue(newValue);
@@ -103,59 +95,33 @@ const AppConfigurationPage = () => {
         setTabValue(activeTab);
     }, [location.pathname, appId]);
 
-    const handleOpenConfigMapModal = () => {
-        setIsConfigMapModalOpen(true);
-    };
-
-    const handleCloseConfigMapModal = () => {
-        setIsConfigMapModalOpen(false);
-    };
-
-    const handleConfigMapSubmit = async () => {
-        const keyValues = configMapData.split('\n').reduce((acc, line) => {
-            const [key, value] = line.split('=');
-            if (key && value) {
-                acc[key] = value;
+    const formik = useFormik({
+        initialValues: {
+            configMapData: configMap,
+        },
+        enableReinitialize: true,
+        validationSchema: Yup.object({
+            configMapData: Yup.string()
+                .required('ConfigMap data is required')
+                .test('is-valid', 'Invalid key-value pairs', validateKeyValuePairs),
+        }),
+        onSubmit: async (values) => {
+            try {
+                const data = values.configMapData.split('\n').reduce((acc, line) => {
+                    const [key, value] = line.split(':').map(part => part.trim());
+                    acc[key] = value;
+                    return acc;
+                }, {});
+                console.log("data from endpoint :", data)
+                await putMethod(`app/${appId}/configmap`, data);
+                alert('ConfigMap updated successfully');
+            } catch (err) {
+                setError('Failed to update ConfigMap. Please try again.');
             }
-            return acc;
-        }, {});
+        },
+    });
 
-        try {
-            const response = await postMethod(`app/${appId}/configmaps`, keyValues);
-            console.log('ConfigMap saved:', response);
-            handleCloseConfigMapModal();
-        } catch (error) {
-            setConfigMapErrorMessage('Failed to save ConfigMap. Please try again.');
-            console.error('Failed to save ConfigMap:', error);
-        }
-    };
-
-    const handleOpenSecretModal = () => {
-        setIsSecretModalOpen(true);
-    };
-
-    const handleCloseSecretModal = () => {
-        setIsSecretModalOpen(false);
-    };
-
-    const handleSecretSubmit = async () => {
-        const keyValues = secretData.split('\n').reduce((acc, line) => {
-            const [key, value] = line.split('=');
-            if (key && value) {
-                acc[key] = value;
-            }
-            return acc;
-        }, {});
-
-        try {
-            const response = await postMethod(`app/${appId}/secrets`, keyValues);
-            console.log('Secret saved:', response);
-            handleCloseSecretModal();
-        } catch (error) {
-            setSecretErrorMessage('Failed to save Secret. Please try again.');
-            console.error('Failed to save Secret:', error);
-        }
-    };
+    const { errors, touched, handleSubmit, getFieldProps } = formik;
 
     if (loading) return <CircularProgress />;
     if (error) return <Typography color="error">{error}</Typography>;
@@ -176,67 +142,31 @@ const AppConfigurationPage = () => {
             </AppBar>
             <Typography variant="h4" className="mb-6">App Configuration</Typography>
             <Grid container spacing={3}>
-                <Grid item xs={12} sm={6}>
+                <Grid item xs={12}>
                     <Card>
                         <CardContent>
-                            <Typography variant="h6" gutterBottom>ConfigMaps</Typography>
-                            <Button variant="contained" color="primary" onClick={handleOpenConfigMapModal}>
-                                Add ConfigMap
-                            </Button>
-                            <Modal open={isConfigMapModalOpen} onClose={handleCloseConfigMapModal}>
-                                <Box className="absolute top-1/4 left-1/4 w-1/2 bg-white p-4 rounded shadow-lg">
-                                    <Typography variant="h6" className="mb-4">Add from your .env file</Typography>
+                            <Typography variant="h6" gutterBottom>Add your Env</Typography>
+                            <FormikProvider value={formik}>
+                                <Form onSubmit={handleSubmit}>
                                     <TextField
                                         fullWidth
+                                        id="configMapData"
+                                        name="configMapData"
+                                        label="Key: value"
                                         multiline
-                                        rows={4}
+                                        rows={6}
                                         variant="outlined"
-                                        value={configMapData}
-                                        onChange={(e) => setConfigMapData(e.target.value)}
+                                        {...getFieldProps('configMapData')}
+                                        error={touched.configMapData && Boolean(errors.configMapData)}
+                                        helperText={touched.configMapData && errors.configMapData}
                                     />
-                                    {configMapErrorMessage && <Typography color="error">{configMapErrorMessage}</Typography>}
-                                    <div className="flex justify-end space-x-2 mt-4">
-                                        <Button variant="contained" color="primary" onClick={handleCloseConfigMapModal}>
-                                            Cancel
-                                        </Button>
-                                        <Button variant="contained" color="primary" onClick={handleConfigMapSubmit}>
+                                    <div className="flex justify-end mt-4">
+                                        <Button variant="contained" color="primary" type="submit">
                                             Save
                                         </Button>
                                     </div>
-                                </Box>
-                            </Modal>
-                        </CardContent>
-                    </Card>
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                    <Card>
-                        <CardContent>
-                            <Typography variant="h6" gutterBottom>Secrets</Typography>
-                            <Button variant="contained" color="primary" onClick={handleOpenSecretModal}>
-                                Add Secret
-                            </Button>
-                            <Modal open={isSecretModalOpen} onClose={handleCloseSecretModal}>
-                                <Box className="absolute top-1/4 left-1/4 w-1/2 bg-white p-4 rounded shadow-lg">
-                                    <Typography variant="h6" className="mb-4">Add from your .env file</Typography>
-                                    <TextField
-                                        fullWidth
-                                        multiline
-                                        rows={4}
-                                        variant="outlined"
-                                        value={secretData}
-                                        onChange={(e) => setSecretData(e.target.value)}
-                                    />
-                                    {secretErrorMessage && <Typography color="error">{secretErrorMessage}</Typography>}
-                                    <div className="flex justify-end space-x-2 mt-4">
-                                        <Button variant="contained" color="primary" onClick={handleCloseSecretModal}>
-                                            Cancel
-                                        </Button>
-                                        <Button variant="contained" color="primary" onClick={handleSecretSubmit}>
-                                            Save
-                                        </Button>
-                                    </div>
-                                </Box>
-                            </Modal>
+                                </Form>
+                            </FormikProvider>
                         </CardContent>
                     </Card>
                 </Grid>
