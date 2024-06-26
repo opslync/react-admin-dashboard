@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import moment from 'moment';
 import {
   Card,
@@ -21,7 +20,6 @@ const OverviewPage = () => {
   const [deployments, setDeployments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [statusMap, setStatusMap] = useState({});
 
   useEffect(() => {
     // Fetch deployment history
@@ -39,33 +37,8 @@ const OverviewPage = () => {
     fetchDeploymentHistory();
   }, []);
 
-  useEffect(() => {
-    const fetchStatus = async () => {
-      try {
-        const statusPromises = deployments.map(async (deployment) => {
-          const response = await getMethod(`pod/status?appName=${deployment.releaseName}`);
-          return { releaseName: deployment.releaseName, status: response.data[0].status };
-        });
-        const statusResults = await Promise.all(statusPromises);
-        const statusMap = statusResults.reduce((map, { releaseName, status }) => {
-          map[releaseName] = status;
-          return map;
-        }, {});
-        setStatusMap(statusMap);
-      } catch (err) {
-        console.error('Failed to fetch pod status:', err);
-      }
-    };
-
-    if (deployments.length) {
-      fetchStatus();
-      const intervalId = setInterval(fetchStatus, 300000); // Fetch status every 5 minutes
-      return () => clearInterval(intervalId); // Cleanup interval on component unmount
-    }
-  }, [deployments]);
-
   const statusCounts = deployments.reduce((acc, deployment) => {
-    const status = statusMap[deployment.releaseName] || 'Unknown';
+    const status = deployment.status || 'Unknown';
     acc[status] = (acc[status] || 0) + 1;
     return acc;
   }, {});
@@ -81,9 +54,9 @@ const OverviewPage = () => {
   if (error) return <Typography color="error">{error}</Typography>;
 
   return (
-    <div className="flex flex-col lg:ml-64 p-6 bg-gray-100 min-h-screen">
+    <div className="flex flex-col lg:ml-64 p-6 bg-gray-100 min-h-screen animate-fadeIn">
       <Typography variant="h4" className="mb-6">Deployment History</Typography>
-      <Card className="mb-6">
+      <Card className="mb-6 shadow-lg hover:shadow-2xl transition-shadow duration-300">
         <CardContent>
           <Typography variant="h5" className="mb-4">Deployment Status Chart</Typography>
           <ResponsiveContainer width="100%" height={300}>
@@ -92,10 +65,10 @@ const OverviewPage = () => {
                 data={chartData}
                 cx="50%"
                 cy="50%"
-                outerRadius={80}
+                outerRadius={100}
                 fill="#8884d8"
                 dataKey="value"
-                label
+                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
               >
                 {chartData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -107,14 +80,13 @@ const OverviewPage = () => {
           </ResponsiveContainer>
         </CardContent>
       </Card>
-      <Card>
+      <Card className="shadow-lg hover:shadow-2xl transition-shadow duration-300">
         <CardContent>
           <Typography variant="h5" className="mb-4">Deployment Details</Typography>
           <TableContainer component={Paper}>
             <Table>
               <TableHead>
                 <TableRow>
-
                   <TableCell>App Name</TableCell>
                   <TableCell>CommitId</TableCell>
                   <TableCell>When</TableCell>
@@ -124,14 +96,12 @@ const OverviewPage = () => {
               </TableHead>
               <TableBody>
                 {deployments.map((deployment) => (
-                  <TableRow key={deployment.ID}>
-
+                  <TableRow key={deployment.ID} className="hover:bg-gray-100 transition-colors duration-200">
                     <TableCell>{deployment.releaseName}</TableCell>
                     <TableCell>{deployment.tag}</TableCell>
                     <TableCell>{moment(deployment.CreatedAt).format('MMMM Do YYYY, h:mm:ss a')}</TableCell>
                     <TableCell>{deployment.username}</TableCell>
                     <TableCell>{deployment.status}</TableCell>
-                    {/* <TableCell>{statusMap[deployment.releaseName] || 'Unknown'}</TableCell> */}
                   </TableRow>
                 ))}
               </TableBody>
