@@ -225,9 +225,10 @@ const BuildDeployPage = () => {
                                 >
                                     {isDeploying ? 'Deploying...' : 'Deploy'}
                                 </Button>
-                                <button onClick={toggleEdit} className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">
+                                {/* you can controll this edit button */}
+                                {/* <button onClick={toggleEdit} className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">
                                     Edit
-                                </button>
+                                </button> */}
                             </div>
                             {buildId && (
                                 <div className="mt-6">

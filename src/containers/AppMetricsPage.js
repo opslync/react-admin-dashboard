@@ -66,7 +66,7 @@ const AppMetricsPage = () => {
                             <Typography variant="h6" gutterBottom className="text-center">CPU</Typography>
                             <Box className="relative w-full" style={{ paddingTop: '56.25%' }}>
                                 <iframe
-                                    src="http://localhost:4000/d-solo/6581e46e4e5c7ba40a07646395ef7b23/kubernetes-compute-resources-pod?orgId=1&refresh=10s&var-datasource=prometheus&var-cluster=&var-namespace=default&var-pod=app-demo-767d884c7c-cc49j&from=1718781230055&to=1718784830055&panelId=1"
+                                    src="http://localhost:4000/d-solo/6581e46e4e5c7ba40a07646395ef7b23/kubernetes-compute-resources-pod?orgId=1&refresh=10s&var-datasource=prometheus&var-cluster=&var-namespace=default&var-pod=app-demo-767d884c7c-qglb8&panelId=1"
                                     className="absolute top-0 left-0 w-full h-full border-0 rounded-lg shadow-lg"
                                     title="Grafana Public Dashboard 1"
                                     allowFullScreen
@@ -81,7 +81,7 @@ const AppMetricsPage = () => {
                             <Typography variant="h6" gutterBottom className="text-center">Memory</Typography>
                             <Box className="relative w-full" style={{ paddingTop: '56.25%' }}>
                                 <iframe
-                                    src="http://localhost:4000/d-solo/6581e46e4e5c7ba40a07646395ef7b23/kubernetes-compute-resources-pod?orgId=1&refresh=10s&var-datasource=prometheus&var-cluster=&var-namespace=default&var-pod=app-demo-767d884c7c-cc49j&from=1718781150581&to=1718784750581&panelId=4"
+                                    src="http://localhost:4000/d-solo/6581e46e4e5c7ba40a07646395ef7b23/kubernetes-compute-resources-pod?orgId=1&refresh=10s&var-datasource=prometheus&var-cluster=&var-namespace=default&var-pod=app-demo-767d884c7c-qglb8&panelId=4"
                                     className="absolute top-0 left-0 w-full h-full border-0 rounded-lg shadow-lg"
                                     title="Grafana Public Dashboard 2"
                                     allowFullScreen

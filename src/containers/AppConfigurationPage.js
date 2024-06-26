@@ -15,7 +15,11 @@ import {
     CircularProgress,
     TextField,
     Button,
+    IconButton,
+    Collapse
 } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 
 const validateKeyValuePairs = (data) => {
     if (!data) return false;
@@ -38,6 +42,7 @@ const AppConfigurationPage = () => {
     const [error, setError] = useState('');
     const [tabValue, setTabValue] = useState(5); // Default to "App Configuration"
     const [configMap, setConfigMap] = useState('');
+    const [expanded, setExpanded] = useState(false);
 
     useEffect(() => {
         // Fetch app details
@@ -112,7 +117,7 @@ const AppConfigurationPage = () => {
                     acc[key] = value;
                     return acc;
                 }, {});
-                console.log("data from endpoint :", data)
+                console.log("data from endpoint:", data)
                 await putMethod(`app/${appId}/configmap`, data);
                 alert('ConfigMap updated successfully');
             } catch (err) {
@@ -122,6 +127,10 @@ const AppConfigurationPage = () => {
     });
 
     const { errors, touched, handleSubmit, getFieldProps } = formik;
+
+    const toggleExpand = () => {
+        setExpanded(!expanded);
+    };
 
     if (loading) return <CircularProgress />;
     if (error) return <Typography color="error">{error}</Typography>;
@@ -142,31 +151,38 @@ const AppConfigurationPage = () => {
             </AppBar>
             <Typography variant="h4" className="mb-6">App Configuration</Typography>
             <Grid container spacing={3}>
-                <Grid item xs={12}>
+                <Grid item xs={6}>
                     <Card>
                         <CardContent>
-                            <Typography variant="h6" gutterBottom>Add your Env</Typography>
-                            <FormikProvider value={formik}>
-                                <Form onSubmit={handleSubmit}>
-                                    <TextField
-                                        fullWidth
-                                        id="configMapData"
-                                        name="configMapData"
-                                        label="Key: value"
-                                        multiline
-                                        rows={6}
-                                        variant="outlined"
-                                        {...getFieldProps('configMapData')}
-                                        error={touched.configMapData && Boolean(errors.configMapData)}
-                                        helperText={touched.configMapData && errors.configMapData}
-                                    />
-                                    <div className="flex justify-end mt-4">
-                                        <Button variant="contained" color="primary" type="submit">
-                                            Save
-                                        </Button>
-                                    </div>
-                                </Form>
-                            </FormikProvider>
+                            <div className="flex justify-between items-center mb-4">
+                                <Typography variant="h6">ConfigMap</Typography>
+                                <IconButton onClick={toggleExpand}>
+                                    {expanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                                </IconButton>
+                            </div>
+                            <Collapse in={expanded}>
+                                <FormikProvider value={formik}>
+                                    <Form onSubmit={handleSubmit}>
+                                        <TextField
+                                            fullWidth
+                                            id="configMapData"
+                                            name="configMapData"
+                                            label="Key: value"
+                                            multiline
+                                            rows={6}
+                                            variant="outlined"
+                                            {...getFieldProps('configMapData')}
+                                            error={touched.configMapData && Boolean(errors.configMapData)}
+                                            helperText={touched.configMapData && errors.configMapData}
+                                        />
+                                        <div className="flex justify-end mt-4">
+                                            <Button variant="contained" color="primary" type="submit">
+                                                Save
+                                            </Button>
+                                        </div>
+                                    </Form>
+                                </FormikProvider>
+                            </Collapse>
                         </CardContent>
                     </Card>
                 </Grid>
