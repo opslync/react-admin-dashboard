@@ -17,7 +17,7 @@ import {
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { getMethod } from '../library/api';
 
-const DeploymentHistoryPage = () => {
+const OverviewPage = () => {
   const [deployments, setDeployments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -143,4 +143,4 @@ const DeploymentHistoryPage = () => {
   );
 };
 
-export default DeploymentHistoryPage;
+export default OverviewPage;

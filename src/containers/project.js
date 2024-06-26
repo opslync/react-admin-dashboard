@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { postMethod, getMethod, deleteMethod } from "../library/api";
 import CreateProjectForm from '../components/CreateProjectForm';
-import ConfirmModal from '../components/ConfirmModal'; //  // Adjust the import path as needed
+import ConfirmModal from '../components/ConfirmModal'; // Adjust the import path as needed
 import { listProject, projectCreate } from '../library/constant';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrash } from '@fortawesome/free-solid-svg-icons';
-import { Button, Card, CardContent, Typography, IconButton } from '@mui/material';
+import { Button, Card, CardContent, Typography, IconButton, Tooltip } from '@mui/material';
 
 const ProjectPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -15,7 +15,6 @@ const ProjectPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [projectIdToDelete, setProjectIdToDelete] = useState(null);
-
 
   // Fetch the list of projects from the API
   const fetchProjects = async () => {
@@ -28,6 +27,7 @@ const ProjectPage = () => {
       setLoading(false);
     }
   };
+
   useEffect(() => {
     fetchProjects();
   }, []);
@@ -44,7 +44,6 @@ const ProjectPage = () => {
     console.log('Project Data to Save:', data);
     try {
       const response = await postMethod(projectCreate, data);
-      // console.log('Project Created:', response);
       setProjects([...projects, response]);
       handleCloseModal();
       fetchProjects();
@@ -63,10 +62,10 @@ const ProjectPage = () => {
     setIsConfirmModalOpen(false);
     setProjectIdToDelete(null);
   };
+
   const handleDeleteProject = async () => {
     try {
-      const response = await deleteMethod(`project/${projectIdToDelete}`);
-      console.log('Project Deleted:', response);
+      await deleteMethod(`project/${projectIdToDelete}`);
       setProjects(projects.filter(project => project.id !== projectIdToDelete)); // Remove the project from the list
       handleCloseConfirmModal();
     } catch (error) {
@@ -74,18 +73,24 @@ const ProjectPage = () => {
       setError('Failed to delete project. Please try again.');
     }
   };
+
   return (
     <div className="flex flex-col lg:ml-64 p-4 relative min-h-screen bg-gray-100">
       <div className="flex justify-between items-center mb-4">
         <Typography variant="h4">Projects</Typography>
-        <Button
-          variant="contained"
-          color="primary"
-          size="small"
-          onClick={handleOpenModal}
-        >
-          Create Project
-        </Button>
+        <Tooltip title={projects.length >= 2 ? 'You can only create two projects.' : ''}>
+          <span>
+            <Button
+              variant="contained"
+              color="primary"
+              size="small"
+              onClick={handleOpenModal}
+              disabled={projects.length >= 2}
+            >
+              Create Project
+            </Button>
+          </span>
+        </Tooltip>
       </div>
 
       {loading ? (

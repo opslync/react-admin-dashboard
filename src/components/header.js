@@ -23,13 +23,13 @@ export default function Header() {
 
   const userMenu = [
     {
-      label:`Hi, ${localStorage.getItem("username") || "User"}`,
+      label: `Hi, ${localStorage.getItem("username") || "User"}`,
       items: [
         {
           label: "Home",
           icon: "pi pi-home",
           command: (e) => {
-            history.push("/deployments");
+            history.push("/overview");
           },
         },
         {

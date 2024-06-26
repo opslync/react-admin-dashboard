@@ -31,7 +31,7 @@ export default function LoginPage() {
       try {
         const response = await dispatch(authenticateUser(data)).unwrap();
         if (response && response.token) {
-          history.push("/deployments");
+          history.push("/overview");
         }
       } catch (err) {
         setLoginError('Username or password is incorrect.');
