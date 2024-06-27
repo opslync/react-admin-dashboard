@@ -54,9 +54,9 @@ const OverviewPage = () => {
   if (error) return <Typography color="error">{error}</Typography>;
 
   return (
-    <div className="flex flex-col lg:ml-64 p-6 bg-gray-100 min-h-screen animate-fadeIn">
+    <div className="flex flex-col lg:ml-64 p-6 bg-gray-100 min-h-screen">
       <Typography variant="h4" className="mb-6">Deployment History</Typography>
-      <Card className="mb-6 shadow-lg hover:shadow-2xl transition-shadow duration-300">
+      <Card className="mb-6">
         <CardContent>
           <Typography variant="h5" className="mb-4">Deployment Status Chart</Typography>
           <ResponsiveContainer width="100%" height={300}>
@@ -65,10 +65,10 @@ const OverviewPage = () => {
                 data={chartData}
                 cx="50%"
                 cy="50%"
-                outerRadius={100}
+                outerRadius={80}
                 fill="#8884d8"
                 dataKey="value"
-                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                label
               >
                 {chartData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -80,7 +80,7 @@ const OverviewPage = () => {
           </ResponsiveContainer>
         </CardContent>
       </Card>
-      <Card className="shadow-lg hover:shadow-2xl transition-shadow duration-300">
+      <Card>
         <CardContent>
           <Typography variant="h5" className="mb-4">Deployment Details</Typography>
           <TableContainer component={Paper}>
@@ -96,7 +96,7 @@ const OverviewPage = () => {
               </TableHead>
               <TableBody>
                 {deployments.map((deployment) => (
-                  <TableRow key={deployment.ID} className="hover:bg-gray-100 transition-colors duration-200">
+                  <TableRow key={deployment.ID}>
                     <TableCell>{deployment.releaseName}</TableCell>
                     <TableCell>{deployment.tag}</TableCell>
                     <TableCell>{moment(deployment.CreatedAt).format('MMMM Do YYYY, h:mm:ss a')}</TableCell>

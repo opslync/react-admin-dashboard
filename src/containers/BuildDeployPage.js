@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useHistory, useLocation } from 'react-router-dom';
 import { getMethod, postMethod, putMethod } from '../library/api';
-import { AppBar, Tabs, Tab, Typography, Button, Box, Toolbar, CircularProgress } from '@mui/material';
+import { AppBar, Tabs, Tab, Typography, Button, Box, Toolbar, CircularProgress, MenuItem, Select, FormControl, InputLabel, Card, CardContent } from '@mui/material';
 
 const BuildDeployPage = () => {
     const { appId } = useParams();
@@ -18,6 +18,8 @@ const BuildDeployPage = () => {
     const [showLogs, setShowLogs] = useState(false); // State to manage log visibility
     const [tabValue, setTabValue] = useState(0);
     const [isDeploying, setIsDeploying] = useState(false); // State for deploy spinner
+    const [branches, setBranches] = useState([]); // State to store branches
+    const [selectedBranch, setSelectedBranch] = useState(''); // State to store the selected branch
     const ws = useRef(null);
 
     useEffect(() => {
@@ -37,6 +39,24 @@ const BuildDeployPage = () => {
 
         fetchAppDetails();
     }, [appId]);
+
+    useEffect(() => {
+        // Fetch branches
+        const fetchBranches = async () => {
+            try {
+                const repoName = app.repoUrl.split('/').slice(-1)[0].replace('.git', '');
+                const response = await getMethod(`app/github/branch?repoName=${repoName}`);
+                setBranches(response.data);
+                setSelectedBranch(response.data[0]); // Set the first branch as the default
+            } catch (err) {
+                setError('Failed to fetch branches. Please try again.');
+            }
+        };
+
+        if (app) {
+            fetchBranches();
+        }
+    }, [app]);
 
     useEffect(() => {
         if (buildId) {
@@ -69,7 +89,9 @@ const BuildDeployPage = () => {
     const handleBuild = async () => {
         try {
             console.log('Building app...');
-            const response = await postMethod(`app/${appId}/build`, { repoUrl: app.repoUrl });
+            setLogs([]); // Clear previous logs before starting a new build
+            setShowLogs(true); // Show logs panel when a new build starts
+            const response = await postMethod(`app/${appId}/build`, { repoUrl: app.repoUrl, branch: selectedBranch });
             setBuildId(response.data.buildId);
             console.log('Build response:', response.data);
         } catch (error) {
@@ -175,76 +197,73 @@ const BuildDeployPage = () => {
                 </Toolbar>
             </AppBar>
             {app && (
-                <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-2xl mx-auto">
-                    <h1 className="text-3xl font-semibold mb-4">{isEditing ? 'Edit App' : app.name}</h1>
-                    {isEditing ? (
-                        <div className="flex flex-col space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium mb-1">App Name</label>
-                                <input
-                                    type="text"
-                                    value={updatedName}
-                                    onChange={(e) => setUpdatedName(e.target.value)}
-                                    className="w-full border border-gray-300 p-2 rounded"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium mb-1">Repository URL</label>
-                                <input
-                                    type="text"
-                                    value={updatedRepoUrl}
-                                    onChange={(e) => setUpdatedRepoUrl(e.target.value)}
-                                    className="w-full border border-gray-300 p-2 rounded"
-                                />
-                            </div>
-                            <div className="flex space-x-4">
-                                <button onClick={handleSave} className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
-                                    Save
-                                </button>
-                                <button onClick={toggleEdit} className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
-                                    Cancel
-                                </button>
-                            </div>
-                        </div>
-                    ) : (
-                        <>
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                    <Card className="bg-white p-6 rounded-lg shadow-md">
+                        <CardContent>
+                            <Typography variant="h5" className="mb-4">Build App</Typography>
                             <p className="mb-4 text-gray-700">{app.description}</p>
                             <p className="mb-4 text-gray-700">{app.repoUrl}</p>
-                            <div className="flex space-x-4">
-                                <button onClick={handleBuild} className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
-                                    Build
-                                </button>
-                                <Button
-                                    variant="contained"
-                                    color="primary"
-                                    size="small"
-                                    onClick={handleDeploy}
-                                    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                                    disabled={isDeploying}
-                                    startIcon={isDeploying && <CircularProgress size={20} />}
+                            <FormControl variant="outlined" className="mb-4" style={{ minWidth: 150 }}>
+                                <InputLabel id="branch-select-label" >Branch</InputLabel>
+                                <Select
+                                    labelId="branch-select-label"
+                                    id="branch-select"
+                                    value={selectedBranch}
+                                    onChange={(e) => setSelectedBranch(e.target.value)}
+                                    label="Branch"
                                 >
-                                    {isDeploying ? 'Deploying...' : 'Deploy'}
-                                </Button>
-                                {/* you can controll this edit button */}
-                                {/* <button onClick={toggleEdit} className="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">
-                                    Edit
-                                </button> */}
-                            </div>
-                            {buildId && (
-                                <div className="mt-6">
-                                    <button onClick={toggleLogs} className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 mb-4">
-                                        {showLogs ? 'Hide Logs' : 'Show Logs'}
-                                    </button>
-                                    {showLogs && (
-                                        <div className="bg-black text-white p-4 rounded-lg h-64 overflow-y-scroll">
-                                            {logs.map((log, index) => (
-                                                <div key={index} className="whitespace-pre-wrap">{log}</div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </>
+                                    {branches.map((branch, index) => (
+                                        <MenuItem key={index} value={branch}>
+                                            {branch}
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                            <Typography className="mb-1"></Typography>
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                onClick={handleBuild}
+                                className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+                            >
+                                Build
+                            </Button>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="bg-white p-6 rounded-lg shadow-md">
+                        <CardContent>
+                            <Typography variant="h5" className="mb-4">Deploy App</Typography>
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                onClick={handleDeploy}
+                                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                                disabled={isDeploying}
+                                startIcon={isDeploying && <CircularProgress size={20} />}
+                            >
+                                {isDeploying ? 'Deploying...' : 'Deploy'}
+                            </Button>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
+            {buildId && (
+                <div className="mt-6">
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={toggleLogs}
+                        className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 mb-4"
+                    >
+                        {showLogs ? 'Hide Logs' : 'Show Logs'}
+                    </Button>
+                    {showLogs && (
+                        <div className="bg-black text-white p-4 rounded-lg h-64 overflow-y-scroll">
+                            {logs.map((log, index) => (
+                                <div key={index} className="whitespace-pre-wrap">{log}</div>
+                            ))}
+                        </div>
                     )}
                 </div>
             )}
