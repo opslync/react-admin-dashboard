@@ -76,8 +76,13 @@ const SetupAppForm = ({ onSubmit, onClose }) => {
     setLoading(true);
     setError(null);
 
+    let finalRepoUrl = repoUrl;
+    if (selectedGitAccount !== 'github-public') {
+      finalRepoUrl = `https://github.com${selectedGitAccount}/${repoUrl}.git`;
+    }
+
     try {
-      await onSubmit({ name, description: appDescription, repoUrl, projectId: selectedProject, gitAccount: selectedGitAccount, containerRegistry: selectedRegistry });
+      await onSubmit({ name, description: appDescription, repoUrl: finalRepoUrl, projectId: selectedProject, gitAccount: selectedGitAccount, containerRegistry: selectedRegistry });
       if (isMounted.current) onClose();
     } catch (err) {
       if (isMounted.current) setError('Failed to setup app. Please try again.');

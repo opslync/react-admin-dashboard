@@ -50,6 +50,8 @@ const BuildDeployPage = () => {
                 setBranches(response.data);
                 setSelectedBranch(response.data[0]); // Set the first branch as the default
             } catch (err) {
+                setBranches(null);
+                setSelectedBranch(null);
                 setError('Failed to fetch branches. Please try again.');
             }
         };
