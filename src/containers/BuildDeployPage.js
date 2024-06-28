@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useHistory, useLocation } from 'react-router-dom';
 import { getMethod, postMethod, putMethod } from '../library/api';
 import { AppBar, Tabs, Tab, Typography, Button, Box, Toolbar, CircularProgress, MenuItem, Select, FormControl, InputLabel, Card, CardContent } from '@mui/material';
-
+import RefreshIcon from '@mui/icons-material/Refresh';
 const BuildDeployPage = () => {
     const { appId } = useParams();
     const history = useHistory();
@@ -21,6 +21,8 @@ const BuildDeployPage = () => {
     const [isDeploying, setIsDeploying] = useState(false); // State for deploy spinner
     const [branches, setBranches] = useState([]); // State to store branches
     const [selectedBranch, setSelectedBranch] = useState(''); // State to store the selected branch
+    const [tags, setTags] = useState([]);
+    const [selectedTag, setSelectedTag] = useState('');
     const ws = useRef(null);
 
     useEffect(() => {
@@ -87,6 +89,7 @@ const BuildDeployPage = () => {
                 }
             };
         }
+        fetchTags();
     }, [buildId]);
 
     const handleBuild = async () => {
@@ -182,6 +185,34 @@ const BuildDeployPage = () => {
         setTabValue(activeTab);
     }, [location.pathname, appId]);
 
+
+    // Fetch Docker tags
+    const fetchTags = async () => {
+        try {
+            let repository = app.name;
+            // if (selectedGitAccount === 'github-public') {
+            //     repository = repository.replace('https://github.com/', '').replace('.git', '');
+            // }
+            // Replace with dynamic repository value if needed
+            const response = await getMethod(`app/docker/tags?repository=${repository}`);
+            if (response.data === null || response.data.length === 0) {
+                setTags([]); // Set an empty tag list
+                setSelectedTag(''); // Set selected tag to empty
+            } else {
+                setTags(response.data);
+                setSelectedTag(response.data[0]); // Set the first tag as the default selected tag
+            }
+        } catch (err) {
+            console.error('Failed to fetch tags:', err);
+            setTags([]); // Set an empty tag list
+            setSelectedTag(''); // Set selected tag to empty
+        }
+    };
+
+    useEffect(() => {
+        fetchTags();
+    }, [app])
+
     if (loading) return <CircularProgress />;
     if (error) return <Typography color="error">{error}</Typography>;
 
@@ -247,6 +278,32 @@ const BuildDeployPage = () => {
                                     className="w-half border border-gray-300 p-2 rounded "
                                     required
                                 />
+                            </div>
+                            <div className="flex items-center mb-4">
+                                <FormControl fullWidth>
+                                    <InputLabel id="docker-tag-label">Docker Tag</InputLabel>
+                                    <Select
+                                        labelId="docker-tag-label"
+                                        id="tag-select"
+                                        label="Docker Tag"
+                                        value={selectedTag}
+                                        onChange={(e) => setSelectedTag(e.target.value)}
+                                    >
+                                        {tags.map((tag) => (
+                                            <MenuItem key={tag} value={tag}>
+                                                {tag}
+                                            </MenuItem>
+                                        ))}
+                                        {tags.length === 0 && <MenuItem value="">No tags available</MenuItem>}
+                                    </Select>
+                                </FormControl>
+                                <button
+                                    onClick={fetchTags}
+                                    className={`ml-2 p-2 ${tags.length === 0 ? 'text-gray-400 cursor-not-allowed' : 'text-blue-500 hover:text-blue-600'}`}
+                                    disabled={tags.length === 0} // Disable the button if tags.length is 0
+                                >
+                                    <RefreshIcon />
+                                </button>
                             </div>
                             <Button
                                 variant="contained"
