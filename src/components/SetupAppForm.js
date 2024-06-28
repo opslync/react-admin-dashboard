@@ -8,6 +8,7 @@ const SetupAppForm = ({ onSubmit, onClose }) => {
   const [name, setAppName] = useState('');
   const [appDescription, setAppDescription] = useState('');
   const [repoUrl, setRepoUrl] = useState('');
+  const [repoList, setRepoList] = useState([]);
   const [selectedProject, setSelectedProject] = useState('');
   const [selectedGitAccount, setSelectedGitAccount] = useState('github-public');
   const [selectedRegistry, setSelectedRegistry] = useState('docker-hub');
@@ -93,6 +94,22 @@ const SetupAppForm = ({ onSubmit, onClose }) => {
     history.push("/settings/container-oci-registry");
   };
 
+  const handleGitAccountChange = async (e) => {
+    const selectedAccount = e.target.value;
+    setSelectedGitAccount(selectedAccount);
+
+    if (selectedAccount !== 'github-public') {
+      try {
+        const response = await getMethod('github/projectlist');
+        setRepoList(response.data);
+      } catch (err) {
+        console.error('Failed to fetch GitHub repositories:', err);
+      }
+    } else {
+      setRepoList([]);
+    }
+  };
+
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
       <div className="bg-white p-6 rounded shadow-md w-full max-w-md">
@@ -138,7 +155,7 @@ const SetupAppForm = ({ onSubmit, onClose }) => {
             <FormControl fullWidth>
               <Select
                 value={selectedGitAccount}
-                onChange={(e) => setSelectedGitAccount(e.target.value)}
+                onChange={handleGitAccountChange}
                 className="w-full border border-gray-300  rounded"
                 required
               >
@@ -164,13 +181,31 @@ const SetupAppForm = ({ onSubmit, onClose }) => {
           </div>
           <div className="mb-4">
             <label className="block text-sm font-medium mb-1">Git Repo URL (use https)</label>
-            <input
-              type="text"
-              value={repoUrl}
-              onChange={(e) => setRepoUrl(e.target.value)}
-              className="w-full border border-gray-300 p-2 rounded"
-              required
-            />
+            {selectedGitAccount === 'github-public' ? (
+              <input
+                type="text"
+                value={repoUrl}
+                onChange={(e) => setRepoUrl(e.target.value)}
+                className="w-full border border-gray-300 p-2 rounded"
+                required
+              />
+            ) : (
+              <FormControl fullWidth>
+                <Select
+                  value={repoUrl}
+                  onChange={(e) => setRepoUrl(e.target.value)}
+                  className="w-full border border-gray-300  rounded"
+                  required
+                >
+                  <MenuItem value="" disabled>Select a repository</MenuItem>
+                  {repoList.map((repo) => (
+                    <MenuItem key={repo} value={repo}>
+                      {repo}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
           </div>
           <div className="mb-4">
             <label className="block text-sm font-medium mb-1">Container Registry</label>

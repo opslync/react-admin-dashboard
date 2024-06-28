@@ -12,6 +12,7 @@ const BuildDeployPage = () => {
     const [error, setError] = useState('');
     const [isEditing, setIsEditing] = useState(false);
     const [updatedName, setUpdatedName] = useState('');
+    const [containerPort, setContainerPort] = useState('');
     const [updatedRepoUrl, setUpdatedRepoUrl] = useState('');
     const [logs, setLogs] = useState([]);
     const [buildId, setBuildId] = useState(null);
@@ -234,6 +235,17 @@ const BuildDeployPage = () => {
                     <Card className="bg-white p-6 rounded-lg shadow-md">
                         <CardContent>
                             <Typography variant="h5" className="mb-4">Deploy App</Typography>
+                            <div className="mb-4">
+                                <label className="block text-md text-gray-700 mb-2">Container Port *</label>
+                                <input
+                                    type="text"
+                                    placeholder="3000"
+                                    value={containerPort}
+                                    onChange={(e) => setContainerPort(e.target.value)}
+                                    className="w-half border border-gray-300 p-2 rounded "
+                                    required
+                                />
+                            </div>
                             <Button
                                 variant="contained"
                                 color="primary"

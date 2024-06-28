@@ -66,7 +66,11 @@ const AppConfigurationPage = () => {
                     .join('\n');
                 setConfigMap(formattedData || ''); // Ensure an empty string if data is undefined
             } catch (err) {
-                setError('Failed to fetch ConfigMap data. Please try again.');
+                if (err.response && err.response.data.includes("configmaps") && err.response.data.includes("not found")) {
+                    setConfigMap(''); // Set configMap to an empty string if not found
+                } else {
+                    setError('Failed to fetch ConfigMap data. Please try again.');
+                }
             }
         };
 
@@ -133,7 +137,7 @@ const AppConfigurationPage = () => {
     };
 
     if (loading) return <CircularProgress />;
-    if (error) return <Typography color="error">{error}</Typography>;
+    if (error && error !== 'Failed to fetch ConfigMap data. Please try again.') return <Typography color="error">{error}</Typography>;
 
     return (
         <div className="flex flex-col lg:ml-64 p-4 bg-gray-100 min-h-screen">
