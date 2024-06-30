@@ -47,8 +47,10 @@ const BuildDeployPage = () => {
         // Fetch branches
         const fetchBranches = async () => {
             try {
-                const repoName = app.repoUrl.split('/').slice(-1)[0].replace('.git', '');
-                const response = await getMethod(`app/github/branch?repoName=${repoName}`);
+                const repoUrlParts = app.repoUrl.split('/');
+                const username = repoUrlParts[repoUrlParts.length - 2];
+                const repoName = repoUrlParts[repoUrlParts.length - 1].replace('.git', '');
+                const response = await getMethod(`app/github/branch?username=${username}&repoName=${repoName}`);
                 setBranches(response.data);
                 setSelectedBranch(response.data[0]); // Set the first branch as the default
             } catch (err) {
@@ -97,7 +99,7 @@ const BuildDeployPage = () => {
             console.log('Building app...');
             setLogs([]); // Clear previous logs before starting a new build
             setShowLogs(true); // Show logs panel when a new build starts
-            const response = await postMethod(`app/${appId}/build`, { repoUrl: app.repoUrl, branch: selectedBranch });
+            const response = await postMethod(`app/${appId}/build`, { repoUrl: app.repoUrl, branchName: selectedBranch });
             setBuildId(response.data.buildId);
             console.log('Build response:', response.data);
         } catch (error) {
@@ -112,11 +114,12 @@ const BuildDeployPage = () => {
             console.log('Deploying app...');
             const deployData = {
                 releaseName: app.name,
-                releaseNamespace: "default",
                 chartPath: "./chart/opslync-chart-0.1.0.tgz",
                 values: {
                     fullnameOverride: app.name,
-                    tag: "latest"
+                    tag: selectedTag,
+                    repository: "amitgadhia/" + app.name,
+                    port: containerPort
                 }
             };
             const response = await postMethod(`app/${appId}/deploy`, deployData);

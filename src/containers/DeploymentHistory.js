@@ -47,30 +47,30 @@ const DeploymentHistory = () => {
     fetchDeploymentHistory();
   }, [appId]);
 
-  useEffect(() => {
-    const fetchStatus = async () => {
-      try {
-        const statusPromises = deployments.map(async (deployment) => {
-          const response = await getMethod(`pod/status?appName=${deployment.releaseName}`);
-          return { releaseName: deployment.releaseName, status: response.data[0].status };
-        });
-        const statusResults = await Promise.all(statusPromises);
-        const statusMap = statusResults.reduce((map, { releaseName, status }) => {
-          map[releaseName] = status;
-          return map;
-        }, {});
-        setStatusMap(statusMap);
-      } catch (err) {
-        console.error('Failed to fetch pod status:', err);
-      }
-    };
+  // useEffect(() => {
+  //   const fetchStatus = async () => {
+  //     try {
+  //       const statusPromises = deployments.map(async (deployment) => {
+  //         const response = await getMethod(`pod/status?appName=${deployment.releaseName}`);
+  //         return { releaseName: deployment.releaseName, status: response.data[0].status };
+  //       });
+  //       const statusResults = await Promise.all(statusPromises);
+  //       const statusMap = statusResults.reduce((map, { releaseName, status }) => {
+  //         map[releaseName] = status;
+  //         return map;
+  //       }, {});
+  //       setStatusMap(statusMap);
+  //     } catch (err) {
+  //       console.error('Failed to fetch pod status:', err);
+  //     }
+  //   };
 
-    if (deployments.length) {
-      fetchStatus();
-      const intervalId = setInterval(fetchStatus, 300000); // Fetch status every 5 minutes
-      return () => clearInterval(intervalId); // Cleanup interval on component unmount
-    }
-  }, [deployments]);
+  //   if (deployments.length) {
+  //     fetchStatus();
+  //     const intervalId = setInterval(fetchStatus, 300000); // Fetch status every 5 minutes
+  //     return () => clearInterval(intervalId); // Cleanup interval on component unmount
+  //   }
+  // }, [deployments]);
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
@@ -149,7 +149,7 @@ const DeploymentHistory = () => {
                     <TableCell>{deployment.tag}</TableCell>
                     <TableCell>{deployment.CreatedAt}</TableCell>
                     <TableCell>{deployment.username}</TableCell>
-                    <TableCell>{statusMap[deployment.releaseName] || 'Unknown'}</TableCell>
+                    <TableCell>{deployment.status}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
