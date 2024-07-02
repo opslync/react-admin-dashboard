@@ -2,16 +2,18 @@ import React, { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
 import { Sidebar } from "primereact/sidebar";
 import { useDispatch, useSelector } from "react-redux";
-import { closeSideBar } from "../library/store/sidebar";
+import { closeSideBar, openSideBar } from "../library/store/sidebar";
 import "../assets/css/menu.css";
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import SettingsIcon from '@mui/icons-material/Settings';
 import AppsIcon from '@mui/icons-material/Apps';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import { MenuIcon } from "@heroicons/react/outline";
+import Logo from "../assets/images/logo.png"; // Import the logo image
+import { Typography } from '@mui/material';
 
 export default function SideBar() {
-  const [drawerVisible, setDrawerVisible] = useState();
+  const [drawerVisible, setDrawerVisible] = useState(false); // Set initial state to false
   const drawerState = useSelector((state) => state.sidebar.value);
   const dispatch = useDispatch();
 
@@ -20,7 +22,11 @@ export default function SideBar() {
   }, [drawerState]);
 
   const toggleDrawer = () => {
-    setDrawerVisible(!drawerVisible);
+    if (drawerVisible) {
+      dispatch(closeSideBar());
+    } else {
+      dispatch(openSideBar());
+    }
   };
 
   return (
@@ -80,6 +86,13 @@ const menus = [
 
 const menuContent = (
   <div className="p-4">
+    {/* Logo and text at the top */}
+    <div className="flex items-center justify-center mb-6">
+      <NavLink to="/overview" className="flex items-center">
+        <img src={Logo} alt="Logo" className="h-7 mr-2" />
+        <Typography variant="h6" className="text-white">OpsLync</Typography>
+      </NavLink>
+    </div>
     {menus.map((item, index) => (
       <NavLink
         key={index}

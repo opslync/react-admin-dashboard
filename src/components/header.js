@@ -1,15 +1,10 @@
 import React, { useRef } from "react";
-
 import "../assets/css/header.css";
-
 import Logo from "../assets/images/logo.png";
 import Avatar from "../assets/images/avatar.jpg";
-import { DashboardIcon } from "../assets/icons";
-
 import { useDispatch } from "react-redux";
 import { openSideBar } from "../library/store/sidebar";
 import { Badge } from "primereact/badge";
-
 import { Menu } from "primereact/menu";
 import { OverlayPanel } from "primereact/overlaypanel";
 import { useHistory } from "react-router-dom";
@@ -54,9 +49,7 @@ export default function Header() {
   const togglePanel = (e, ref) => {
     e.preventDefault();
     e.stopPropagation();
-
     document.querySelector(".emptyBoxForMenuClick").click();
-
     ref.current.toggle(e);
   };
 
@@ -71,15 +64,6 @@ export default function Header() {
     <>
       <div className="header-box d-flex p-ai-center">
         <div>
-          <button
-            className="p-d-inline-block p-d-lg-none btn btn-link p-0 mr-3"
-            aria-label="open sidebar"
-            onClick={() => {
-              dispatch(openSideBar());
-            }}
-          >
-            <i className="pi pi-bars"></i>
-          </button>
           <img src={Logo} alt="Logo" className="img img-fluid logo" />
         </div>
         <div className="ml-auto menu-items mr-0">
