@@ -180,7 +180,7 @@ const GitUserPage = () => {
         aria-labelledby="simple-modal-title"
         aria-describedby="simple-modal-description"
       >
-        <Box className="absolute top-1/4 left-1/4 w-1/2 bg-white p-4 rounded shadow-lg">
+        <Box className="absolute ">
           <GitDetailsForm
             onSubmit={handleSaveGitDetails}
             onClose={handleCloseGitModal}
@@ -200,11 +200,11 @@ const GitUserPage = () => {
             Are you sure you want to delete this user?
           </Typography>
           <div className="flex justify-end space-x-2">
+            <Button variant="contained" style={{ backgroundColor: 'grey', color: 'white' }} onClick={handleCloseConfirmModal}>
+              Cancel
+            </Button>
             <Button variant="contained" color="primary" onClick={handleDeleteUser}>
               Confirm
-            </Button>
-            <Button variant="contained" color="secondary" onClick={handleCloseConfirmModal}>
-              Cancel
             </Button>
           </div>
         </Box>
