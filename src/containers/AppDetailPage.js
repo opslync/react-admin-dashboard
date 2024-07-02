@@ -44,7 +44,7 @@ const AppDetailPage = () => {
     const fetchStatus = async () => {
       try {
         const statusPromises = deployments.map(async (deployment) => {
-          const response = await getMethod(`pod/status?appName=${deployment.releaseName}`);
+          const response = await getMethod(`app/${appId}/pod/status`);
           return { releaseName: deployment.releaseName, status: response.data[0].status };
         });
         const statusResults = await Promise.all(statusPromises);
