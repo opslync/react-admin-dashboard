@@ -6,7 +6,7 @@ import ConfirmModal from '../components/ConfirmModal';
 import { appCreate, listApps } from '../library/constant';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrash } from '@fortawesome/free-solid-svg-icons';
-import { Card, CardContent, CardActions, Typography, Button, IconButton, CircularProgress, Grid, Modal, Box } from '@mui/material';
+import { Card, CardContent, CardActions, Typography, Button, IconButton, CircularProgress, Grid, Modal, Box, Tooltip } from '@mui/material';
 
 const AppPage = () => {
   const [isSetupModalOpen, setIsSetupModalOpen] = useState(false);
@@ -16,8 +16,6 @@ const AppPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [appIdToDelete, setAppIdToDelete] = useState(null);
-  const [value, setValue] = useState(0);
-
 
   // Fetch the list of apps from the API
   const fetchApps = async () => {
@@ -41,6 +39,7 @@ const AppPage = () => {
       setLoading(false);
     }
   };
+
   useEffect(() => {
     fetchApps();
   }, []);
@@ -103,20 +102,30 @@ const AppPage = () => {
     }
   };
 
+  const projectAppCount = apps.reduce((acc, app) => {
+    acc[app.projectId] = (acc[app.projectId] || 0) + 1;
+    return acc;
+  }, {});
 
+  const canSetupApp = (projectId) => projectAppCount[projectId] < 2;
 
   return (
     <div className="flex flex-col lg:ml-64 p-4 relative min-h-screen bg-gray-100">
       <div className="flex justify-between items-center mb-4">
         <Typography variant="h4" className="mb-4">Apps</Typography>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={handleOpenSetupModal}
-          className="absolute top-4 right-4"
-        >
-          + Setup App
-        </Button>
+        <Tooltip title={!canSetupApp(apps[0]?.projectId) ? 'You can only create two apps per project.' : ''}>
+          <span>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleOpenSetupModal}
+              className="absolute top-4 right-4"
+              disabled={!canSetupApp(apps[0]?.projectId)} // Disable if the project already has 2 apps
+            >
+              + Setup App
+            </Button>
+          </span>
+        </Tooltip>
       </div>
 
       {loading ? (

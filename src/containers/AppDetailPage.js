@@ -43,27 +43,46 @@ const AppDetailPage = () => {
   useEffect(() => {
     const fetchStatus = async () => {
       try {
+        const cachedStatus = localStorage.getItem(`podStatus-${appId}`);
+        const now = new Date();
+
+        if (cachedStatus) {
+          const parsedCache = JSON.parse(cachedStatus);
+          if (now - new Date(parsedCache.timestamp) < 300000) { // 5 minutes cache
+            setStatusMap(parsedCache.data);
+            return;
+          }
+        }
+
         const statusPromises = deployments.map(async (deployment) => {
-          const response = await getMethod(`pod/status?appName=${deployment.releaseName}`);
+          const response = await getMethod(`app/${appId}/pod/status`);
           return { releaseName: deployment.releaseName, status: response.data[0].status };
         });
+
         const statusResults = await Promise.all(statusPromises);
-        const statusMap = statusResults.reduce((map, { releaseName, status }) => {
+        const newStatusMap = statusResults.reduce((map, { releaseName, status }) => {
           map[releaseName] = status;
           return map;
         }, {});
-        setStatusMap(statusMap);
+
+        setStatusMap(newStatusMap);
+        localStorage.setItem(`podStatus-${appId}`, JSON.stringify({ data: newStatusMap, timestamp: new Date() }));
       } catch (err) {
         console.error('Failed to fetch pod status:', err);
       }
     };
 
     if (deployments.length) {
+      const cachedStatus = localStorage.getItem(`podStatus-${appId}`);
+      if (cachedStatus) {
+        const parsedCache = JSON.parse(cachedStatus);
+        setStatusMap(parsedCache.data);
+      }
       fetchStatus();
       const intervalId = setInterval(fetchStatus, 300000); // Fetch status every 5 minutes
       return () => clearInterval(intervalId); // Cleanup interval on component unmount
     }
-  }, [deployments]);
+  }, [deployments, appId]);
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);

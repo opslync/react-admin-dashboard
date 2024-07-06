@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import moment from 'moment';
 import {
   Card,
@@ -13,15 +12,17 @@ import {
   TableRow,
   Paper,
   CircularProgress,
+  TablePagination,
 } from '@mui/material';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { getMethod } from '../library/api';
 
-const DeploymentHistoryPage = () => {
+const OverviewPage = () => {
   const [deployments, setDeployments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [statusMap, setStatusMap] = useState({});
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(8);
 
   useEffect(() => {
     // Fetch deployment history
@@ -39,33 +40,8 @@ const DeploymentHistoryPage = () => {
     fetchDeploymentHistory();
   }, []);
 
-  useEffect(() => {
-    const fetchStatus = async () => {
-      try {
-        const statusPromises = deployments.map(async (deployment) => {
-          const response = await getMethod(`pod/status?appName=${deployment.releaseName}`);
-          return { releaseName: deployment.releaseName, status: response.data[0].status };
-        });
-        const statusResults = await Promise.all(statusPromises);
-        const statusMap = statusResults.reduce((map, { releaseName, status }) => {
-          map[releaseName] = status;
-          return map;
-        }, {});
-        setStatusMap(statusMap);
-      } catch (err) {
-        console.error('Failed to fetch pod status:', err);
-      }
-    };
-
-    if (deployments.length) {
-      fetchStatus();
-      const intervalId = setInterval(fetchStatus, 300000); // Fetch status every 5 minutes
-      return () => clearInterval(intervalId); // Cleanup interval on component unmount
-    }
-  }, [deployments]);
-
   const statusCounts = deployments.reduce((acc, deployment) => {
-    const status = statusMap[deployment.releaseName] || 'Unknown';
+    const status = deployment.status || 'Unknown';
     acc[status] = (acc[status] || 0) + 1;
     return acc;
   }, {});
@@ -76,6 +52,15 @@ const DeploymentHistoryPage = () => {
   }));
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
 
   if (loading) return <Typography>Loading...</Typography>;
   if (error) return <Typography color="error">{error}</Typography>;
@@ -114,7 +99,6 @@ const DeploymentHistoryPage = () => {
             <Table>
               <TableHead>
                 <TableRow>
-
                   <TableCell>App Name</TableCell>
                   <TableCell>CommitId</TableCell>
                   <TableCell>When</TableCell>
@@ -123,24 +107,31 @@ const DeploymentHistoryPage = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {deployments.map((deployment) => (
+                {deployments.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((deployment) => (
                   <TableRow key={deployment.ID}>
-
                     <TableCell>{deployment.releaseName}</TableCell>
                     <TableCell>{deployment.tag}</TableCell>
                     <TableCell>{moment(deployment.CreatedAt).format('MMMM Do YYYY, h:mm:ss a')}</TableCell>
                     <TableCell>{deployment.username}</TableCell>
                     <TableCell>{deployment.status}</TableCell>
-                    {/* <TableCell>{statusMap[deployment.releaseName] || 'Unknown'}</TableCell> */}
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
           </TableContainer>
+          <TablePagination
+            rowsPerPageOptions={[8, 16, 24]}
+            component="div"
+            count={deployments.length}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={handleChangePage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+          />
         </CardContent>
       </Card>
     </div>
   );
 };
 
-export default DeploymentHistoryPage;
+export default OverviewPage;

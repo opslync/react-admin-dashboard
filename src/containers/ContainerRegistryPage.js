@@ -205,11 +205,11 @@ const ContainerRegistryPage = () => {
                         Are you sure you want to delete this registry?
                     </Typography>
                     <div className="flex justify-end space-x-2">
+                        <Button variant="contained" style={{ backgroundColor: 'grey', color: 'white' }} onClick={handleCloseConfirmModal}>
+                            Cancel
+                        </Button>
                         <Button variant="contained" color="primary" onClick={handleDeleteRegistry}>
                             Confirm
-                        </Button>
-                        <Button variant="contained" color="secondary" onClick={handleCloseConfirmModal}>
-                            Cancel
                         </Button>
                     </div>
                 </Box>

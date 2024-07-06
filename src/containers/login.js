@@ -16,6 +16,13 @@ export default function LoginPage() {
   const history = useHistory();
   const [loginError, setLoginError] = useState('');
 
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      history.push('/overview');
+    }
+  }, [history]);
+
   const LoginSchema = Yup.object().shape({
     username: Yup.string().required("Username is required"),
     password: Yup.string().required("Password is required"),
@@ -31,7 +38,8 @@ export default function LoginPage() {
       try {
         const response = await dispatch(authenticateUser(data)).unwrap();
         if (response && response.token) {
-          history.push("/deployments");
+          localStorage.setItem('token', response.token);
+          history.push("/overview");
         }
       } catch (err) {
         setLoginError('Username or password is incorrect.');

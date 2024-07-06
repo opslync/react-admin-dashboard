@@ -8,6 +8,7 @@ const SetupAppForm = ({ onSubmit, onClose }) => {
   const [name, setAppName] = useState('');
   const [appDescription, setAppDescription] = useState('');
   const [repoUrl, setRepoUrl] = useState('');
+  const [repoList, setRepoList] = useState([]);
   const [selectedProject, setSelectedProject] = useState('');
   const [selectedGitAccount, setSelectedGitAccount] = useState('github-public');
   const [selectedRegistry, setSelectedRegistry] = useState('docker-hub');
@@ -75,8 +76,13 @@ const SetupAppForm = ({ onSubmit, onClose }) => {
     setLoading(true);
     setError(null);
 
+    let finalRepoUrl = repoUrl;
+    if (selectedGitAccount !== 'github-public') {
+      finalRepoUrl = `https://github.com${selectedGitAccount}/${repoUrl}.git`;
+    }
+
     try {
-      await onSubmit({ name, description: appDescription, repoUrl, projectId: selectedProject, gitAccount: selectedGitAccount, containerRegistry: selectedRegistry });
+      await onSubmit({ name, description: appDescription, repoUrl: finalRepoUrl, projectId: selectedProject, gitAccount: selectedGitAccount, containerRegistry: selectedRegistry });
       if (isMounted.current) onClose();
     } catch (err) {
       if (isMounted.current) setError('Failed to setup app. Please try again.');
@@ -91,6 +97,27 @@ const SetupAppForm = ({ onSubmit, onClose }) => {
 
   const handleAddContainerRegistry = () => {
     history.push("/settings/container-oci-registry");
+  };
+
+  const handleGitAccountChange = async (e) => {
+    const selectedAccount = e.target.value;
+    setSelectedGitAccount(selectedAccount);
+
+    if (selectedAccount !== 'github-public') {
+      try {
+        const response = await getMethod('github/projectlist');
+        if (response.status === 500) {
+          setRepoList([]);
+        } else {
+          setRepoList(response.data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch GitHub repositories:', err);
+        setRepoList([]);
+      }
+    } else {
+      setRepoList([]);
+    }
   };
 
   return (
@@ -138,7 +165,7 @@ const SetupAppForm = ({ onSubmit, onClose }) => {
             <FormControl fullWidth>
               <Select
                 value={selectedGitAccount}
-                onChange={(e) => setSelectedGitAccount(e.target.value)}
+                onChange={handleGitAccountChange}
                 className="w-full border border-gray-300  rounded"
                 required
               >
@@ -164,13 +191,31 @@ const SetupAppForm = ({ onSubmit, onClose }) => {
           </div>
           <div className="mb-4">
             <label className="block text-sm font-medium mb-1">Git Repo URL (use https)</label>
-            <input
-              type="text"
-              value={repoUrl}
-              onChange={(e) => setRepoUrl(e.target.value)}
-              className="w-full border border-gray-300 p-2 rounded"
-              required
-            />
+            {selectedGitAccount === 'github-public' ? (
+              <input
+                type="text"
+                value={repoUrl}
+                onChange={(e) => setRepoUrl(e.target.value)}
+                className="w-full border border-gray-300 p-2 rounded"
+                required
+              />
+            ) : (
+              <FormControl fullWidth>
+                <Select
+                  value={repoUrl}
+                  onChange={(e) => setRepoUrl(e.target.value)}
+                  className="w-full border border-gray-300  rounded"
+                  required
+                >
+                  <MenuItem value="" disabled>Select a repository</MenuItem>
+                  {repoList.map((repo) => (
+                    <MenuItem key={repo} value={repo}>
+                      {repo}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            )}
           </div>
           <div className="mb-4">
             <label className="block text-sm font-medium mb-1">Container Registry</label>

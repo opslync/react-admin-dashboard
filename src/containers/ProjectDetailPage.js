@@ -15,9 +15,9 @@ const ProjectDetailPage = () => {
     // Fetch project details and its apps
     const fetchProjectDetails = async () => {
       try {
-        const projectResponse = await getMethod(`project/${projectId}`);
-        console.log("Project name: ", projectResponse.data)
-        setProject(projectResponse.data);
+        // const projectResponse = await getMethod(`project/${projectId}`);
+        // console.log("Project name: ", projectResponse.data)
+        // setProject(projectResponse.data);
         const appsResponse = await getMethod(`project/${projectId}/apps`);
         setApps(appsResponse.data);
         setLoading(false);
@@ -66,7 +66,7 @@ const ProjectDetailPage = () => {
           component={Link}
           to="/project"
           variant="contained"
-          className="bg-gray-300 text-gray-800 hover:bg-gray-400"
+          style={{ backgroundColor: 'grey', color: 'white' }}
         >
           Back to Projects
         </Button>
