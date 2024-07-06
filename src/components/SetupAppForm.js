@@ -106,9 +106,14 @@ const SetupAppForm = ({ onSubmit, onClose }) => {
     if (selectedAccount !== 'github-public') {
       try {
         const response = await getMethod('github/projectlist');
-        setRepoList(response.data);
+        if (response.status === 500) {
+          setRepoList([]);
+        } else {
+          setRepoList(response.data);
+        }
       } catch (err) {
         console.error('Failed to fetch GitHub repositories:', err);
+        setRepoList([]);
       }
     } else {
       setRepoList([]);

@@ -26,39 +26,13 @@ export const getMethod = async (url) => {
   }
   catch (error) {
     console.log(error);
-    return error;
+    throw error;
   }
 };
 
 
 export const postMethod = async (url, data) => {
   const token = getToken() || "";
-  //   try {
-  //     axios
-  //       .post(baseUrl + url, data,{
-  //         // headers: {
-  //         //   "Content-Type": "application/json",
-  //         //   Authorization: `Token ${token}`,
-  //         // }
-  //       },  {
-  //         headers: {
-  //           'Authorization': `Token ${token}` 
-  //         }
-
-  //       })
-  //       .then(function (response) {
-  //         console.log("Update User Action Payload:", response.data.token);
-  //         return response;
-  //       })
-  //       .catch(function (error) {
-  //         console.log(error);
-  //         return error;
-  //       });
-  //   } catch (error) {
-  //     console.log(error);
-  //     return error;
-  //   }
-  // };
   try {
     const response = await axios.post(baseUrl + url, data, {
       // },  {
