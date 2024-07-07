@@ -9,10 +9,10 @@ spec:
   ingressClassName: nginx
   tls:
   - hosts:
-    - preview.opslync.io
-    secretName: poc-staging-opslync-frontend
+    - demo.opslync.io
+    secretName: poc-demo-opslync-frontend
   rules:
-  - host: preview.opslync.io
+  - host: demo.opslync.io
     http:
       paths:
       - path: /

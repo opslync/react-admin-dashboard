@@ -14,11 +14,11 @@ spec:
     spec:
       containers:
         - name: opslync-frontend
-          image:   # Use the image name and tag you built earlier
+          image: opslync/opslync-frontend:v0.0.1  # Use the image name and tag you built earlier
           ports:
             - containerPort: 3000
           env:
-          - name: BASE_URL
+          - name: REACT_APP_BASE_URL
             value: "opslync-backend-service:8080"
 ---
 apiVersion: v1
