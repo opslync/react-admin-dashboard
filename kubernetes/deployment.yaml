@@ -20,6 +20,7 @@ spec:
           env:
           - name: REACT_APP_BASE_URL
             value: "opslync-backend-service:8080"
+          imagePullPolicy: Always
 ---
 apiVersion: v1
 kind: Service
