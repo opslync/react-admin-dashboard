@@ -19,7 +19,7 @@ spec:
             - containerPort: 3000
           env:
           - name: REACT_APP_BASE_URL
-            value: "opslync-backend-service:8080"
+            value: "https://api.staging.opslync.io/api/"
           imagePullPolicy: Always
 ---
 apiVersion: v1

@@ -107,7 +107,10 @@ const AppPage = () => {
     return acc;
   }, {});
 
-  const canSetupApp = (projectId) => projectAppCount[projectId] < 2;
+  const canSetupApp = (projectId) => {
+    if (projectId === undefined) return true;
+    return projectAppCount[projectId] < 2;
+  };
 
   return (
     <div className="flex flex-col lg:ml-64 p-4 relative min-h-screen bg-gray-100">
@@ -120,7 +123,7 @@ const AppPage = () => {
               color="primary"
               onClick={handleOpenSetupModal}
               className="absolute top-4 right-4"
-              disabled={!canSetupApp(apps[0]?.projectId)} // Disable if the project already has 2 apps
+              disabled={!canSetupApp(apps[0]?.projectId) && apps.length > 0} // Disable if the project already has 2 apps and there are apps present
             >
               + Setup App
             </Button>
