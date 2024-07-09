@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useHistory, useLocation } from 'react-router-dom';
 import { getMethod, postMethod, putMethod } from '../library/api';
-import { AppBar, Tabs, Tab, Typography, Button, Box, Toolbar, CircularProgress, MenuItem, Select, FormControl, InputLabel, Card, CardContent } from '@mui/material';
+import {
+    AppBar, Tabs, Tab, Typography, Button, Box, Toolbar, CircularProgress, MenuItem, Select, FormControl, InputLabel, Card, CardContent
+} from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import LinkIcon from '@mui/icons-material/Link';
+
 const BuildDeployPage = () => {
     const { appId } = useParams();
     const history = useHistory();
@@ -16,17 +20,17 @@ const BuildDeployPage = () => {
     const [updatedRepoUrl, setUpdatedRepoUrl] = useState('');
     const [logs, setLogs] = useState([]);
     const [buildId, setBuildId] = useState(null);
-    const [showLogs, setShowLogs] = useState(false); // State to manage log visibility
+    const [showLogs, setShowLogs] = useState(false);
     const [tabValue, setTabValue] = useState(0);
-    const [isDeploying, setIsDeploying] = useState(false); // State for deploy spinner
-    const [branches, setBranches] = useState([]); // State to store branches
-    const [selectedBranch, setSelectedBranch] = useState(''); // State to store the selected branch
+    const [isDeploying, setIsDeploying] = useState(false);
+    const [branches, setBranches] = useState([]);
+    const [selectedBranch, setSelectedBranch] = useState('');
     const [tags, setTags] = useState([]);
     const [selectedTag, setSelectedTag] = useState('');
+    const [deployUrl, setDeployUrl] = useState('');
     const ws = useRef(null);
 
     useEffect(() => {
-        // Fetch app details
         const fetchAppDetails = async () => {
             try {
                 const response = await getMethod(`app/${appId}`);
@@ -44,7 +48,6 @@ const BuildDeployPage = () => {
     }, [appId]);
 
     useEffect(() => {
-        // Fetch branches
         const fetchBranches = async () => {
             try {
                 const repoUrlParts = app.repoUrl.split('/');
@@ -52,7 +55,7 @@ const BuildDeployPage = () => {
                 const repoName = repoUrlParts[repoUrlParts.length - 1].replace('.git', '');
                 const response = await getMethod(`app/github/branch?username=${username}&repoName=${repoName}`);
                 setBranches(response.data);
-                setSelectedBranch(response.data[0]); // Set the first branch as the default
+                setSelectedBranch(response.data[0]);
             } catch (err) {
                 setBranches(null);
                 setSelectedBranch(null);
@@ -94,16 +97,27 @@ const BuildDeployPage = () => {
         fetchTags();
     }, [buildId]);
 
+    useEffect(() => {
+        const fetchDeployUrl = async () => {
+            try {
+                const response = await getMethod(`app/${appId}/appurl`);
+                setDeployUrl(response.data.ingressHost);
+            } catch (err) {
+                console.error('Failed to fetch deploy URL:', err);
+                setDeployUrl('');
+            }
+        };
+
+        fetchDeployUrl();
+    }, [appId]);
+
     const handleBuild = async () => {
         try {
-            console.log('Building app...');
-            setLogs([]); // Clear previous logs before starting a new build
-            setShowLogs(true); // Show logs panel when a new build starts
+            setLogs([]);
+            setShowLogs(true);
             const response = await postMethod(`app/${appId}/build`, { repoUrl: app.repoUrl, branchName: selectedBranch });
             setBuildId(response.data.buildId);
-            console.log('Build response:', response.data);
         } catch (error) {
-            console.error('Failed to build app:', error);
             setError('Failed to build app. Please try again.');
         }
     };
@@ -111,7 +125,6 @@ const BuildDeployPage = () => {
     const handleDeploy = async () => {
         setIsDeploying(true);
         try {
-            console.log('Deploying app...');
             const deployData = {
                 releaseName: app.name,
                 chartPath: "./chart/opslync-chart-0.1.0.tgz",
@@ -124,11 +137,9 @@ const BuildDeployPage = () => {
             };
             const response = await postMethod(`app/${appId}/deploy`, deployData);
             if (response.status === 200) {
-                console.log('Deploy response:', response.data);
-                // Handle success, show notification, etc.
+                setDeployUrl(response.data.ingressHost);
             }
         } catch (error) {
-            console.error('Failed to deploy app:', error);
             setError('Failed to deploy app. Please try again.');
         } finally {
             setIsDeploying(false);
@@ -143,9 +154,7 @@ const BuildDeployPage = () => {
             });
             setApp(response.data);
             setIsEditing(false);
-            console.log('App updated:', response.data);
         } catch (error) {
-            console.error('Failed to update app:', error);
             setError('Failed to update app. Please try again.');
         }
     };
@@ -188,33 +197,26 @@ const BuildDeployPage = () => {
         setTabValue(activeTab);
     }, [location.pathname, appId]);
 
-
-    // Fetch Docker tags
     const fetchTags = async () => {
         try {
             let repository = app.name;
-            // if (selectedGitAccount === 'github-public') {
-            //     repository = repository.replace('https://github.com/', '').replace('.git', '');
-            // }
-            // Replace with dynamic repository value if needed
             const response = await getMethod(`app/docker/tags?repository=${repository}`);
             if (response.data === null || response.data.length === 0) {
-                setTags([]); // Set an empty tag list
-                setSelectedTag(''); // Set selected tag to empty
+                setTags([]);
+                setSelectedTag('');
             } else {
                 setTags(response.data);
-                setSelectedTag(response.data[0]); // Set the first tag as the default selected tag
+                setSelectedTag(response.data[0]);
             }
         } catch (err) {
-            console.error('Failed to fetch tags:', err);
-            setTags([]); // Set an empty tag list
-            setSelectedTag(''); // Set selected tag to empty
+            setTags([]);
+            setSelectedTag('');
         }
     };
 
     useEffect(() => {
         fetchTags();
-    }, [app])
+    }, [app]);
 
     if (loading) return <CircularProgress />;
     if (error) return <Typography color="error">{error}</Typography>;
@@ -241,7 +243,7 @@ const BuildDeployPage = () => {
                             <p className="mb-4 text-gray-700">{app.description}</p>
                             <p className="mb-4 text-gray-700">{app.repoUrl}</p>
                             <FormControl variant="outlined" className="mb-4" style={{ minWidth: 150 }}>
-                                <InputLabel id="branch-select-label" >Branch</InputLabel>
+                                <InputLabel id="branch-select-label">Branch</InputLabel>
                                 <Select
                                     labelId="branch-select-label"
                                     id="branch-select"
@@ -270,7 +272,19 @@ const BuildDeployPage = () => {
 
                     <Card className="bg-white p-6 rounded-lg shadow-md">
                         <CardContent>
-                            <Typography variant="h5" className="mb-4">Deploy App</Typography>
+                            <div className="flex justify-between items-center">
+                                <Typography variant="h5" className="mb-4">Deploy App</Typography>
+                                <Button
+                                    variant="contained"
+                                    color="primary"
+                                    href={`https://${deployUrl}`}
+                                    target="_blank"
+                                    className="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 text-sm"
+                                    startIcon={<LinkIcon />}
+                                >
+                                    URL
+                                </Button>
+                            </div>
                             <div className="mb-4">
                                 <label className="block text-md text-gray-700 mb-2">Container Port *</label>
                                 <input
@@ -278,7 +292,7 @@ const BuildDeployPage = () => {
                                     placeholder="3000"
                                     value={containerPort}
                                     onChange={(e) => setContainerPort(e.target.value)}
-                                    className="w-half border border-gray-300 p-2 rounded "
+                                    className="w-half border border-gray-300 p-2 rounded"
                                     required
                                 />
                             </div>
@@ -303,7 +317,7 @@ const BuildDeployPage = () => {
                                 <button
                                     onClick={fetchTags}
                                     className={`ml-2 p-2 ${tags.length === 0 ? 'text-gray-400 cursor-not-allowed' : 'text-blue-500 hover:text-blue-600'}`}
-                                    disabled={tags.length === 0} // Disable the button if tags.length is 0
+                                    disabled={tags.length === 0}
                                 >
                                     <RefreshIcon />
                                 </button>
