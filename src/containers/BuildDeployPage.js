@@ -131,8 +131,7 @@ const BuildDeployPage = () => {
                 values: {
                     fullnameOverride: app.name,
                     tag: selectedTag,
-                    repository: "amitgadhia/" + app.name,
-                    port: containerPort
+                    repository: "opslync/" + app.name
                 }
             };
             const response = await postMethod(`app/${appId}/deploy`, deployData);
@@ -279,13 +278,13 @@ const BuildDeployPage = () => {
                                     color="primary"
                                     href={`https://${deployUrl}`}
                                     target="_blank"
-                                    className="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 text-sm"
+                                    className="bg-blue-500 text-white px-2 py-1 mb-4 rounded hover:bg-blue-600 text-sm"
                                     startIcon={<LinkIcon />}
                                 >
                                     URL
                                 </Button>
                             </div>
-                            <div className="mb-4">
+                            {/* <div className="mb-4">
                                 <label className="block text-md text-gray-700 mb-2">Container Port *</label>
                                 <input
                                     type="text"
@@ -295,7 +294,7 @@ const BuildDeployPage = () => {
                                     className="w-half border border-gray-300 p-2 rounded"
                                     required
                                 />
-                            </div>
+                            </div> */}
                             <div className="flex items-center mb-4">
                                 <FormControl fullWidth>
                                     <InputLabel id="docker-tag-label">Docker Tag</InputLabel>
