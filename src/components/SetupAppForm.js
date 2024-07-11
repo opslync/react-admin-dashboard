@@ -82,6 +82,22 @@ const SetupAppForm = ({ onSubmit, onClose }) => {
       finalRepoUrl = `https://github.com${selectedGitAccount}/${repoUrl}.git`;
     }
 
+    // Validation
+    if (selectedGitAccount === 'github-public') {
+      const urlPattern = /^https:\/\/github\.com\/.+\.git$/;
+      if (!urlPattern.test(repoUrl)) {
+        setError('Repo URL must start with "https" and end with ".git".');
+        setLoading(false);
+        return;
+      }
+    }
+
+    if (isNaN(port) || port === '') {
+      setError('Port must be a number.');
+      setLoading(false);
+      return;
+    }
+
     try {
       await onSubmit({ name, description: appDescription, repoUrl: finalRepoUrl, projectId: selectedProject, gitAccount: selectedGitAccount, containerRegistry: selectedRegistry, port });
       if (isMounted.current) onClose();
@@ -122,7 +138,7 @@ const SetupAppForm = ({ onSubmit, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 overflow-auto">
       <div className="bg-white p-6 rounded shadow-md w-full max-w-md">
         <h2 className="text-xl mb-4">Setup App</h2>
         <form onSubmit={handleSubmit}>

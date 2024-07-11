@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useHistory, useLocation } from 'react-router-dom';
-import { getMethod, deleteMethod } from '../library/api';
+import { getMethod } from '../library/api';
 import moment from 'moment';
 import {
   Card,
@@ -12,11 +12,7 @@ import {
   Tab,
   Toolbar,
   CircularProgress,
-  Button,
-  IconButton,
 } from '@mui/material';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTrash } from '@fortawesome/free-solid-svg-icons';
 
 const AppDetailPage = () => {
   const { appId } = useParams();
@@ -27,7 +23,6 @@ const AppDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [tabValue, setTabValue] = useState(1); // Default to "App Details"
-  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     // Fetch deployment history
@@ -126,18 +121,6 @@ const AppDetailPage = () => {
     value: statusCounts[status]
   }));
 
-  const handleDeleteApp = async () => {
-    setIsDeleting(true);
-    try {
-      await deleteMethod(`app/${appId}`);
-      history.push('/apps');
-    } catch (err) {
-      setError('Failed to delete app. Please try again.');
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
   if (loading) return <CircularProgress />;
   if (error) return <Typography color="error">{error}</Typography>;
 
@@ -180,15 +163,6 @@ const AppDetailPage = () => {
               <Typography variant="body2" color="textSecondary">
                 {deployments.length > 0 ? deployments[0].tag : 'No commit found'}
               </Typography>
-              <Button
-                variant="contained"
-                color="secondary"
-                onClick={handleDeleteApp}
-                disabled={isDeleting}
-                startIcon={isDeleting && <CircularProgress size={20} />}
-              >
-                {isDeleting ? 'Deleting...' : 'Delete App'}
-              </Button>
             </CardContent>
           </Card>
         </Grid>

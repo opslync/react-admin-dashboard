@@ -199,7 +199,7 @@ const BuildDeployPage = () => {
     const fetchTags = async () => {
         try {
             let repository = app.name;
-            const response = await getMethod(`app/docker/tags?repository=${repository}`);
+            const response = await getMethod(`app/${appId}/docker/tags?repository=${repository}`);
             if (response.data === null || response.data.length === 0) {
                 setTags([]);
                 setSelectedTag('');
@@ -284,17 +284,6 @@ const BuildDeployPage = () => {
                                     URL
                                 </Button>
                             </div>
-                            {/* <div className="mb-4">
-                                <label className="block text-md text-gray-700 mb-2">Container Port *</label>
-                                <input
-                                    type="text"
-                                    placeholder="3000"
-                                    value={containerPort}
-                                    onChange={(e) => setContainerPort(e.target.value)}
-                                    className="w-half border border-gray-300 p-2 rounded"
-                                    required
-                                />
-                            </div> */}
                             <div className="flex items-center mb-4">
                                 <FormControl fullWidth>
                                     <InputLabel id="docker-tag-label">Docker Tag</InputLabel>

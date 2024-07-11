@@ -20,7 +20,7 @@ const AppMetricsPage = () => {
     const history = useHistory();
     const location = useLocation();
     const [tabValue, setTabValue] = useState(4); // Default to "Deployment Metrics"
-    const [podName, setPodName] = useState('');
+    const [podName, setPodName] = useState('default-pod-name'); // Set a default pod name
     const [namespace, setNamespace] = useState('default');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -72,7 +72,8 @@ const AppMetricsPage = () => {
                     }
                     setLoading(false);
                 } catch (err) {
-                    setError('Failed to fetch pod status. Please try again.');
+                    setPodName('default-pod-name'); // Set a default pod name in case of error
+                    setNamespace('default'); // Set a default namespace in case of error
                     setLoading(false);
                 }
             }
