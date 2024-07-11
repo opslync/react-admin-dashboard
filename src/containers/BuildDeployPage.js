@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useHistory, useLocation } from 'react-router-dom';
+import { WsbaseUrl } from '../library/constant';
 import { getMethod, postMethod, putMethod } from '../library/api';
 import {
     AppBar, Tabs, Tab, Typography, Button, Box, Toolbar, CircularProgress, MenuItem, Select, FormControl, InputLabel, Card, CardContent
@@ -70,7 +71,7 @@ const BuildDeployPage = () => {
 
     useEffect(() => {
         if (buildId) {
-            ws.current = new WebSocket(`ws://localhost:8080/api/app/ws/${buildId}`);
+            ws.current = new WebSocket(`${WsbaseUrl}app/ws/${buildId}`);
 
             ws.current.onopen = () => {
                 console.log('WebSocket connection opened');

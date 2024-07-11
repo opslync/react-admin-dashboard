@@ -20,6 +20,8 @@ spec:
           env:
           - name: REACT_APP_BASE_URL
             value: "https://api.staging.opslync.io/api/"
+          - name: REACT_APP_WS_BASE_URL
+            value: ""ws://api.staging.opslync.io/api/""
           imagePullPolicy: Always
 ---
 apiVersion: v1
