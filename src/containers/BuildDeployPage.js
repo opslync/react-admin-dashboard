@@ -71,7 +71,10 @@ const BuildDeployPage = () => {
 
     useEffect(() => {
         if (buildId) {
-            ws.current = new WebSocket(`${WsbaseUrl}app/ws/${buildId}`);
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${WsbaseUrl}app/ws/${buildId}`;
+
+            ws.current = new WebSocket(wsUrl);
 
             ws.current.onopen = () => {
                 console.log('WebSocket connection opened');
