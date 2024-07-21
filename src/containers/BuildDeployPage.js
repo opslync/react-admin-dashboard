@@ -72,15 +72,17 @@ const BuildDeployPage = () => {
     useEffect(() => {
         if (buildId) {
             // const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${WsbaseUrl}app/ws/${buildId}`;
+            // const wsUrl = `${WsbaseUrl}app/ws/${buildId}`;
 
-            ws.current = new WebSocket(wsUrl);
+            ws.current = new WebSocket(`${WsbaseUrl}app/ws/${buildId}`);
+            // ws.current = new WebSocket(`${WsbaseUrl}app/ws/test`);
 
             ws.current.onopen = () => {
                 console.log('WebSocket connection opened');
             };
 
             ws.current.onmessage = (event) => {
+                console.log(event)
                 setLogs((prevLogs) => [...prevLogs, event.data]);
             };
 
@@ -135,7 +137,7 @@ const BuildDeployPage = () => {
                 values: {
                     fullnameOverride: app.name,
                     tag: selectedTag,
-                    repository: "opslync/" + app.name
+                    repository: "opslync/" + app.name + "-" + appId
                 }
             };
             const response = await postMethod(`app/${appId}/deploy`, deployData);
