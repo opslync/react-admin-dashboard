@@ -16,6 +16,7 @@ const AppPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [appIdToDelete, setAppIdToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false); // State to manage delete spinner
 
   // Fetch the list of apps from the API
   const fetchApps = async () => {
@@ -88,6 +89,7 @@ const AppPage = () => {
   };
 
   const handleDeleteApp = async () => {
+    setIsDeleting(true);
     try {
       if (appIdToDelete) {
         await deleteMethod(`app/${appIdToDelete}`);
@@ -99,6 +101,8 @@ const AppPage = () => {
     } catch (error) {
       console.error('Failed to delete app:', error);
       setError('Failed to delete app. Please try again.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -181,6 +185,12 @@ const AppPage = () => {
         onConfirm={handleDeleteApp}
         message="Are you sure you want to delete this app?"
       />
+
+      {isDeleting && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
+          <CircularProgress color="secondary" />
+        </div>
+      )}
     </div>
   );
 };
