@@ -18,7 +18,8 @@ import UserProfilePage from "./containers/userprofile";
 import AppPage from "./containers/AppPage";
 import AppDetailPage from "./containers/AppDetailPage";
 import ProjectDetailPage from "./containers/ProjectDetailPage";
-import OverviewPage from "./containers/OverviewPage";
+import OverviewPage from "./pages/OverviewPage";
+import ClusterPage from "./pages/ClusterPage.jsx";
 import DeploymentHistory from "./containers/DeploymentHistory";
 import GitUserPage from "./containers/GitUserPage";
 import BuildDeployPage from "./containers/BuildDeployPage";
@@ -27,6 +28,7 @@ import AppMetricsPage from "./containers/AppMetricsPage"
 import SettingsPage from "./containers/SettingsPage.js";
 import ContainerRegistryPage from "./containers/ContainerRegistryPage"
 import AppConfigurationPage from "./containers/AppConfigurationPage"
+import GitHubAppRegistration from "./containers/GitHubAppRegistration"
 
 function App() {
   return (
@@ -43,6 +45,8 @@ function App() {
           <PrivateRoute exact path="/settings/container-oci-registry" component={ContainerRegistryPage} />
           <PrivateRoute exact path="/settings" component={SettingsPage} />
           <PrivateRoute exact path="/overview" component={OverviewPage} />
+          <PrivateRoute exact path="/cluster" component={ClusterPage} />
+          <PrivateRoute exact path="/github-source" component={GitHubAppRegistration} />
           <PrivateRoute path="/app/:appId/details" component={AppDetailPage} />
           <PrivateRoute path="/app/:appId/build-deploy" component={BuildDeployPage} />
           <PrivateRoute path="/app/:appId/deployment-history" component={DeploymentHistory} />

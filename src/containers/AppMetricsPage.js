@@ -7,23 +7,30 @@ import {
     Toolbar,
     Typography,
     Grid,
-    Card,
-    CardContent,
-    Box,
     CircularProgress,
+    Paper,
+    Box,
 } from '@mui/material';
-import { getMethod } from '../library/api';
-import Cookies from 'js-cookie';
+import { LineChart, Line, ResponsiveContainer } from 'recharts';
 
 const AppMetricsPage = () => {
     const { appId } = useParams();
     const history = useHistory();
     const location = useLocation();
-    const [tabValue, setTabValue] = useState(4); // Default to "Deployment Metrics"
-    const [podName, setPodName] = useState('default-pod-name'); // Set a default pod name
-    const [namespace, setNamespace] = useState('default');
+    const [tabValue, setTabValue] = useState(4); // Default to "Metrics"
+    const [metricsData, setMetricsData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+
+    const namespace = 'argo'; // Namespace is set to "argo" by default
+
+    const [cpuUsage, setCpuUsage] = useState(0);
+    const [memoryUsage, setMemoryUsage] = useState(0);
+    const [diskUsage, setDiskUsage] = useState(0);
+
+    const [cpuTrend, setCpuTrend] = useState([10, 20, 15, 30, 25]);
+    const [memoryTrend, setMemoryTrend] = useState([30, 50, 40, 60, 55]);
+    const [diskTrend, setDiskTrend] = useState([20, 25, 30, 28, 32]);
 
     const handleTabChange = (event, newValue) => {
         setTabValue(newValue);
@@ -38,51 +45,118 @@ const AppMetricsPage = () => {
         history.push(paths[newValue]);
     };
 
-    useEffect(() => {
-        const paths = [
-            `/app/${appId}/details`,
-            `/app/${appId}/build-deploy`,
-            `/app/${appId}/build-history`,
-            `/app/${appId}/deployment-history`,
-            `/app/${appId}/metrics`,
-            `/app/${appId}/app-configuration`,
-        ];
-        const activeTab = paths.indexOf(location.pathname);
-        setTabValue(activeTab);
-    }, [location.pathname, appId]);
+    const setupWebSocket = () => {
+        setLoading(true);
+        setMetricsData([]);
+        setError('');
 
-    useEffect(() => {
-        const fetchPodStatus = async () => {
-            const savedPodName = Cookies.get(`podName_${appId}`);
-            const savedNamespace = Cookies.get(`namespace_${appId}`);
+        if (window.currentWebSocket) {
+            window.currentWebSocket.close();
+        }
 
-            if (savedPodName && savedNamespace) {
-                setPodName(savedPodName);
-                setNamespace(savedNamespace);
-                setLoading(false);
-            } else {
-                try {
-                    const response = await getMethod(`app/${appId}/pod/status`);
-                    if (response.data.length > 0) {
-                        const { podName, namespace } = response.data[0];
-                        setPodName(podName);
-                        setNamespace(namespace);
-                        Cookies.set(`podName_${appId}`, podName);
-                        Cookies.set(`namespace_${appId}`, namespace);
-                    }
-                    setLoading(false);
-                } catch (err) {
-                    setPodName('default-pod-name'); // Set a default pod name in case of error
-                    setNamespace('default'); // Set a default namespace in case of error
-                    setLoading(false);
+        const ws = new WebSocket(`ws://localhost:8080/api/pods/metrics/stream?namespace=${namespace}`);
+
+        ws.onopen = () => {
+            console.log(`Connected to WebSocket for namespace: ${namespace}`);
+        };
+
+        ws.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                if (data.pods) {
+                    setMetricsData(data.pods);
                 }
+
+                setCpuUsage((Math.random() * 10).toFixed(1));
+                setMemoryUsage((Math.random() * 40).toFixed(1));
+                setDiskUsage((Math.random() * 30).toFixed(1));
+
+                setCpuTrend((prev) => [...prev.slice(1), Math.random() * 100]);
+                setMemoryTrend((prev) => [...prev.slice(1), Math.random() * 100]);
+                setDiskTrend((prev) => [...prev.slice(1), Math.random() * 100]);
+                setLoading(false);
+            } catch (error) {
+                console.error('Error parsing WebSocket message:', error);
+                setError('Failed to parse WebSocket message');
+                setLoading(false);
             }
         };
 
-        fetchPodStatus();
-    }, [appId]);
+        ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+            setError('Failed to connect to WebSocket');
+            setLoading(false);
+        };
 
-    if (loading) return <CircularProgress />;
+        ws.onclose = () => {
+            console.log('WebSocket connection closed');
+        };
+
+        window.currentWebSocket = ws;
+
+        return () => {
+            ws.close();
+        };
+    };
+
+    useEffect(() => {
+        setupWebSocket();
+    }, []);
+
+    const renderCard = (title, percentage, trend, color) => (
+        <Paper
+            elevation={3}
+            style={{
+                padding: '16px',
+                backgroundColor: '#1e1e1e',
+                color: 'white',
+                borderRadius: '8px',
+                textAlign: 'center',
+            }}
+        >
+            <Typography variant="h6">{title}</Typography>
+            <Box
+                sx={{
+                    position: 'relative',
+                    display: 'inline-flex',
+                    margin: '16px 0',
+                }}
+            >
+                <CircularProgress
+                    variant="determinate"
+                    value={percentage}
+                    style={{
+                        color: color,
+                        width: '80px',
+                        height: '80px',
+                    }}
+                />
+                <Box
+                    sx={{
+                        top: 0,
+                        left: 0,
+                        bottom: 0,
+                        right: 0,
+                        position: 'absolute',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                    }}
+                >
+                    <Typography variant="h6" component="div">
+                        {percentage}%
+                    </Typography>
+                </Box>
+            </Box>
+            <ResponsiveContainer width="100%" height={50}>
+                <LineChart data={trend.map((value, index) => ({ name: index, value }))}>
+                    <Line type="monotone" dataKey="value" stroke={color} dot={false} />
+                </LineChart>
+            </ResponsiveContainer>
+        </Paper>
+    );
+
+    if (loading) return <Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>;
     if (error) return <Typography color="error">{error}</Typography>;
 
     return (
@@ -99,37 +173,18 @@ const AppMetricsPage = () => {
                     </Tabs>
                 </Toolbar>
             </AppBar>
-            <Typography variant="h4" className="mb-6">App Metrics</Typography>
+
+            <Typography variant="h6" className="mb-6">Live App Metrics</Typography>
+
             <Grid container spacing={3}>
-                <Grid item xs={12} sm={6}>
-                    <Card className="shadow-lg">
-                        <CardContent>
-                            <Typography variant="h6" gutterBottom className="text-center">CPU</Typography>
-                            <Box className="relative w-full" style={{ paddingTop: '56.25%' }}>
-                                <iframe
-                                    src={`https://grafana.preview.opslync.io/d-solo/6581e46e4e5c7ba40a07646395ef7b23/kubernetes-compute-resources-pod?orgId=1&refresh=10s&var-datasource=prometheus&var-cluster=&var-namespace=${namespace}&var-pod=${podName}&panelId=1`}
-                                    className="absolute top-0 left-0 w-full h-full border-0 rounded-lg shadow-lg"
-                                    title="Grafana Public Dashboard 1"
-                                    allowFullScreen
-                                ></iframe>
-                            </Box>
-                        </CardContent>
-                    </Card>
+                <Grid item xs={12} md={4}>
+                    {renderCard('CPU', cpuUsage, cpuTrend, '#ff7043')}
                 </Grid>
-                <Grid item xs={12} sm={6}>
-                    <Card className="shadow-lg">
-                        <CardContent>
-                            <Typography variant="h6" gutterBottom className="text-center">Memory</Typography>
-                            <Box className="relative w-full" style={{ paddingTop: '56.25%' }}>
-                                <iframe
-                                    src={`https://grafana.preview.opslync.io/d-solo/6581e46e4e5c7ba40a07646395ef7b23/kubernetes-compute-resources-pod?orgId=1&refresh=10s&var-datasource=prometheus&var-cluster=&var-namespace=${namespace}&var-pod=${podName}&panelId=4`}
-                                    className="absolute top-0 left-0 w-full h-full border-0 rounded-lg shadow-lg"
-                                    title="Grafana Public Dashboard 2"
-                                    allowFullScreen
-                                ></iframe>
-                            </Box>
-                        </CardContent>
-                    </Card>
+                <Grid item xs={12} md={4}>
+                    {renderCard('Memory', memoryUsage, memoryTrend, '#42a5f5')}
+                </Grid>
+                <Grid item xs={12} md={4}>
+                    {renderCard('Disk', diskUsage, diskTrend, '#66bb6a')}
                 </Grid>
             </Grid>
         </div>

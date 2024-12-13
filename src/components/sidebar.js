@@ -77,6 +77,12 @@ const menus = [
     iconType: "component",
   },
   {
+    name: "Cluster",
+    route: "/cluster",
+    icon: <FolderOpenIcon />,
+    iconType: "component",
+  },
+  {
     name: "Setting",
     route: "/settings/git-account",
     icon: <SettingsIcon />,
