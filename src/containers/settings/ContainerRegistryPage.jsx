@@ -22,9 +22,9 @@ import {
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrash } from '@fortawesome/free-solid-svg-icons';
-import { deleteMethod, getMethod, postMethod } from "../library/api";
-import ContainerRegistryForm from '../components/ContainerRegistryForm'; // Import the new component
-import { containerRegistry } from '../library/constant'; // Adjust the import path as needed
+import { deleteMethod, getMethod, postMethod } from "../../library/api";
+import ContainerRegistryForm from '../../components/ContainerRegistryForm'; // Import the new component
+import { containerRegistry } from '../../library/constant'; // Adjust the import path as needed
 
 const ContainerRegistryPage = () => {
     const [registries, setRegistries] = useState([]);

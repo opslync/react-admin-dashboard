@@ -1,8 +1,8 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import image from "../assets/images/pagenotfound.svg";
+import image from "../../assets/images/pagenotfound.svg";
 
-import "../assets/css/pagenotfound.css"
+import "../../assets/css/pagenotfound.css"
 
 export default function NotfoundPage() {
   return (

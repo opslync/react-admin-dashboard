@@ -19,8 +19,9 @@ import {
   Toolbar,
 } from '@mui/material';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { getMethod } from '../library/api';
+import { getMethod } from '../../library/api';
 import { useParams, Link, useHistory, useLocation } from 'react-router-dom';
+import { closeSideBar, openSideBar } from "../../store";
 
 const DeploymentHistory = () => {
   const { appId } = useParams();

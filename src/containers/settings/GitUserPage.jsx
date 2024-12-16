@@ -22,9 +22,9 @@ import {
 } from '@mui/material';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrash } from '@fortawesome/free-solid-svg-icons';
-import { deleteMethod, getMethod, postMethod } from "../library/api";
-import GitDetailsForm from '../components/GitDetailsForm'; // Import the new component
-import { githubuser } from '../library/constant';
+import { deleteMethod, getMethod, postMethod } from "../../library/api";
+import GitDetailsForm from '../../components/GitDetailsForm'; // Import the new component
+import { githubuser } from '../../library/constant';
 
 const GitUserPage = () => {
   const [users, setUsers] = useState([]);

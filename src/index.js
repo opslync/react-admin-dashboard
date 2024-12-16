@@ -4,7 +4,7 @@ import "./assets/font/Roboto/font.css";
 import "./assets/css/bootstrap.css";
 import "./index.css";
 import "./app.css";
-import App from "./app";
+import App from './App';
 import reportWebVitals from "./reportWebVitals";
 
 import "primeicons/primeicons.css";

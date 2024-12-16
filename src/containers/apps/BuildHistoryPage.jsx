@@ -19,7 +19,7 @@ import {
     Box,
     Button,
 } from '@mui/material';
-import { getMethod } from '../library/api';
+import { getMethod } from '../../library/api';
 import { useParams, useHistory, useLocation } from 'react-router-dom';
 
 const BuildHistoryPage = () => {

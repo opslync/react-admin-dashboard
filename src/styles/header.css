@@ -1,0 +1,83 @@
+/* Header Container */
+.header-box {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 64px;
+  background-color: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  z-index: 40;
+  padding: 0 1.5rem;
+}
+
+/* Logo Styles */
+.logo {
+  height: 32px;
+  width: auto;
+}
+
+/* Menu Items Container */
+.menu-items {
+  display: flex;
+  align-items: center;
+}
+
+/* Navigation List */
+.nav-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+
+/* Avatar Styles */
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.avatar:hover {
+  transform: scale(1.05);
+}
+
+/* Helper Classes */
+.d-flex {
+  display: flex;
+}
+
+.p-ai-center {
+  align-items: center;
+}
+
+.flex-row-reverse {
+  flex-direction: row-reverse;
+}
+
+.ml-auto {
+  margin-left: auto;
+}
+
+.mr-0 {
+  margin-right: 0;
+}
+
+/* Empty Box for Menu Click */
+.emptyBoxForMenuClick {
+  display: none;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .header-box {
+    padding: 0 1rem;
+  }
+  
+  .logo {
+    height: 28px;
+  }
+} 

@@ -6,11 +6,11 @@ import {
     Box,
     Alert,
 } from '@mui/material';
-import { useDeployments } from '../hooks/useDeployments';
-import { useClusterMetrics } from '../hooks/useClusterMetrics';
-import { DeploymentChart } from '../components/DeploymentChart';
-import { ClusterMetrics } from '../components/metrics/ClusterMetrics';
-import { DeploymentTable } from '../components/DeploymentTable';
+import { useDeployments } from '../../hooks/useDeployments';
+import { useClusterMetrics } from '../../hooks/useClusterMetrics';
+import { DeploymentChart } from '../../components/DeploymentChart';
+import { ClusterMetrics } from '../../components/metrics/ClusterMetrics';
+import { DeploymentTable } from '../../components/DeploymentTable';
 
 const OverviewPage = () => {
     const [page, setPage] = useState(0);

@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from "react";
-import { NavLink } from "react-router-dom";
-import { Sidebar } from "primereact/sidebar";
+import { NavLink, useHistory } from "react-router-dom";
+import { Sidebar as PrimeSidebar } from "primereact/sidebar";
 import { useDispatch, useSelector } from "react-redux";
-import { closeSideBar, openSideBar } from "../library/store/sidebar";
+import { closeSideBar, openSideBar } from "../../store/slices/sidebarSlice";
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import AppsIcon from '@mui/icons-material/Apps';
 import StorageIcon from '@mui/icons-material/Storage';
 import SettingsIcon from '@mui/icons-material/Settings';
-import { MenuIcon } from "@heroicons/react/outline";
-import Logo from "../assets/images/logo.png";
-import { Typography, Tooltip, Divider } from '@mui/material';
-import "../assets/css/menu.css";
 import LogoutIcon from '@mui/icons-material/Logout';
+import { MenuIcon } from "@heroicons/react/outline";
+import Logo from "../../assets/images/logo.png";
+import { Typography, Tooltip, Divider } from '@mui/material';
+import "../../styles/menu.css";
 
 const menus = [
   {
@@ -84,7 +84,8 @@ const MenuSection = ({ category, items }) => (
   </div>
 );
 
-export default function SideBar() {
+const SidebarComponent = () => {
+  const history = useHistory();
   const [drawerVisible, setDrawerVisible] = useState(false);
   const drawerState = useSelector((state) => state.sidebar.value);
   const dispatch = useDispatch();
@@ -93,20 +94,17 @@ export default function SideBar() {
     setDrawerVisible(drawerState);
   }, [drawerState]);
 
-  const toggleDrawer = () => {
-    dispatch(drawerVisible ? closeSideBar() : openSideBar());
+  const handleLogout = () => {
+    localStorage.clear();
+    window.location.href = '/login';
   };
 
-  const handleLogout = () => {
-    // Add your logout logic here
-    // For example:
-    // dispatch(logoutAction());
-    // navigate('/login');
+  const handleUserProfileClick = () => {
+    history.push('/user-profile');
   };
 
   const SidebarContent = (
     <div className="h-full flex flex-col">
-      {/* Logo Section */}
       <div className="p-6 mb-2">
         <NavLink to="/overview" className="flex items-center">
           <img src={Logo} alt="Logo" className="h-8 w-auto" />
@@ -121,35 +119,38 @@ export default function SideBar() {
 
       <Divider className="bg-gray-700 mb-4" />
 
-      {/* Menu Sections */}
       <div className="flex-1 px-3 space-y-1 overflow-y-auto">
         {menus.map((section, index) => (
           <MenuSection key={index} {...section} />
         ))}
       </div>
 
-      {/* Updated Footer Section */}
-      <div className="p-4 border-t border-gray-700">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-full bg-gray-600"></div>
-            <div>
-              <Typography variant="body2" className="text-white">
-                User Name
-              </Typography>
-              <Typography variant="caption" className="text-gray-400">
-                Admin
-              </Typography>
-            </div>
-          </div>
-          <Tooltip title="Logout" placement="top">
-            <button
-              onClick={handleLogout}
-              className="p-2 rounded-lg hover:bg-gray-700 transition-colors duration-200"
+      <div className="mt-auto">
+        <div className="p-4 border-t border-gray-700">
+          <div className="flex items-center justify-between">
+            <div 
+              className="flex items-center space-x-3 cursor-pointer hover:bg-gray-700 p-2 rounded-lg transition-colors duration-200"
+              onClick={handleUserProfileClick}
             >
-              <LogoutIcon className="h-5 w-5 text-gray-400 hover:text-white" />
-            </button>
-          </Tooltip>
+              <div className="w-8 h-8 rounded-full bg-gray-600"></div>
+              <div>
+                <Typography variant="body2" className="text-white">
+                  {localStorage.getItem("username") || "User"}
+                </Typography>
+                <Typography variant="caption" className="text-gray-400">
+                  Admin
+                </Typography>
+              </div>
+            </div>
+            <Tooltip title="Logout" placement="top">
+              <button
+                onClick={handleLogout}
+                className="p-2 rounded-lg hover:bg-gray-700 transition-colors duration-200"
+              >
+                <LogoutIcon className="h-5 w-5 text-gray-400 hover:text-white" />
+              </button>
+            </Tooltip>
+          </div>
         </div>
       </div>
     </div>
@@ -157,27 +158,26 @@ export default function SideBar() {
 
   return (
     <>
-      {/* Mobile Drawer */}
-      <Sidebar
+      <PrimeSidebar
         visible={drawerVisible}
         onHide={() => dispatch(closeSideBar())}
         className="p-0 bg-gray-800"
       >
         {SidebarContent}
-      </Sidebar>
+      </PrimeSidebar>
 
-      {/* Toggle Button */}
       <button
         className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-gray-800 text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-600"
-        onClick={toggleDrawer}
+        onClick={() => dispatch(drawerVisible ? closeSideBar() : openSideBar())}
       >
         <MenuIcon className="h-6 w-6" />
       </button>
 
-      {/* Desktop Sidebar */}
       <div className="hidden lg:block w-64 h-screen fixed top-0 left-0 bg-gray-800 text-white shadow-xl">
         {SidebarContent}
       </div>
     </>
   );
-}
+};
+
+export default SidebarComponent; 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useHistory, useLocation } from 'react-router-dom';
-import { WsbaseUrl } from '../library/constant';
-import { getMethod, postMethod, putMethod } from '../library/api';
+import { WsbaseUrl } from '../../library/constant';
+import { getMethod, postMethod, putMethod } from '../../library/api';
 import {
     AppBar, Tabs, Tab, Typography, Button, Box, Toolbar, CircularProgress, MenuItem, Select, FormControl, InputLabel, Card, CardContent
 } from '@mui/material';

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useHistory, useLocation } from 'react-router-dom';
-import { getMethod, putMethod } from '../library/api';
+import { getMethod, putMethod } from '../../library/api';
 import { useFormik, FormikProvider, Form } from 'formik';
 import * as Yup from 'yup';
 import {

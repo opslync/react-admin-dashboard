@@ -2,7 +2,7 @@ import React from "react";
 import { InputText } from "primereact/inputtext";
 import { Button } from "primereact/button";
 import { classNames } from "primereact/utils";
-import "../assets/css/login.css";
+import "../../assets/css/login.css";
 
 import * as Yup from "yup";
 import { useFormik, Form, FormikProvider } from "formik";

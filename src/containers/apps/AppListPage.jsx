@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getMethod, postMethod, deleteMethod } from "../library/api";
-import SetupAppForm from '../components/SetupAppForm'; // Adjust the import path as needed
-import ConfirmModal from '../components/ConfirmModal';
-import { appCreate, listApps } from '../library/constant';
+import { getMethod, postMethod, deleteMethod } from "../../library/api";
+import SetupAppForm from '../../components/SetupAppForm'; // Adjust the import path as needed
+import ConfirmModal from '../../components/ConfirmModal';
+import { appCreate, listApps } from '../../library/constant';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrash } from '@fortawesome/free-solid-svg-icons';
 import { Card, CardContent, CardActions, Typography, Button, IconButton, CircularProgress, Grid, Modal, Box, Tooltip } from '@mui/material';

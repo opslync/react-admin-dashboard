@@ -6,7 +6,7 @@ import { useFormik, Form, FormikProvider } from 'formik';
 import * as Yup from 'yup';
 import { classNames } from 'primereact/utils';
 import axios from 'axios';
-import { getMethod, putMethod } from '../library/api';
+import { getMethod, putMethod } from '../../library/api';
 
 const UserProfilePage = () => {
   const [user, setUser] = useState(null);

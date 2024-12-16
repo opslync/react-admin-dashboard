@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
-import { getMethod } from '../library/api';
+import { getMethod } from '../../library/api';
 import { Button, Card, CardContent, Typography } from '@mui/material';
 
 const ProjectDetailPage = () => {

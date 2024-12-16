@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useHistory, useLocation } from 'react-router-dom';
-import { getMethod } from '../library/api';
+import { getMethod } from '../../library/api';
 import moment from 'moment';
 import {
   Card,
