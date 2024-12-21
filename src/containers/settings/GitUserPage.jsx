@@ -10,33 +10,91 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
-  IconButton,
   Button,
-  Modal,
   Box,
-  AppBar,
   Tabs,
   Tab,
-  Toolbar
+  Modal,
+  Divider,
+  IconButton
 } from '@mui/material';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTrash } from '@fortawesome/free-solid-svg-icons';
-import { deleteMethod, getMethod, postMethod } from "../../library/api";
-import GitDetailsForm from '../../components/GitDetailsForm'; // Import the new component
-import { githubuser } from '../../library/constant';
+import GitHubIcon from '@mui/icons-material/GitHub';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import { API_BASE_URL } from '../../library/constant';
+import GitHubAppRegistration from './GitHubAppRegistration';
 
 const GitUserPage = () => {
-  const [users, setUsers] = useState([]);
+  const [tabValue, setTabValue] = useState(0);
+  const [apps, setApps] = useState([]);
+  const [selectedApp, setSelectedApp] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [isGitModalOpen, setIsGitModalOpen] = useState(false);
-  const [gitErrorMessage, setGitErrorMessage] = useState('');
-  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [tabValue, setTabValue] = useState(0); // Default to "Git Account"
+  const [isAppDetailsOpen, setIsAppDetailsOpen] = useState(false);
+  const [isCreateAppOpen, setIsCreateAppOpen] = useState(false);
   const history = useHistory();
   const location = useLocation();
+
+  // Fetch GitHub apps
+  const fetchApps = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}user/github/apps`, {
+        method: 'GET',
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && Array.isArray(result.data)) {
+          setApps(result.data);
+        } else {
+          setApps([]);
+          console.error('Invalid data format received');
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching apps:', error);
+      setApps([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch app details
+  const fetchAppDetails = async (appId) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}user/github/apps/${appId}`, {
+        method: 'GET',
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data) {
+          setSelectedApp(result.data);
+          setIsAppDetailsOpen(true);
+        } else {
+          console.error('Invalid app details format received');
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching app details:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchApps();
+  }, []);
+
+  const handleCreateGitHubApp = () => {
+    setIsCreateAppOpen(true);
+  };
+
+  const handleCloseCreateApp = (appId) => {
+    setIsCreateAppOpen(false);
+    // Refresh the apps list after creation
+    fetchApps();
+    // Redirect to app details if appId is provided
+    if (appId) {
+      history.push(`/settings/github-app/${appId}`);
+    }
+  };
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
@@ -47,166 +105,195 @@ const GitUserPage = () => {
     history.push(paths[newValue]);
   };
 
-  useEffect(() => {
-    const paths = [
-      '/settings/git-account',
-      '/settings/container-oci-registry',
-    ];
-    const activeTab = paths.indexOf(location.pathname);
-    setTabValue(activeTab);
-  }, [location.pathname]);
-
-  // Fetch Git user details
-  const fetchGitUsers = async () => {
-    try {
-      const response = await getMethod('githubusers');
-      setUsers(response.data);
-      setLoading(false);
-    } catch (err) {
-      setError('Failed to fetch Git user details. Please try again.');
-      setLoading(false);
-    }
+  const handleViewAppDetails = (appId) => {
+    history.push(`/settings/github-app/${appId}`);
   };
 
-  useEffect(() => {
-    fetchGitUsers();
-  }, []);
-
-  const handleOpenGitModal = () => {
-    setIsGitModalOpen(true);
-    setGitErrorMessage('');
-  };
-
-  const handleCloseGitModal = () => {
-    setIsGitModalOpen(false);
-  };
-
-  const handleOpenConfirmModal = (user) => {
-    setSelectedUser(user);
-    setIsConfirmModalOpen(true);
-  };
-
-  const handleCloseConfirmModal = () => {
-    setSelectedUser(null);
-    setIsConfirmModalOpen(false);
-  };
-
-  const handleSaveGitDetails = async (data) => {
-    console.log('Git Details to Save:', data);
-    try {
-      const response = await postMethod(githubuser, data);
-      console.log('Git Details Saved:', response);
-      setUsers([...users, response.data]); // Add the new user to the list
-      handleCloseGitModal();
-      fetchGitUsers();
-    } catch (error) {
-      if (error.response && error.response.status === 400) {
-        setGitErrorMessage('User already exists');
-      } else {
-        setGitErrorMessage('Failed to save Git details. Please try again.');
-      }
-      console.error('Failed to save Git details:', error);
-    }
-  };
-
-  const handleDeleteUser = async () => {
-    try {
-      await deleteMethod(`githubuser/delete?username=${selectedUser.username}`);
-      setUsers(users.filter(user => user.id !== selectedUser.id));
-      handleCloseConfirmModal();
-      fetchGitUsers();
-    } catch (err) {
-      setError('Failed to delete user. Please try again.');
-    }
-  };
+  const AppDetailsModal = () => (
+    <Modal
+      open={isAppDetailsOpen}
+      onClose={() => setIsAppDetailsOpen(false)}
+    >
+      <Box className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] bg-white p-6 rounded-lg shadow-xl">
+        {selectedApp && (
+          <>
+            <div className="flex justify-between items-center mb-4">
+              <Typography variant="h6">App Details</Typography>
+              <IconButton onClick={() => setIsAppDetailsOpen(false)} size="small">
+                ✕
+              </IconButton>
+            </div>
+            <Divider className="mb-4" />
+            <div className="space-y-4">
+              <div>
+                <Typography variant="subtitle2" color="textSecondary">App Name</Typography>
+                <Typography>{selectedApp.name}</Typography>
+              </div>
+              {selectedApp.owner && (
+                <div>
+                  <Typography variant="subtitle2" color="textSecondary">Owner</Typography>
+                  <div className="flex items-center space-x-2">
+                    {selectedApp.owner.avatar_url && (
+                      <img 
+                        src={selectedApp.owner.avatar_url} 
+                        alt={selectedApp.owner.login}
+                        className="w-6 h-6 rounded-full"
+                      />
+                    )}
+                    <Typography>{selectedApp.owner.login}</Typography>
+                  </div>
+                </div>
+              )}
+              <div>
+                <Typography variant="subtitle2" color="textSecondary">App ID</Typography>
+                <Typography>{selectedApp.app_id}</Typography>
+              </div>
+              <div>
+                <Typography variant="subtitle2" color="textSecondary">Installation ID</Typography>
+                <Typography>{selectedApp.installation_id}</Typography>
+              </div>
+              {selectedApp.html_url && (
+                <div>
+                  <Typography variant="subtitle2" color="textSecondary">HTML URL</Typography>
+                  <Typography>
+                    <a 
+                      href={selectedApp.html_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline"
+                    >
+                      {selectedApp.html_url}
+                    </a>
+                  </Typography>
+                </div>
+              )}
+              {selectedApp.external_url && (
+                <div>
+                  <Typography variant="subtitle2" color="textSecondary">External URL</Typography>
+                  <Typography>{selectedApp.external_url}</Typography>
+                </div>
+              )}
+              {selectedApp.created_at && (
+                <div>
+                  <Typography variant="subtitle2" color="textSecondary">Created At</Typography>
+                  <Typography>
+                    {new Date(selectedApp.created_at).toLocaleString()}
+                  </Typography>
+                </div>
+              )}
+              {selectedApp.description && (
+                <div>
+                  <Typography variant="subtitle2" color="textSecondary">Description</Typography>
+                  <Typography>{selectedApp.description}</Typography>
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </Box>
+    </Modal>
+  );
 
   if (loading) return <Typography>Loading...</Typography>;
-  if (error) return <Typography color="error">{error}</Typography>;
 
   return (
     <div className="flex flex-col lg:ml-64 p-4 bg-gray-100 min-h-screen">
-      <AppBar position="static" color="default" className="mb-4">
-        <Toolbar>
-          <Tabs value={tabValue} onChange={handleTabChange} aria-label="settings tabs">
-            <Tab label="Git Account" />
-            <Tab label="Container/OCI Registry" />
-          </Tabs>
-        </Toolbar>
-      </AppBar>
-      <div className="flex justify-between items-center mb-4">
-        <Typography variant="h4" className="mb-6">Git Accounts</Typography>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={handleOpenGitModal}
-          className="mb-4"
-        >
-          Add Account
-        </Button>
-      </div>
-      <Card>
-        <CardContent>
-          <Typography variant="h5" className="mb-4">User Details</Typography>
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Username</TableCell>
-                  <TableCell>Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {users.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>{user.username}</TableCell>
-                    <TableCell>
-                      <IconButton
-                        onClick={() => handleOpenConfirmModal(user)}
-                        className="text-red-500 hover:text-red-600"
-                      >
-                        <FontAwesomeIcon icon={faTrash} />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </CardContent>
-      </Card>
+      <Typography variant="h4" className="mb-6">Git Integration</Typography>
+      
+      <Box sx={{ width: '100%', mb: 4 }}>
+        <Tabs value={tabValue} onChange={handleTabChange}>
+          <Tab label="GitHub App" />
+          <Tab label="Container/OCI Registry" />
+        </Tabs>
+      </Box>
+
+      {tabValue === 0 && (
+        <div className="space-y-6">
+          <Card>
+            <CardContent>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <Typography variant="h6" className="mb-2">GitHub Apps</Typography>
+                  <Typography variant="body2" color="textSecondary">
+                    Manage your GitHub Apps and their configurations
+                  </Typography>
+                </div>
+                <div className="space-x-2">
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={handleCreateGitHubApp}
+                    startIcon={<GitHubIcon />}
+                  >
+                    Create GitHub App
+                  </Button>
+                </div>
+              </div>
+
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>App Name</TableCell>
+                      <TableCell>App ID</TableCell>
+                      <TableCell>Owner</TableCell>
+                      <TableCell>Created At</TableCell>
+                      <TableCell>Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {apps.map((app) => (
+                      <TableRow key={app.ID}>
+                        <TableCell>{app.name}</TableCell>
+                        <TableCell>{app.app_id}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center space-x-2">
+                            <img 
+                              src={app.owner.avatar_url} 
+                              alt={app.owner.login}
+                              className="w-6 h-6 rounded-full"
+                            />
+                            <span>{app.owner.login}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {new Date(app.created_at).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            onClick={() => handleViewAppDetails(app.app_id)}
+                            color="primary"
+                            startIcon={<OpenInNewIcon />}
+                          >
+                            View Details
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      <AppDetailsModal />
+
       <Modal
-        open={isGitModalOpen}
-        onClose={handleCloseGitModal}
-        aria-labelledby="simple-modal-title"
-        aria-describedby="simple-modal-description"
+        open={isCreateAppOpen}
+        onClose={handleCloseCreateApp}
+        aria-labelledby="create-github-app-modal"
       >
-        <Box className="absolute ">
-          <GitDetailsForm
-            onSubmit={handleSaveGitDetails}
-            onClose={handleCloseGitModal}
-            errorMessage={gitErrorMessage} // Pass the error message as a prop to GitDetailsForm
-          />
-        </Box>
-      </Modal>
-      <Modal
-        open={isConfirmModalOpen}
-        onClose={handleCloseConfirmModal}
-        aria-labelledby="confirm-modal-title"
-        aria-describedby="confirm-modal-description"
-      >
-        <Box className="absolute top-1/4 left-1/4 w-1/2 bg-white p-4 rounded shadow-lg">
-          <Typography variant="h6" id="confirm-modal-title" className="mb-4">Confirm Delete</Typography>
-          <Typography id="confirm-modal-description" className="mb-4">
-            Are you sure you want to delete this user?
-          </Typography>
-          <div className="flex justify-end space-x-2">
-            <Button variant="contained" style={{ backgroundColor: 'grey', color: 'white' }} onClick={handleCloseConfirmModal}>
-              Cancel
-            </Button>
-            <Button variant="contained" color="primary" onClick={handleDeleteUser}>
-              Confirm
-            </Button>
+        <Box className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] bg-white p-6 rounded-lg shadow-xl max-h-[90vh] overflow-y-auto">
+          <div className="flex justify-between items-center mb-4">
+            <Typography variant="h6">Create GitHub App</Typography>
+            <IconButton onClick={handleCloseCreateApp} size="small">
+              ✕
+            </IconButton>
           </div>
+          <Divider className="mb-4" />
+          <GitHubAppRegistration onSuccess={handleCloseCreateApp} />
         </Box>
       </Modal>
     </div>

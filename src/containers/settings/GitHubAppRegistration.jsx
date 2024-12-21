@@ -1,70 +1,60 @@
 import React from 'react';
-import { Button, Typography, Container, Box } from '@mui/material';
 import { useHistory } from 'react-router-dom';
+import GitHubIcon from '@mui/icons-material/GitHub';
+import { GITHUB_APP_CREATION_URL, GITHUB_STATE_PARAM } from '../../config/github.config';
+import { createGitHubManifest } from '../../utils/github.utils';
 
 const GitHubAppRegistration = () => {
-    const history = useHistory();
+  const history = useHistory();
 
-    const manifest = {
-        name: "amitoo73",
-        url: "http://localhost:3000",
-        hook_attributes: {
-            url: "https://d83a-122-161-243-162.ngrok-free.app/api/user/github/ws",
-            active: true
-        },
-        redirect_url: "https://d83a-122-161-243-162.ngrok-free.app/api/user/github-setup",
-        callback_urls: ["http://localhost:3000"],
-        public: false,
-        request_oauth_on_install: false,
-        setup_url: "http://localhost:3000/github-source",
-        setup_on_update: true,
-        default_permissions: {
-            contents: "read",
-            metadata: "read",
-            emails: "read",
-            administration: "read",
-            pull_requests: "write"
-        },
-        default_events: ["pull_request", "push"]
-    };
+  const handleFormSubmit = (e) => {
+    e.preventDefault();
+    
+    const manifest = createGitHubManifest();
+    
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `${GITHUB_APP_CREATION_URL}?state=${GITHUB_STATE_PARAM}`;
 
-    const handleFormSubmit = (e) => {
-        e.preventDefault();
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'manifest';
+    input.value = JSON.stringify(manifest);
 
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = 'https://github.com/settings/apps/new?state=r4c8804';
+    form.appendChild(input);
+    document.body.appendChild(form);
+    form.submit();
+  };
 
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'manifest';
-        input.value = JSON.stringify(manifest);
-
-        form.appendChild(input);
-        document.body.appendChild(form);
-        form.submit();
-    };
-
-    return (
-        <Container maxWidth="sm">
-            <Box my={4}>
-                <Typography variant="h4" gutterBottom>
-                    Create GitHub App
-                </Typography>
-                <Typography variant="body1" gutterBottom>
-                    Click the button below to set up your GitHub App with the specified manifest.
-                </Typography>
-                <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={handleFormSubmit}
-                    className="App-link"
-                >
-                    Set up GitHub App
-                </Button>
-            </Box>
-        </Container>
-    );
+  return (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        <div>
+          <div className="mx-auto h-12 w-12 text-gray-700">
+            <GitHubIcon className="w-full h-full" />
+          </div>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+            Create GitHub App
+          </h2>
+          <p className="mt-2 text-center text-sm text-gray-600">
+            Set up your GitHub App with the specified manifest
+          </p>
+        </div>
+        <div className="mt-8">
+          <button
+            onClick={handleFormSubmit}
+            className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-200"
+          >
+            <span className="absolute left-0 inset-y-0 flex items-center pl-3">
+              <GitHubIcon className="h-5 w-5 text-indigo-300 group-hover:text-indigo-200" />
+            </span>
+            Set up GitHub App
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default GitHubAppRegistration;
+

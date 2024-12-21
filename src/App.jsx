@@ -31,11 +31,15 @@ import AppConfigurationPage from "./containers/apps/AppConfigurationPage";
 // Cluster Pages
 import ClusterPage from "./pages/ClusterPage";
 
+// Service Pages
+import { ServicesPage } from "./pages/ServicesPage";
+
 // Settings Pages
 import SettingsPage from "./containers/settings/SettingsPage";
 import GitUserPage from "./containers/settings/GitUserPage";
 import ContainerRegistryPage from "./containers/settings/ContainerRegistryPage";
-import GitHubAppRegistration from "./containers/settings/GitHubAppRegistration";
+import GitHubCallBack from "./containers/settings/GitHubCallBack";
+import GitHubAppDetails from "./containers/settings/GitHubAppDetails";
 
 // User Pages
 import UserProfilePage from "./containers/user/UserProfilePage";
@@ -72,13 +76,16 @@ const App = () => {
               <Route exact path={APP_ROUTES.SETTINGS.ROOT} component={SettingsPage} />
               <Route exact path={APP_ROUTES.SETTINGS.GIT_ACCOUNT} component={GitUserPage} />
               <Route exact path={APP_ROUTES.SETTINGS.CONTAINER_REGISTRY} component={ContainerRegistryPage} />
-              <Route exact path="/github-source" component={GitHubAppRegistration} />
-              
+              <Route exact path="/github-source" component={GitHubCallBack} />
+              <Route exact path="/github-callback" component={GitHubCallBack} />
+              <Route exact path="/settings/github-app/:appId" component={GitHubAppDetails} />
+
               <Route exact path="/user-profile" component={UserProfilePage} />
               <Route path="/project/:projectId/apps" component={ProjectDetailPage} />
               
               {/* Cluster Routes */}
               <PrivateRoute exact path="/cluster" component={ClusterPage} />
+              <PrivateRoute exact path="/services" component={ServicesPage} />
               <Route path="*" component={NotFoundPage} />
 
               

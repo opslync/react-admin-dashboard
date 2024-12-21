@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import { Sidebar } from "primereact/sidebar";
 import { useDispatch, useSelector } from "react-redux";
 import { closeSideBar, openSideBar } from "../library/store/sidebar";
@@ -56,33 +56,46 @@ const menus = [
         name: "Settings",
         route: "/settings/git-account",
         icon: <SettingsIcon />,
-        description: "Configure system settings"
+        description: "Configure system settings",
+        matchRoutes: ["/settings/git-account", "/settings/container-oci-registry", "/github-source", "/github-callback"]
       },
     ]
   }
 ];
 
-const MenuSection = ({ category, items }) => (
-  <div className="mb-6">
-    <Typography variant="caption" className="text-gray-400 px-4 uppercase font-semibold tracking-wider">
-      {category}
-    </Typography>
-    {items.map((item, index) => (
-      <Tooltip key={index} title={item.description} placement="right">
-        <NavLink
-          to={item.route}
-          className="flex items-center py-2.5 px-4 mt-1 hover:bg-gray-700 rounded-lg transition-all duration-200"
-          activeClassName="bg-blue-600 hover:bg-blue-700 shadow-lg"
-        >
-          <span className="text-gray-400 group-hover:text-white">
-            {item.icon}
-          </span>
-          <span className="ml-3 text-sm font-medium">{item.name}</span>
-        </NavLink>
-      </Tooltip>
-    ))}
-  </div>
-);
+const MenuSection = ({ category, items }) => {
+  const location = useLocation();
+
+  const isRouteActive = (item) => {
+    if (item.matchRoutes) {
+      return item.matchRoutes.some(route => location.pathname.startsWith(route));
+    }
+    return location.pathname.startsWith(item.route);
+  };
+
+  return (
+    <div className="mb-6">
+      <Typography variant="caption" className="text-gray-400 px-4 uppercase font-semibold tracking-wider">
+        {category}
+      </Typography>
+      {items.map((item, index) => (
+        <Tooltip key={index} title={item.description} placement="right">
+          <NavLink
+            to={item.route}
+            className="flex items-center py-2.5 px-4 mt-1 hover:bg-gray-700 rounded-lg transition-all duration-200"
+            isActive={() => isRouteActive(item)}
+            activeClassName="bg-blue-600 hover:bg-blue-700 shadow-lg"
+          >
+            <span className="text-gray-400 group-hover:text-white">
+              {item.icon}
+            </span>
+            <span className="ml-3 text-sm font-medium">{item.name}</span>
+          </NavLink>
+        </Tooltip>
+      ))}
+    </div>
+  );
+};
 
 export default function SideBar() {
   const [drawerVisible, setDrawerVisible] = useState(false);
