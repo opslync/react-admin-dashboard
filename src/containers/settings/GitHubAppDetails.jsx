@@ -18,10 +18,16 @@ import {
   DialogContent,
   DialogActions,
   DialogContentText,
+  IconButton,
+  TextField,
+  InputAdornment,
 } from '@mui/material';
 import GitHubIcon from '@mui/icons-material/GitHub';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DeleteIcon from '@mui/icons-material/Delete';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { API_BASE_URL } from '../../library/constant';
 
 const GitHubAppDetails = () => {
@@ -33,6 +39,9 @@ const GitHubAppDetails = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [confirmAppName, setConfirmAppName] = useState('');
+  const [token, setToken] = useState(localStorage.getItem('github_token') || '');
+  const [showToken, setShowToken] = useState(false);
+  const [generatingToken, setGeneratingToken] = useState(false);
 
   const fetchAppDetails = async () => {
     try {
@@ -91,6 +100,35 @@ const GitHubAppDetails = () => {
   const handleCloseDialog = () => {
     setDeleteDialogOpen(false);
     setConfirmAppName('');
+  };
+
+  const handleGenerateToken = async () => {
+    setGeneratingToken(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}user/github/token?app_id=${appId}`, {
+        method: 'GET',
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.token) {
+          setToken(result.token);
+          localStorage.setItem('github_token', result.token);
+        }
+      }
+    } catch (error) {
+      console.error('Error generating token:', error);
+    } finally {
+      setGeneratingToken(false);
+    }
+  };
+
+  const handleCopyToken = () => {
+    navigator.clipboard.writeText(token);
+  };
+
+  const handleToggleTokenVisibility = () => {
+    setShowToken(!showToken);
   };
 
   if (loading) return <Typography>Loading...</Typography>;
@@ -176,6 +214,49 @@ const GitHubAppDetails = () => {
               <Typography variant="subtitle2" color="textSecondary">Installation ID</Typography>
               <Typography>{app.installation_id || 'Not installed'}</Typography>
             </div>
+            {app.installation_id && (
+              <div className="mt-4">
+                <div className="flex justify-between items-center mb-2">
+                  <Typography variant="subtitle2" color="textSecondary">Access Token</Typography>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={handleGenerateToken}
+                    disabled={generatingToken}
+                  >
+                    {generatingToken ? 'Generating...' : 'Generate Token'}
+                  </Button>
+                </div>
+                {token && (
+                  <TextField
+                    fullWidth
+                    variant="outlined"
+                    size="small"
+                    value={token}
+                    type={showToken ? 'text' : 'password'}
+                    InputProps={{
+                      readOnly: true,
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            onClick={handleToggleTokenVisibility}
+                            edge="end"
+                          >
+                            {showToken ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                          </IconButton>
+                          <IconButton
+                            onClick={handleCopyToken}
+                            edge="end"
+                          >
+                            <ContentCopyIcon />
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
 
