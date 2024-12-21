@@ -2,36 +2,41 @@ import React, { useState, useEffect } from 'react';
 import GitHubIcon from '@mui/icons-material/GitHub';
 import { API_BASE_URL } from '../../config/github.config';
 
-const InstallGitHubApp = () => {
-  const [installations, setInstallations] = useState([]);
+const InstallGitHubApp = ({ appId }) => {
+  const [app, setApp] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchInstallations();
-  }, []);
+    fetchAppDetails();
+  }, [appId]);
 
-  const fetchInstallations = async () => {
+  const fetchAppDetails = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/user/github/installations`, {
+      const response = await fetch(`${API_BASE_URL}user/github/apps/${appId}`, {
         method: 'GET',
-        credentials: 'include'
       });
       
       if (response.ok) {
-        const data = await response.json();
-        setInstallations(data);
+        const result = await response.json();
+        if (result.success && result.data) {
+          setApp(result.data);
+        }
       }
     } catch (error) {
-      console.error('Error fetching installations:', error);
+      console.error('Error fetching app details:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const handleInstall = () => {
-    // Redirect to GitHub app installation page
-    window.location.href = 'https://github.com/apps/amitoo73/installations/new';
+    if (app && app.name) {
+      window.location.href = `https://github.com/apps/${app.name}/installations/new`;
+    }
   };
+
+  if (loading) return <div>Loading...</div>;
+  if (!app) return <div>App not found</div>;
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -47,22 +52,6 @@ const InstallGitHubApp = () => {
             Install the app to your GitHub account to start using it
           </p>
         </div>
-
-        {loading ? (
-          <div className="text-center">Loading installations...</div>
-        ) : installations.length > 0 ? (
-          <div className="bg-white shadow rounded-lg p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Current Installations</h3>
-            <ul className="space-y-3">
-              {installations.map((installation) => (
-                <li key={installation.id} className="flex items-center justify-between">
-                  <span>{installation.account.login}</span>
-                  <span className="text-sm text-green-600">Installed</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
 
         <button
           onClick={handleInstall}

@@ -17,8 +17,17 @@ const GitHubCallback = () => {
         code: searchParams.get('code') || undefined,
         state: searchParams.get('state') || undefined,
         error: searchParams.get('error') || undefined,
-        error_description: searchParams.get('error_description') || undefined
+        error_description: searchParams.get('error_description') || undefined,
+        installation_id: searchParams.get('installation_id') || undefined
       };
+
+      if (params.installation_id) {
+        if (params.state) {
+          window.location.href = decodeURIComponent(params.state);
+          window.location.reload();
+          return;
+        }
+      }
 
       if (params.error || !params.code) {
         setStatus('error');

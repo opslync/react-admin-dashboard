@@ -13,9 +13,15 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  DialogContentText,
 } from '@mui/material';
 import GitHubIcon from '@mui/icons-material/GitHub';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { API_BASE_URL } from '../../library/constant';
 
 const GitHubAppDetails = () => {
@@ -24,6 +30,9 @@ const GitHubAppDetails = () => {
   const [app, setApp] = useState(null);
   const [installations, setInstallations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [confirmAppName, setConfirmAppName] = useState('');
 
   const fetchAppDetails = async () => {
     try {
@@ -49,11 +58,39 @@ const GitHubAppDetails = () => {
   }, [appId]);
 
   const handleInstallApp = () => {
-    window.location.href = 'https://github.com/apps/amitoo73/installations/new';
+    if (app && app.name) {
+      const returnUrl = `${window.location.origin}/settings/git-account`;
+      window.location.href = `https://github.com/apps/${app.name}/installations/new?state=${encodeURIComponent(returnUrl)}`;
+    }
   };
 
   const handleBack = () => {
     history.push('/settings/git-account');
+  };
+
+  const handleDeleteApp = async () => {
+    setDeleteLoading(true);
+    try {
+      const response = await fetch(`${API_BASE_URL}user/github/app/${appId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        history.push('/settings/git-account');
+      } else {
+        console.error('Failed to delete app');
+      }
+    } catch (error) {
+      console.error('Error deleting app:', error);
+    } finally {
+      setDeleteLoading(false);
+      setDeleteDialogOpen(false);
+    }
+  };
+
+  const handleCloseDialog = () => {
+    setDeleteDialogOpen(false);
+    setConfirmAppName('');
   };
 
   if (loading) return <Typography>Loading...</Typography>;
@@ -61,15 +98,25 @@ const GitHubAppDetails = () => {
 
   return (
     <div className="flex flex-col lg:ml-64 p-4 bg-gray-100 min-h-screen">
-      <div className="flex items-center mb-6">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center">
+          <Button
+            startIcon={<ArrowBackIcon />}
+            onClick={handleBack}
+            className="mr-4"
+          >
+            Back
+          </Button>
+          <Typography variant="h4">GitHub App Details</Typography>
+        </div>
         <Button
-          startIcon={<ArrowBackIcon />}
-          onClick={handleBack}
-          className="mr-4"
+          variant="outlined"
+          color="error"
+          startIcon={<DeleteIcon />}
+          onClick={() => setDeleteDialogOpen(true)}
         >
-          Back
+          Delete App
         </Button>
-        <Typography variant="h4">GitHub App Details</Typography>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -169,6 +216,47 @@ const GitHubAppDetails = () => {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleCloseDialog}
+      >
+        <DialogTitle>Delete GitHub App "{app.name}"</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete the GitHub App "{app.name}"? This action cannot be undone and will remove all associated configurations.
+            <Box mt={2}>
+              <Typography variant="subtitle2" color="error">
+                Type the app name "{app.name}" to confirm deletion
+              </Typography>
+            </Box>
+            <Box mt={1}>
+              <input
+                type="text"
+                className="w-full p-2 border rounded mt-1"
+                placeholder={`Type ${app.name} to confirm`}
+                onChange={(e) => setConfirmAppName(e.target.value)}
+              />
+            </Box>
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={handleCloseDialog}
+            disabled={deleteLoading}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleDeleteApp}
+            color="error"
+            variant="contained"
+            disabled={deleteLoading || confirmAppName !== app.name}
+          >
+            {deleteLoading ? 'Deleting...' : 'Delete'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 };
