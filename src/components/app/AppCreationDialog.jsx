@@ -1,39 +1,72 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Button } from "../ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
-import { useHistory } from 'react-router-dom';
-import { getMethod, postMethod } from '../../library/api';
-import { listProject } from '../../library/constant';
+import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { X } from 'lucide-react';
+import { postMethod, getMethod } from "../../library/api";
+import { listProject } from "../../library/constant";
+import { ChevronDown } from 'lucide-react';
 
 export const AppCreationDialog = ({ open, onOpenChange, onAppCreated }) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [repoUrl, setRepoUrl] = useState('');
   const [selectedProject, setSelectedProject] = useState('');
-  const [selectedGitAccount, setSelectedGitAccount] = useState('github-public');
-  const [selectedRegistry, setSelectedRegistry] = useState('docker-hub');
-  const [port, setPort] = useState('');
+  const [repoType, setRepoType] = useState('public');
+  const [repoUrl, setRepoUrl] = useState('');
+  const [selectedRepo, setSelectedRepo] = useState('');
+  
   const [projects, setProjects] = useState([]);
+  const [privateRepos, setPrivateRepos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const history = useHistory();
 
   useEffect(() => {
-    const fetchProjects = async () => {
-      try {
-        const response = await getMethod(listProject);
-        setProjects(response.data);
-      } catch (err) {
-        console.error('Failed to fetch projects:', err);
-      }
-    };
-
     fetchProjects();
   }, []);
+
+  useEffect(() => {
+    if (repoType === 'private') {
+      fetchPrivateRepos();
+    }
+  }, [repoType]);
+
+  const fetchProjects = async () => {
+    try {
+      const response = await getMethod(listProject);
+      setProjects(response.data);
+    } catch (err) {
+      setError('Failed to fetch projects');
+      console.error('Failed to fetch projects:', err);
+    }
+  };
+
+  const fetchPrivateRepos = async () => {
+    try {
+      const token = localStorage.getItem('github_token');
+      if (!token) {
+        setError('GitHub token not found. Please add your token first.');
+        return;
+      }
+
+      const response = await postMethod('github/projectlist', { github_token: token });
+      console.log('Repository response:', response);
+      
+      if (Array.isArray(response.data)) {
+        setPrivateRepos(response.data);
+        setError(null);
+      } else {
+        setPrivateRepos([]);
+        setError('No repositories found');
+      }
+    } catch (err) {
+      console.error('Failed to fetch repositories:', err);
+      setError('Failed to fetch repositories. Please check your GitHub token.');
+      setPrivateRepos([]);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -41,16 +74,18 @@ export const AppCreationDialog = ({ open, onOpenChange, onAppCreated }) => {
     setError(null);
 
     try {
-      const response = await postMethod('apps', {
+      const finalRepoUrl = repoType === 'private' 
+        ? `https://github.com/${selectedRepo}.git`
+        : repoUrl;
+
+      const payload = {
         name,
         description,
-        repoUrl,
         projectId: selectedProject,
-        gitAccount: selectedGitAccount,
-        containerRegistry: selectedRegistry,
-        port: parseInt(port, 10)
-      });
+        repoUrl: finalRepoUrl
+      };
 
+      await axios postMethod('app/create', payload);
       onAppCreated();
       onOpenChange(false);
     } catch (err) {
@@ -62,7 +97,7 @@ export const AppCreationDialog = ({ open, onOpenChange, onAppCreated }) => {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-white p-0 gap-0 shadow-lg border-0">
+      <DialogContent className="bg-white p-0 gap-0 shadow-lg border-0" closeButton={false}>
         <div className="flex justify-between items-center p-6 border-b">
           <DialogTitle className="text-xl font-semibold">Create New App</DialogTitle>
           <Button 
@@ -77,91 +112,96 @@ export const AppCreationDialog = ({ open, onOpenChange, onAppCreated }) => {
         
         <form onSubmit={handleSubmit} className="space-y-5 p-6">
           <div className="space-y-2">
-            <Label htmlFor="name" className="text-sm font-medium">
-              App Name
-            </Label>
+            <Label htmlFor="name">App Name</Label>
             <Input
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="h-10 border-gray-200"
               placeholder="Enter app name"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description" className="text-sm font-medium">
-              Description
-            </Label>
+            <Label htmlFor="description">Description</Label>
             <Input
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="h-10 border-gray-200"
               placeholder="Enter app description"
               required
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="project" className="text-sm font-medium">
-              Project
-            </Label>
-            <Select
+            <Label htmlFor="project">Project</Label>
+            <select
+              id="project"
               value={selectedProject}
-              onValueChange={setSelectedProject}
+              onChange={(e) => setSelectedProject(e.target.value)}
+              className="w-full h-10 px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-950"
               required
             >
-              <SelectTrigger className="h-10 border-gray-200">
-                <SelectValue placeholder="Select a project" />
-              </SelectTrigger>
-              <SelectContent>
-                {projects.map((project) => (
-                  <SelectItem 
-                    key={project.id} 
-                    value={project.id}
-                    className="hover:bg-gray-100"
-                  >
-                    {project.name}
-                  </SelectItem>
+              <option value="" disabled>Select a project</option>
+              {projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Git Repository Type</Label>
+            <RadioGroup
+              value={repoType}
+              onValueChange={setRepoType}
+              className="flex space-x-4"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="public" id="public" />
+                <Label htmlFor="public">Public Repository</Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="private" id="private" />
+                <Label htmlFor="private">Private Repository</Label>
+              </div>
+            </RadioGroup>
+          </div>
+
+          {repoType === 'public' ? (
+            <div className="space-y-2">
+              <Label htmlFor="repoUrl">Repository URL</Label>
+              <Input
+                id="repoUrl"
+                value={repoUrl}
+                onChange={(e) => setRepoUrl(e.target.value)}
+                placeholder="https://github.com/user/repo.git"
+                required
+              />
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <Label htmlFor="privateRepo">Select Repository</Label>
+              <select
+                id="privateRepo"
+                value={selectedRepo}
+                onChange={(e) => setSelectedRepo(e.target.value)}
+                className="w-full h-10 px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-950"
+                required
+              >
+                <option value="" disabled>Select a repository</option>
+                {privateRepos.map((repoName, index) => (
+                  <option key={index} value={repoName}>
+                    {repoName}
+                  </option>
                 ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="repoUrl" className="text-sm font-medium">
-              Repository URL
-            </Label>
-            <Input
-              id="repoUrl"
-              value={repoUrl}
-              onChange={(e) => setRepoUrl(e.target.value)}
-              className="h-10 border-gray-200"
-              placeholder="https://github.com/user/repo.git"
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="port" className="text-sm font-medium">
-              Port
-            </Label>
-            <Input
-              id="port"
-              type="number"
-              value={port}
-              onChange={(e) => setPort(e.target.value)}
-              className="h-10 border-gray-200"
-              placeholder="Enter port number"
-              required
-            />
-          </div>
-
-          {error && (
-            <div className="text-red-500 text-sm bg-red-50 p-3 rounded">
-              {error}
+              </select>
+              {error && (
+                <div className="text-sm text-red-500 mt-1">
+                  {error}
+                </div>
+              )}
             </div>
           )}
 
@@ -170,14 +210,13 @@ export const AppCreationDialog = ({ open, onOpenChange, onAppCreated }) => {
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="px-4 h-10"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={loading}
-              className="px-4 h-10 bg-blue-600 hover:bg-blue-700"
+              className="bg-blue-600 hover:bg-blue-700 text-white"
             >
               {loading ? 'Creating...' : 'Create'}
             </Button>
