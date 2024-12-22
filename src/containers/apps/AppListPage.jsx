@@ -1,42 +1,36 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getMethod, postMethod, deleteMethod } from "../../library/api";
-import SetupAppForm from '../../components/SetupAppForm'; // Adjust the import path as needed
-import ConfirmModal from '../../components/ConfirmModal';
-import { appCreate, listApps } from '../../library/constant';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTrash } from '@fortawesome/free-solid-svg-icons';
-import { Card, CardContent, CardActions, Typography, Button, IconButton, CircularProgress, Grid, Modal, Box, Tooltip } from '@mui/material';
+import { AppHeader } from '../../components/app/AppHeader';
+import { AppFilters } from '../../components/app/AppFilters';
+import { AppGrid } from '../../components/app/AppGrid';
+import { AppCreationDialog } from '../../components/app/AppCreationDialog';
+import { getMethod } from '../../library/api';
+import { listApps } from '../../library/constant';
 
-const AppPage = () => {
-  const [isSetupModalOpen, setIsSetupModalOpen] = useState(false);
-  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-  const [setupErrorMessage, setSetupErrorMessage] = useState('');
+const AppListPage = () => {
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [apps, setApps] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [appIdToDelete, setAppIdToDelete] = useState(null);
-  const [isDeleting, setIsDeleting] = useState(false); // State to manage delete spinner
+  const [filters, setFilters] = useState({
+    search: '',
+    status: 'all',
+    project: 'all'
+  });
 
-  // Fetch the list of apps from the API
   const fetchApps = async () => {
     try {
       const response = await getMethod(listApps);
       const mappedApps = response.data.map(app => ({
         id: app.ID,
         name: app.name,
-        description: app.description,
-        repoUrl: app.repoUrl,
-        projectId: app.projectId,
-        createdAt: app.CreatedAt,
-        updatedAt: app.UpdatedAt,
-        deletedAt: app.DeletedAt
+        repository: app.repoUrl,
+        status: app.status || 'unknown',
+        project: app.projectId || 'Development'
       }));
-      console.log('App Setup:', response);
       setApps(mappedApps);
       setLoading(false);
     } catch (err) {
-      setError('Failed to fetch apps. Please try again.');
+      console.error('Failed to fetch apps:', err);
       setLoading(false);
     }
   };
@@ -45,154 +39,52 @@ const AppPage = () => {
     fetchApps();
   }, []);
 
-  const handleOpenSetupModal = () => {
-    setIsSetupModalOpen(true);
+  const handleFilterChange = (filterType, value) => {
+    setFilters(prev => ({
+      ...prev,
+      [filterType]: value
+    }));
   };
 
-  const handleCloseSetupModal = () => {
-    setIsSetupModalOpen(false);
-  };
+  const filteredApps = apps.filter(app => {
+    const matchesSearch = app.name.toLowerCase().includes(filters.search.toLowerCase()) ||
+                         app.repository.toLowerCase().includes(filters.search.toLowerCase());
+    const matchesStatus = filters.status === 'all' || app.status === filters.status;
+    const matchesProject = filters.project === 'all' || app.project.toLowerCase() === filters.project.toLowerCase();
+    
+    return matchesSearch && matchesStatus && matchesProject;
+  });
 
-  const handleSetupApp = async (data) => {
-    console.log('App Data to Save:', data);
-    try {
-      const response = await postMethod(appCreate, data);
-      const newApp = {
-        id: response.ID,
-        name: response.name,
-        description: response.description,
-        repoUrl: response.repoUrl,
-        projectId: response.projectId,
-        createdAt: response.CreatedAt,
-        updatedAt: response.UpdatedAt,
-        deletedAt: response.DeletedAt
-      };
-      setApps([...apps, newApp]);
-      console.log('App Setup:', response);
-      handleCloseSetupModal();
-      fetchApps();
-    } catch (error) {
-      console.error('Failed to setup app:', error);
-      setError('Failed to setup app. Please try again.');
-    }
-  };
-
-  const handleOpenConfirmModal = (appId) => {
-    console.log('Opening confirm modal for app ID:', appId); // Debugging step
-    setAppIdToDelete(appId);
-    setIsConfirmModalOpen(true);
-  };
-
-  const handleCloseConfirmModal = () => {
-    setIsConfirmModalOpen(false);
-    setAppIdToDelete(null);
-  };
-
-  const handleDeleteApp = async () => {
-    setIsDeleting(true);
-    try {
-      if (appIdToDelete) {
-        await deleteMethod(`app/${appIdToDelete}`);
-        setApps(apps.filter(app => app.id !== appIdToDelete)); // Remove the app from the list
-        handleCloseConfirmModal();
-      } else {
-        console.error('No app ID to delete.');
-      }
-    } catch (error) {
-      console.error('Failed to delete app:', error);
-      setError('Failed to delete app. Please try again.');
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const projectAppCount = apps.reduce((acc, app) => {
-    acc[app.projectId] = (acc[app.projectId] || 0) + 1;
-    return acc;
-  }, {});
-
-  const canSetupApp = (projectId) => {
-    if (projectId === undefined) return true;
-    return projectAppCount[projectId] < 2;
+  const handleViewDetails = (appId) => {
+    return `/app/${appId}/details`;
   };
 
   return (
-    <div className="flex flex-col lg:ml-64 p-4 relative min-h-screen bg-gray-100">
-      <div className="flex justify-between items-center mb-4">
-        <Typography variant="h4" className="mb-4">Apps</Typography>
-        <Tooltip title={!canSetupApp(apps[0]?.projectId) ? 'You can only create two apps per project.' : ''}>
-          <span>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleOpenSetupModal}
-              className="absolute top-4 right-4"
-              disabled={!canSetupApp(apps[0]?.projectId) && apps.length > 0} // Disable if the project already has 2 apps and there are apps present
-            >
-              + Setup App
-            </Button>
-          </span>
-        </Tooltip>
+    <div className="ml-64 flex-1 p-8">
+      <div className="max-w-7xl mx-auto">
+        <AppHeader onCreateApp={() => setIsCreateDialogOpen(true)} />
+        <AppFilters 
+          onFilterChange={handleFilterChange} 
+          filters={filters}
+          loading={loading}
+        />
+        <AppGrid 
+          apps={filteredApps} 
+          loading={loading}
+          onViewDetails={handleViewDetails}
+          LinkComponent={Link}
+        />
+        
+        {isCreateDialogOpen && (
+          <AppCreationDialog 
+            open={isCreateDialogOpen}
+            onOpenChange={setIsCreateDialogOpen}
+            onAppCreated={fetchApps}
+          />
+        )}
       </div>
-
-      {loading ? (
-        <div className="flex justify-center items-center h-full">
-          <CircularProgress />
-        </div>
-      ) : error ? (
-        <Typography color="error">{error}</Typography>
-      ) : (
-        <Grid container spacing={3}>
-          {apps.map((app) => (
-            <Grid item xs={12} sm={6} md={4} key={app.id}>
-              <Card className="relative">
-                <CardContent>
-                  <Typography variant="h6" component={Link} to={`/app/${app.id}/details`} className="text-xl font-semibold mb-2 hover:underline">
-                    {app.name}
-                  </Typography>
-                  <Typography>{app.description}</Typography>
-                </CardContent>
-                <CardActions>
-                  <IconButton
-                    onClick={() => handleOpenConfirmModal(app.id)}
-                    className="text-red-500 hover:text-red-600"
-                  >
-                    <FontAwesomeIcon icon={faTrash} />
-                  </IconButton>
-                </CardActions>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
-      )}
-
-      <Modal
-        open={isSetupModalOpen}
-        onClose={handleCloseSetupModal}
-        aria-labelledby="setup-app-modal-title"
-        aria-describedby="setup-app-modal-description"
-      >
-        <Box className="absolute flex">
-          <Typography variant="h6" id="setup-app-modal-title" className="mb-4">Setup App</Typography>
-          <SetupAppForm onSubmit={handleSetupApp} onClose={handleCloseSetupModal} />
-          {setupErrorMessage && <Typography color="error">{setupErrorMessage}</Typography>}
-        </Box>
-      </Modal>
-
-      <ConfirmModal
-        isOpen={isConfirmModalOpen}
-        onClose={handleCloseConfirmModal}
-        onConfirm={handleDeleteApp}
-        message="Are you sure you want to delete this app?"
-      />
-
-      {isDeleting && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-center items-center">
-          <CircularProgress color="secondary" />
-        </div>
-      )}
     </div>
   );
 };
 
-export default AppPage;
+export default AppListPage;
