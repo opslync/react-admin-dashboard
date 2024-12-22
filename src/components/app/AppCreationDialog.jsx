@@ -85,7 +85,7 @@ export const AppCreationDialog = ({ open, onOpenChange, onAppCreated }) => {
         repoUrl: finalRepoUrl
       };
 
-      await axios postMethod('app/create', payload);
+      await postMethod('app/create', payload);
       onAppCreated();
       onOpenChange(false);
     } catch (err) {
