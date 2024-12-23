@@ -29,6 +29,7 @@ const BuildDeployPage = () => {
     const [tags, setTags] = useState([]);
     const [selectedTag, setSelectedTag] = useState('');
     const [deployUrl, setDeployUrl] = useState('');
+    const [loadingBranches, setLoadingBranches] = useState(false);
     const ws = useRef(null);
 
     useEffect(() => {
@@ -49,23 +50,45 @@ const BuildDeployPage = () => {
     }, [appId]);
 
     useEffect(() => {
-        const fetchBranches = async () => {
+        const fetchBranches = async (username, repoName) => {
             try {
-                const repoUrlParts = app.repoUrl.split('/');
-                const username = repoUrlParts[repoUrlParts.length - 2];
-                const repoName = repoUrlParts[repoUrlParts.length - 1].replace('.git', '');
+                setLoadingBranches(true);
                 const response = await getMethod(`app/github/branch?username=${username}&repoName=${repoName}`);
-                setBranches(response.data);
-                setSelectedBranch(response.data[0]);
+                
+                if (response?.data?.status === 'success' && Array.isArray(response.data.data)) {
+                    const branchNames = response.data.data.map(branch => branch.name);
+                    
+                    const sortedBranches = branchNames.sort((a, b) => {
+                        const mainBranches = ['main', 'master'];
+                        if (mainBranches.includes(a) && !mainBranches.includes(b)) return -1;
+                        if (!mainBranches.includes(a) && mainBranches.includes(b)) return 1;
+                        return a.localeCompare(b);
+                    });
+
+                    setBranches(sortedBranches);
+                    
+                    const defaultBranch = sortedBranches.find(name => name === 'main' || name === 'master') || sortedBranches[0];
+                    if (defaultBranch) {
+                        setSelectedBranch(defaultBranch);
+                    }
+                } else {
+                    setBranches([]);
+                    setSelectedBranch('');
+                }
             } catch (err) {
-                setBranches(null);
-                setSelectedBranch(null);
-                setError('Failed to fetch branches. Please try again.');
+                console.error('Failed to fetch branches:', err);
+                setBranches([]);
+                setSelectedBranch('');
+            } finally {
+                setLoadingBranches(false);
             }
         };
 
         if (app) {
-            fetchBranches();
+            const repoUrlParts = app.repoUrl.split('/');
+            const username = repoUrlParts[repoUrlParts.length - 2];
+            const repoName = repoUrlParts[repoUrlParts.length - 1].replace('.git', '');
+            fetchBranches(username, repoName);
         }
     }, [app]);
 
@@ -256,9 +279,9 @@ const BuildDeployPage = () => {
                                     onChange={(e) => setSelectedBranch(e.target.value)}
                                     label="Branch"
                                 >
-                                    {branches.map((branch, index) => (
-                                        <MenuItem key={index} value={branch}>
-                                            {branch}
+                                    {Array.isArray(branches) && branches.map((branchName) => (
+                                        <MenuItem key={branchName} value={branchName}>
+                                            {branchName}
                                         </MenuItem>
                                     ))}
                                 </Select>
