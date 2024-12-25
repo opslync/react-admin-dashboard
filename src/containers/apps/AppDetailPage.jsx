@@ -368,7 +368,7 @@ const AppDetailPage = () => {
                       Branch <span className="text-red-500">*</span>
                     </Label>
                     <Select 
-                      value={selectedBranch}
+                      value={selectedBranch || "no-branch"}
                       onValueChange={(value) => {
                         setFormData(prev => ({ ...prev, branch: value }));
                         setSelectedBranch(value);
@@ -376,14 +376,18 @@ const AppDetailPage = () => {
                       disabled={true}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder={selectedBranch} />
+                        <SelectValue placeholder="Select branch" />
                       </SelectTrigger>
                       <SelectContent>
-                        {Array.isArray(branches) && branches.length > 0 && branches.map((branchName) => (
-                          <SelectItem key={branchName} value={branchName}>
-                            {branchName}
-                          </SelectItem>
-                        ))}
+                        {Array.isArray(branches) && branches.length > 0 ? (
+                          branches.map((branchName) => (
+                            <SelectItem key={branchName} value={branchName || "no-branch"}>
+                              {branchName || "No branch available"}
+                            </SelectItem>
+                          ))
+                        ) : (
+                          <SelectItem value="no-branch">No branch available</SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                   </div>

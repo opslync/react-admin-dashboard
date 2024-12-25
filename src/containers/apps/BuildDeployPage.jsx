@@ -3,10 +3,12 @@ import { useParams, useHistory, useLocation } from 'react-router-dom';
 import { WsbaseUrl } from '../../library/constant';
 import { getMethod, postMethod, putMethod } from '../../library/api';
 import {
-    AppBar, Tabs, Tab, Typography, Button, Box, Toolbar, CircularProgress, MenuItem, Select, FormControl, InputLabel, Card, CardContent
+    AppBar, Tabs, Tab, Typography, Button, Box, Toolbar, CircularProgress, MenuItem, Select, FormControl, InputLabel, Card, CardContent,
+    IconButton
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import LinkIcon from '@mui/icons-material/Link';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 const BuildDeployPage = () => {
     const { appId } = useParams();
@@ -192,7 +194,7 @@ const BuildDeployPage = () => {
     };
 
     const handleBack = () => {
-        history.goBack();
+        history.push('/apps');
     };
 
     const toggleLogs = () => {
@@ -251,6 +253,11 @@ const BuildDeployPage = () => {
 
     return (
         <div className="flex flex-col lg:ml-64 p-4 relative min-h-screen bg-gray-100">
+            <div className="flex items-center mb-4">
+                <IconButton onClick={handleBack} className="mr-2">
+                    <ArrowBackIcon />
+                </IconButton>
+            </div>
             <AppBar position="static" color="default" className="mb-4">
                 <Toolbar>
                     <Tabs value={tabValue} onChange={handleTabChange} aria-label="app detail tabs">

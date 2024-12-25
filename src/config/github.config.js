@@ -1,6 +1,6 @@
 export const APP_BASE_URL = process.env.REACT_APP_BASE_URL || 'http://localhost:3000';
 
-export const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://8bd3-122-161-242-25.ngrok-free.app';
+export const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://d3e5-122-161-243-227.ngrok-free.app';
 
 export const GITHUB_APP_CREATION_URL = 'https://github.com/settings/apps/new';
 

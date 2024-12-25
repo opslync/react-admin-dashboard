@@ -17,11 +17,13 @@ import {
   Tabs,
   Tab,
   Toolbar,
+  IconButton,
 } from '@mui/material';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { getMethod } from '../../library/api';
 import { useParams, Link, useHistory, useLocation } from 'react-router-dom';
 import { closeSideBar, openSideBar } from "../../store";
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 const DeploymentHistory = () => {
   const { appId } = useParams();
@@ -117,6 +119,11 @@ const DeploymentHistory = () => {
 
   return (
     <div className="flex flex-col lg:ml-64 p-4 bg-gray-100 min-h-screen">
+      <div className="flex items-center mb-4">
+        <IconButton onClick={() => history.push('/apps')} className="mr-2">
+          <ArrowBackIcon />
+        </IconButton>
+      </div>
       <AppBar position="static" color="default" className="mb-4">
         <Toolbar>
           <Tabs value={tabValue} onChange={handleTabChange} aria-label="deployment history tabs">
