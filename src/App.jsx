@@ -4,6 +4,7 @@ import { PrivateRoute } from "./components/common/PrivateRoute";
 import Layout from "./components/layout/Layout";
 import ToastManager from "./components/common/ToastManager";
 import { APP_ROUTES } from "./constants/routes";
+import WorkflowCanvas from "./components/workflow/WorkflowCanvas";
 
 // Auth Pages
 import LoginPage from "./containers/auth/LoginPage";
@@ -86,7 +87,10 @@ const App = () => {
               {/* Cluster Routes */}
               <PrivateRoute exact path="/cluster" component={ClusterPage} />
               <PrivateRoute exact path="/services" component={ServicesPage} />
+              {/* Workflow Routes */}
+              <Route exact path="/workflow" component={WorkflowCanvas} />
               <Route path="*" component={NotFoundPage} />
+
 
               
             </Switch>
