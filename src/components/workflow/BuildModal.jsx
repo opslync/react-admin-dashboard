@@ -1,9 +1,101 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Play, GitCommit } from 'lucide-react';
-import { mockCommits } from '../../data/mockCommits';
+import { postMethod, getMethod } from '../../library/api';
+import { useParams } from 'react-router-dom';
 
 export default function BuildModal({ onClose, onStartBuild }) {
-  const [selectedCommit, setSelectedCommit] = useState(mockCommits[0]);
+  const { appId } = useParams();
+  const [commits, setCommits] = useState([]);
+  const [selectedCommit, setSelectedCommit] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [appDetails, setAppDetails] = useState(null);
+
+  useEffect(() => {
+    fetchAppDetails();
+  }, [appId]);
+
+  const fetchAppDetails = async () => {
+    try {
+      const response = await getMethod(`app/${appId}`);
+      setAppDetails(response.data);
+      fetchCommits(response.data);
+    } catch (err) {
+      setError('Failed to fetch app details');
+      setLoading(false);
+    }
+  };
+
+  const fetchCommits = async (appData) => {
+    try {
+      const githubToken = localStorage.getItem('github_token');
+      if (!githubToken) {
+        setError('GitHub token not found. Please reconnect your GitHub account.');
+        setLoading(false);
+        return;
+      }
+
+      const repoUrl = appData.repoUrl.replace(/\.git$/, '');
+
+      const payload = {
+        github_token: githubToken,
+        repo_url: repoUrl,
+        branch: appData.branch || 'main'
+      };
+
+      const response = await postMethod('user/github/commits', payload);
+      setCommits(response.data);
+      setSelectedCommit(response.data[0]);
+      setLoading(false);
+    } catch (err) {
+      setError('Failed to fetch commits');
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg p-6">
+          <p className="text-gray-600">Loading commits...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg p-6">
+          <p className="text-red-600 mb-4">{error}</p>
+          <button
+            onClick={onClose}
+            className="bg-gray-100 px-4 py-2 rounded-lg hover:bg-gray-200"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!appDetails) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-lg p-6">
+          <p className="text-red-600 mb-4">Failed to load app details</p>
+          <button
+            onClick={onClose}
+            className="bg-gray-100 px-4 py-2 rounded-lg hover:bg-gray-200"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const displayRepoUrl = appDetails.repoUrl.replace(/\.git$/, '');
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
@@ -21,13 +113,24 @@ export default function BuildModal({ onClose, onStartBuild }) {
 
         {/* Content */}
         <div className="max-h-[400px] overflow-y-auto p-4">
-          <h3 className="text-sm font-medium text-gray-500 mb-3">Select a commit to build</h3>
+          <h3 className="text-sm font-medium text-gray-500 mb-3">
+            Select a commit from{' '}
+            <a 
+              href={displayRepoUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-800 hover:underline"
+            >
+              {displayRepoUrl}
+            </a>{' '}
+            ({appDetails.branch || 'main'})
+          </h3>
           <div className="space-y-2">
-            {mockCommits.map((commit) => (
+            {commits.map((commit) => (
               <div
                 key={commit.id}
                 className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                  selectedCommit.id === commit.id
+                  selectedCommit?.id === commit.id
                     ? 'border-blue-500 bg-blue-50'
                     : 'border-gray-200 hover:border-blue-300'
                 }`}
@@ -52,10 +155,10 @@ export default function BuildModal({ onClose, onStartBuild }) {
         {/* Footer */}
         <div className="p-4 border-t bg-gray-50 rounded-b-lg flex justify-between items-center">
           <div className="text-sm text-gray-600">
-            Selected commit: <code className="bg-gray-100 px-1 py-0.5 rounded">{selectedCommit.hash}</code>
+            Selected commit: <code className="bg-gray-100 px-1 py-0.5 rounded">{selectedCommit?.hash}</code>
           </div>
           <button
-            onClick={onStartBuild}
+            onClick={() => onStartBuild(selectedCommit)}
             className="flex items-center space-x-2 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
           >
             <Play className="w-4 h-4" />

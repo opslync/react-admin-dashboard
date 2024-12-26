@@ -72,6 +72,7 @@ const App = () => {
               <Route path="/app/:appId/deployment-history" component={DeploymentHistoryPage} />
               <Route path="/app/:appId/metrics" component={AppMetricsPage} />
               <Route path="/app/:appId/app-configuration" component={AppConfigurationPage} />
+              <Route path="/app/:appId/workflow" component={WorkflowCanvas} />
 
               {/* Settings Routes */}
               <Route exact path={APP_ROUTES.SETTINGS.ROOT} component={SettingsPage} />
@@ -88,7 +89,7 @@ const App = () => {
               <PrivateRoute exact path="/cluster" component={ClusterPage} />
               <PrivateRoute exact path="/services" component={ServicesPage} />
               {/* Workflow Routes */}
-              <Route exact path="/workflow" component={WorkflowCanvas} />
+              {/* <Route exact path="/workflow" component={WorkflowCanvas} /> */}
               <Route path="*" component={NotFoundPage} />
 
 
