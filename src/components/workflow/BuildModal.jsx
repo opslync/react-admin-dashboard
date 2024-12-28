@@ -10,6 +10,7 @@ export default function BuildModal({ onClose, onStartBuild }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [appDetails, setAppDetails] = useState(null);
+  const [isStartingBuild, setIsStartingBuild] = useState(false);
 
   useEffect(() => {
     fetchAppDetails();
@@ -50,6 +51,37 @@ export default function BuildModal({ onClose, onStartBuild }) {
     } catch (err) {
       setError('Failed to fetch commits');
       setLoading(false);
+    }
+  };
+
+  const handleStartBuild = async () => {
+    if (!selectedCommit || !appDetails) return;
+
+    setIsStartingBuild(true);
+    try {
+      const buildPayload = {
+        pipeline_id: "456", // This should come from your pipeline configuration
+        commit_id: selectedCommit.hash,
+        commit_message: selectedCommit.message,
+        params: {
+          "repo-url": appDetails.repoUrl,
+          "branch": appDetails.branch || 'main',
+          "commit": selectedCommit.hash,
+          "dockerfile-path": "Dockerfile",
+          "image-name": `opslync/${appDetails.name}`,
+          "image-tag": selectedCommit.hash
+        }
+      };
+
+      const response = await postMethod(`app/${appId}/workflows/build/start`, buildPayload);
+      onClose();
+      if (onStartBuild && response.data?.workflowID) {
+        onStartBuild(selectedCommit, response.data.workflowID);
+      }
+    } catch (err) {
+      setError('Failed to start build. Please try again.');
+    } finally {
+      setIsStartingBuild(false);
     }
   };
 
@@ -158,11 +190,16 @@ export default function BuildModal({ onClose, onStartBuild }) {
             Selected commit: <code className="bg-gray-100 px-1 py-0.5 rounded">{selectedCommit?.hash}</code>
           </div>
           <button
-            onClick={() => onStartBuild(selectedCommit)}
-            className="flex items-center space-x-2 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors"
+            onClick={handleStartBuild}
+            disabled={isStartingBuild || !selectedCommit}
+            className={`flex items-center space-x-2 py-2 px-4 rounded-lg transition-colors ${
+              isStartingBuild || !selectedCommit
+                ? 'bg-blue-300 cursor-not-allowed'
+                : 'bg-blue-600 hover:bg-blue-700 text-white'
+            }`}
           >
             <Play className="w-4 h-4" />
-            <span>Start Build</span>
+            <span>{isStartingBuild ? 'Starting Build...' : 'Start Build'}</span>
           </button>
         </div>
       </div>

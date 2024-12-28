@@ -1,7 +1,7 @@
 import React from 'react';
 import { CheckCircle2, XCircle, Clock } from 'lucide-react';
 
-export default function BuildHistoryList({ builds, currentBuildId }) {
+export default function BuildHistoryList({ builds, currentBuildId, onBuildSelect }) {
   const getStatusIcon = (status) => {
     switch (status) {
       case 'success':
@@ -20,11 +20,12 @@ export default function BuildHistoryList({ builds, currentBuildId }) {
       {builds.map((build) => (
         <div
           key={build.id}
-          className={`p-3 rounded-lg border ${
+          className={`p-3 rounded-lg border cursor-pointer hover:border-blue-300 transition-colors ${
             build.id === currentBuildId
               ? 'border-blue-500 bg-blue-50'
               : 'border-gray-200'
           }`}
+          onClick={() => onBuildSelect(build.id)}
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Maximize2, X } from 'lucide-react';
 
 export default function BuildLogs({ logs }) {
@@ -6,6 +6,7 @@ export default function BuildLogs({ logs }) {
   const logsEndRef = useRef(null);
 
   useEffect(() => {
+    // Auto-scroll to bottom when new logs arrive
     logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [logs]);
 
@@ -15,13 +16,15 @@ export default function BuildLogs({ logs }) {
         return 'text-red-500';
       case 'warning':
         return 'text-yellow-500';
+      case 'success':
+        return 'text-green-500';
       default:
         return 'text-gray-200';
     }
   };
 
   const LogContent = () => (
-    <>
+    <div className="font-mono text-sm">
       {logs.map((log) => (
         <div key={log.id} className="py-1">
           <span className="text-gray-500">[{log.timestamp}]</span>{' '}
@@ -29,14 +32,20 @@ export default function BuildLogs({ logs }) {
         </div>
       ))}
       <div ref={logsEndRef} />
-    </>
+    </div>
   );
 
   return (
     <>
       <div className="relative">
-        <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm h-[400px] overflow-y-auto">
-          <LogContent />
+        <div className="bg-gray-900 rounded-lg p-4 h-[400px] overflow-y-auto">
+          {logs.length === 0 ? (
+            <div className="flex items-center justify-center h-full text-gray-500">
+              Select a build to view logs
+            </div>
+          ) : (
+            <LogContent />
+          )}
         </div>
         <button
           onClick={() => setIsFullscreen(true)}
@@ -60,7 +69,7 @@ export default function BuildLogs({ logs }) {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 font-mono text-sm">
+            <div className="flex-1 overflow-y-auto p-4">
               <LogContent />
             </div>
           </div>
