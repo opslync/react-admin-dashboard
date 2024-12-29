@@ -6,7 +6,7 @@ import BuildModal from './BuildModal';
 import BuildDetailsPage from './buildDetails/BuildDetailsPage';
 import { initialSteps, initialConnections } from '../../data/initialWorkflowData';
 
-export default function WorkflowCanvas() {
+export default function WorkflowCanvas({ onBuildClick, appId }) {
   const [steps, setSteps] = useState(initialSteps);
   const [connections, setConnections] = useState(initialConnections);
   const [selectedStep, setSelectedStep] = useState(null);
@@ -22,9 +22,11 @@ export default function WorkflowCanvas() {
     }
   };
 
-  const handleStartBuild = () => {
+  const handleStartBuild = (workflowId) => {
     setShowBuildModal(false);
-    setShowBuildDetails(true);
+    if (onBuildClick) {
+      onBuildClick(workflowId);
+    }
   };
 
   if (showBuildDetails) {
@@ -45,7 +47,7 @@ export default function WorkflowCanvas() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50 ml-64">
+    <div className="relative w-full h-full">
       <div className="flex-1 p-8">
         <div className="flex items-center justify-center space-x-8">
           {steps.map((step, index) => (
@@ -74,8 +76,10 @@ export default function WorkflowCanvas() {
 
       {showBuildModal && (
         <BuildModal
+          open={showBuildModal}
           onClose={() => setShowBuildModal(false)}
           onStartBuild={handleStartBuild}
+          appId={appId}
         />
       )}
     </div>
