@@ -28,6 +28,7 @@ import BuildHistoryPage from "./containers/apps/BuildHistoryPage";
 import DeploymentHistoryPage from "./containers/apps/DeploymentHistoryPage";
 import AppMetricsPage from "./containers/apps/AppMetricsPage";
 import AppConfigurationPage from "./containers/apps/AppConfigurationPage";
+import PodShellPage from "./containers/apps/PodShellPage";
 
 // Cluster Pages
 import ClusterPage from "./pages/ClusterPage";
@@ -72,6 +73,7 @@ const App = () => {
               <Route path="/app/:appId/deployment-history" component={DeploymentHistoryPage} />
               <Route path="/app/:appId/metrics" component={AppMetricsPage} />
               <Route path="/app/:appId/app-configuration" component={AppConfigurationPage} />
+              <Route path="/app/:appId/pod-shell" component={PodShellPage} />
               <Route path="/app/:appId/workflow" component={WorkflowCanvas} />
 
               {/* Settings Routes */}

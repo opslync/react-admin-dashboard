@@ -13,6 +13,8 @@ import {
   Toolbar,
   CircularProgress,
   IconButton,
+  Dialog,
+  DialogContent,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import InfoIcon from '@mui/icons-material/Info';
@@ -20,6 +22,8 @@ import { Input } from "../../components/ui/input";
 import { Button } from "../../components/ui/button";
 import { Label } from "../../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
+import { Terminal } from 'lucide-react';
+import { PodShell } from '../../components/app-detail/PodShell';
 
 const AppDetailPage = () => {
   const { appId } = useParams();
@@ -43,6 +47,10 @@ const AppDetailPage = () => {
   const [branches, setBranches] = useState([]);
   const [loadingBranches, setLoadingBranches] = useState(false);
   const [selectedBranch, setSelectedBranch] = useState('');
+
+  const [pods, setPods] = useState([]);
+
+  const [isShellOpen, setIsShellOpen] = useState(false);
 
   useEffect(() => {
     const fetchAppDetails = async () => {
@@ -131,6 +139,22 @@ const AppDetailPage = () => {
       return () => clearInterval(intervalId); // Cleanup interval on component unmount
     }
   }, [deployments, appId]);
+
+  const fetchPodStatus = async () => {
+    try {
+      const response = await getMethod(`app/${appId}/pod/list`);
+      setPods(response.data);
+    } catch (err) {
+      console.error('Failed to fetch pod status:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchPodStatus();
+    const intervalId = setInterval(fetchPodStatus, 10000); // Refresh every 10 seconds
+
+    return () => clearInterval(intervalId);
+  }, [appId]);
 
   const handleInputChange = (field) => (e) => {
     setFormData(prev => ({
@@ -226,6 +250,14 @@ const AppDetailPage = () => {
     setError('');
   };
 
+  const handleOpenShell = () => {
+    setIsShellOpen(true);
+  };
+
+  const handleCloseShell = () => {
+    setIsShellOpen(false);
+  };
+
   if (loading) return <CircularProgress />;
   if (error) return (
     <div className="flex flex-col lg:ml-64 p-4">
@@ -278,29 +310,110 @@ const AppDetailPage = () => {
             <Grid item xs={12} sm={6}>
               <Card>
                 <CardContent>
-                  <Typography variant="h6" gutterBottom>Application Status</Typography>
-                  <Grid container spacing={2}>
-                    {chartData.map((data, index) => (
-                      <Grid item key={index} >
-                        <Typography variant="body2" color="textSecondary">
-                          {data.name}
-                        </Typography>
-                      </Grid>
+                  <div className="flex justify-between items-start mb-4">
+                    <Typography variant="h6">Application Status</Typography>
+                    {pods.length > 0 && pods[0].status === 'Running' && (
+                      <Button
+                        variant="outlined"
+                        onClick={handleOpenShell}
+                        className="bg-gray-900 text-white hover:bg-gray-800 flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-colors"
+                      >
+                        <Terminal className="w-5 h-5" />
+                        <span className="text-xs font-medium">Shell</span>
+                      </Button>
+                    )}
+                  </div>
+                  <div className="space-y-4">
+                    {pods.map((pod, index) => (
+                      <div key={index} className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="relative">
+                            {pod.status === 'Running' && (
+                              <div className="absolute -left-1 -top-1 w-7 h-7 animate-ping rounded-full bg-green-400 opacity-20" />
+                            )}
+                            <div className={`w-5 h-5 rounded-full ${
+                              pod.status === 'Running' ? 'bg-green-500' :
+                              pod.status === 'Failed' ? 'bg-red-500' :
+                              pod.status === 'Pending' ? 'bg-yellow-500' :
+                              'bg-gray-500'
+                            } ${
+                              pod.status === 'Running' ? 'animate-pulse' : ''
+                            }`} />
+                          </div>
+                          <div>
+                            <Typography variant="body2" className={`
+                              ${pod.status === 'Running' ? 'text-green-600' :
+                                pod.status === 'Failed' ? 'text-red-600' :
+                                pod.status === 'Pending' ? 'text-yellow-600' :
+                                'text-gray-600'
+                              }
+                            `}>
+                              {pod.status}
+                            </Typography>
+                          </div>
+                        </div>
+                      </div>
                     ))}
-                  </Grid>
+                  </div>
                 </CardContent>
               </Card>
             </Grid>
             <Grid item xs={12} sm={6}>
               <Card>
                 <CardContent>
-                  <Typography variant="h6" gutterBottom>Deployed Commit</Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    {deployments[0].tag}
-                  </Typography>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <Typography variant="h6" gutterBottom>Deployed Commit</Typography>
+                      <Typography variant="body2" color="textSecondary">
+                        {deployments[0].tag}
+                      </Typography>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </Grid>
+
+            {/* Shell Modal */}
+            <Dialog
+              open={isShellOpen}
+              onClose={handleCloseShell}
+              maxWidth="lg"
+              fullWidth
+              PaperProps={{
+                style: {
+                  backgroundColor: '#1e1e1e',
+                  borderRadius: '12px',
+                }
+              }}
+            >
+              <div className="flex justify-between items-center bg-gray-800 px-4 py-3">
+                <Typography className="text-gray-200 font-medium flex items-center gap-2">
+                  <Terminal className="w-4 h-4" />
+                  Terminal Session
+                </Typography>
+                <IconButton 
+                  onClick={handleCloseShell}
+                  className="text-gray-400 hover:text-gray-200"
+                  size="small"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </IconButton>
+              </div>
+              <DialogContent className="p-0">
+                {pods.length > 0 && (
+                  <PodShell
+                    podDetails={{
+                      namespace: pods[0].Namespace,
+                      podName: pods[0].name,
+                      container: pods[0].containers[0]
+                    }}
+                    appId={appId}
+                  />
+                )}
+              </DialogContent>
+            </Dialog>
           </>
         )}
         <Grid item xs={12}>

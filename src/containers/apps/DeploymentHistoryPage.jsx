@@ -153,10 +153,10 @@ const DeploymentHistory = () => {
               <TableBody>
                 {deployments.map((deployment) => (
                   <TableRow key={deployment.ID}>
-                    <TableCell>{deployment.releaseName}</TableCell>
+                    <TableCell>{deployment.appName}</TableCell>
                     <TableCell>{deployment.tag}</TableCell>
                     <TableCell>{deployment.CreatedAt}</TableCell>
-                    <TableCell>{deployment.username}</TableCell>
+                    <TableCell>{deployment.user}</TableCell>
                     <TableCell>{deployment.status}</TableCell>
                   </TableRow>
                 ))}

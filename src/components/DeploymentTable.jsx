@@ -34,7 +34,7 @@ export const DeploymentTable = ({
           .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
           .map((deployment) => (
             <TableRow key={deployment.ID}>
-              <TableCell>{deployment.releaseName}</TableCell>
+              <TableCell>{deployment.appName}</TableCell>
               <TableCell>{deployment.tag}</TableCell>
               <TableCell>
                 {moment(deployment.CreatedAt).format('MMMM Do YYYY, h:mm:ss a')}

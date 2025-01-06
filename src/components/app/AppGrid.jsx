@@ -2,7 +2,7 @@ import React from 'react';
 import { CircularProgress } from '@mui/material';
 import { AppCard } from './AppCard';
 
-export const AppGrid = ({ apps, loading, onViewDetails, LinkComponent }) => {
+export const AppGrid = ({ apps, loading, onViewDetails, LinkComponent, onDeleteClick }) => {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -19,6 +19,7 @@ export const AppGrid = ({ apps, loading, onViewDetails, LinkComponent }) => {
           app={app}
           onViewDetails={onViewDetails}
           LinkComponent={LinkComponent}
+          onDeleteClick={onDeleteClick}
         />
       ))}
     </div>

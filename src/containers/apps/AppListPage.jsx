@@ -4,8 +4,93 @@ import { AppHeader } from '../../components/app/AppHeader';
 import { AppFilters } from '../../components/app/AppFilters';
 import { AppGrid } from '../../components/app/AppGrid';
 import { AppCreationDialog } from '../../components/app/AppCreationDialog';
-import { getMethod } from '../../library/api';
+import { getMethod, deleteMethod } from '../../library/api';
 import { listApps } from '../../library/constant';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../../components/ui/dialog";
+import { Input } from "../../components/ui/input";
+import { Button } from "../../components/ui/button";
+
+const DeleteConfirmationDialog = ({ 
+  open, 
+  onOpenChange, 
+  appToDelete, 
+  onConfirm, 
+  isDeleting, 
+  error 
+}) => {
+  const [confirmName, setConfirmName] = useState('');
+
+  // Reset confirm name when dialog opens
+  useEffect(() => {
+    if (open) {
+      setConfirmName('');
+    }
+  }, [open]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[500px] bg-white">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-semibold text-gray-900">Delete Application</DialogTitle>
+        </DialogHeader>
+        
+        <div className="mt-4">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+            <p className="text-sm text-red-800 font-medium">Warning: This action cannot be undone</p>
+            <p className="text-sm text-red-700 mt-1">
+              This will permanently delete the application "{appToDelete?.name}" and all associated resources:
+            </p>
+            <ul className="list-disc list-inside text-sm text-red-700 mt-2">
+              <li>All deployments and configurations</li>
+              <li>Build history and logs</li>
+              <li>Environment variables</li>
+              <li>Associated infrastructure resources</li>
+            </ul>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Type <span className="font-mono text-gray-800">{appToDelete?.name}</span> to confirm:
+              </label>
+              <Input
+                type="text"
+                value={confirmName}
+                onChange={(e) => setConfirmName(e.target.value)}
+                className="w-full"
+                placeholder={`Enter ${appToDelete?.name}`}
+                autoComplete="off"
+              />
+            </div>
+
+            {error && (
+              <div className="text-sm text-red-600">
+                {error}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <DialogFooter className="mt-6 border-t pt-4 flex justify-between items-center">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            className="border-gray-200 hover:bg-gray-50"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={() => onConfirm(confirmName)}
+            disabled={isDeleting || confirmName !== appToDelete?.name}
+            className="bg-red-600 text-white hover:bg-red-700"
+          >
+            {isDeleting ? 'Deleting...' : 'Delete Application'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 const AppListPage = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -16,6 +101,10 @@ const AppListPage = () => {
     status: 'all',
     project: 'all'
   });
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [appToDelete, setAppToDelete] = useState(null);
+  const [deleteError, setDeleteError] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchApps = async () => {
     try {
@@ -59,6 +148,29 @@ const AppListPage = () => {
     return `/app/${appId}/details`;
   };
 
+  const handleDeleteClick = (app) => {
+    setAppToDelete(app);
+    setDeleteError('');
+    setShowDeleteDialog(true);
+  };
+
+  const handleDeleteConfirm = async (confirmName) => {
+    if (confirmName !== appToDelete.name) {
+      setDeleteError('App name does not match');
+      return;
+    }
+    setIsDeleting(true);
+    try {
+      await deleteMethod(`app/${appToDelete.id}`);
+      setShowDeleteDialog(false);
+      fetchApps();
+    } catch (err) {
+      setDeleteError(err.response?.data?.message || 'Failed to delete app. Please try again.');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div className="ml-64 flex-1 p-8">
       <div className="max-w-7xl mx-auto">
@@ -73,6 +185,7 @@ const AppListPage = () => {
           loading={loading}
           onViewDetails={handleViewDetails}
           LinkComponent={Link}
+          onDeleteClick={handleDeleteClick}
         />
         
         {isCreateDialogOpen && (
@@ -82,6 +195,14 @@ const AppListPage = () => {
             onAppCreated={fetchApps}
           />
         )}
+        <DeleteConfirmationDialog 
+          open={showDeleteDialog}
+          onOpenChange={setShowDeleteDialog}
+          appToDelete={appToDelete}
+          onConfirm={handleDeleteConfirm}
+          isDeleting={isDeleting}
+          error={deleteError}
+        />
       </div>
     </div>
   );

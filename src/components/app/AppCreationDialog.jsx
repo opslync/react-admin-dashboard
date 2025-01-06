@@ -142,7 +142,8 @@ export const AppCreationDialog = ({ open, onOpenChange, onAppCreated }) => {
       onAppCreated();
       onOpenChange(false);
     } catch (err) {
-      setError('Failed to create app. Please try again.');
+      const errorMessage = err.response?.data?.message || err.response?.data?.error || 'Something went wrong while creating the app. Please try again.';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -307,11 +308,6 @@ export const AppCreationDialog = ({ open, onOpenChange, onAppCreated }) => {
                     </option>
                   ))}
                 </select>
-                {error && (
-                  <div className="text-sm text-red-500 mt-1">
-                    {error}
-                  </div>
-                )}
               </div>
             ) : null}
 

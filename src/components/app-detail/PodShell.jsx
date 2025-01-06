@@ -3,14 +3,15 @@ import { Box, Paper } from '@mui/material';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import 'xterm/css/xterm.css';
+import { API_BASE_URL } from '../../library/constant';
 
-export const PodShell = ({ podDetails }) => {
+export const PodShell = ({ podDetails, appId }) => {
     const terminalRef = useRef(null);
     const terminalInstanceRef = useRef(null);
     const wsRef = useRef(null);
 
     useEffect(() => {
-        if (!terminalRef.current || !podDetails) return;
+        if (!terminalRef.current || !podDetails || !appId) return;
 
         // Initialize terminal
         const terminal = new Terminal({
@@ -45,7 +46,8 @@ export const PodShell = ({ podDetails }) => {
         terminal.loadAddon(fitAddon);
 
         // Create WebSocket connection
-        const ws = new WebSocket('ws://localhost:8080/api/cluster/pod/shell');
+        const wsBase = API_BASE_URL.replace(/^http/, 'ws');
+        const ws = new WebSocket(`${wsBase}app/${appId}/pod/shell`);
         wsRef.current = ws;
 
         ws.onopen = () => {
@@ -60,10 +62,19 @@ export const PodShell = ({ podDetails }) => {
         };
 
         ws.onmessage = (event) => {
-            terminal.write(event.data);
+            try {
+                const data = JSON.parse(event.data);
+                if (data.output) {
+                    terminal.write(data.output);
+                }
+            } catch (error) {
+                // If not JSON, write directly
+                terminal.write(event.data);
+            }
         };
 
-        ws.onerror = () => {
+        ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
             terminal.write('\r\n\x1b[1;31mError: Failed to connect to pod shell\x1b[0m\r\n');
         };
 
@@ -74,7 +85,7 @@ export const PodShell = ({ podDetails }) => {
         // Handle terminal input
         terminal.onData(data => {
             if (ws.readyState === WebSocket.OPEN) {
-                ws.send(data);
+                ws.send(JSON.stringify({ input: data }));
             }
         });
 
@@ -99,7 +110,7 @@ export const PodShell = ({ podDetails }) => {
                 terminalInstanceRef.current.dispose();
             }
         };
-    }, [podDetails]);
+    }, [podDetails, appId]);
 
     return (
         <Paper
