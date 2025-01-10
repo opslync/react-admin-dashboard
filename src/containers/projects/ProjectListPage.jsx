@@ -1,24 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { postMethod, getMethod, deleteMethod } from "../../library/api";
-import CreateProjectForm from '../../components/CreateProjectForm';
-import ConfirmModal from '../../components/ConfirmModal'; // Adjust the import path as needed
 import { listProject, projectCreate, listApps } from '../../library/constant';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTrash } from '@fortawesome/free-solid-svg-icons';
-import { Button, Card, CardContent, Typography, IconButton, Tooltip, Modal, Box } from '@mui/material';
+import { Button } from "../../components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../../components/ui/dialog";
+import { Alert, AlertDescription } from "../../components/ui/alert";
+import { Plus, Trash2, ArrowRight, AlertCircle, X } from 'lucide-react';
+import CreateProjectForm from '../../components/CreateProjectForm';
 
-const ProjectPage = () => {
+const ProjectListPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-  const [isAppWarningModalOpen, setIsAppWarningModalOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isWarningDialogOpen, setIsWarningDialogOpen] = useState(false);
   const [projects, setProjects] = useState([]);
   const [apps, setApps] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [projectIdToDelete, setProjectIdToDelete] = useState(null);
+  const [projectToDelete, setProjectToDelete] = useState(null);
 
-  // Fetch the list of projects from the API
   const fetchProjects = async () => {
     try {
       const response = await getMethod(listProject);
@@ -30,7 +30,6 @@ const ProjectPage = () => {
     }
   };
 
-  // Fetch the list of apps from the API
   const fetchApps = async () => {
     try {
       const response = await getMethod(listApps);
@@ -45,20 +44,43 @@ const ProjectPage = () => {
     fetchApps();
   }, []);
 
-  const handleOpenModal = () => {
-    setIsModalOpen(true);
+  const getProjectAppCount = (projectId) => {
+    return apps.filter(app => app.projectId === projectId).length;
   };
 
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
+  const handleDeleteClick = (project) => {
+    const appCount = getProjectAppCount(project.id);
+    if (appCount > 0) {
+      setIsWarningDialogOpen(true);
+    } else {
+      setProjectToDelete(project);
+      setIsDeleteDialogOpen(true);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      await deleteMethod(`project/${projectToDelete.id}`);
+      setProjects(projects.filter(p => p.id !== projectToDelete.id));
+      setIsDeleteDialogOpen(false);
+      setProjectToDelete(null);
+    } catch (error) {
+      console.error('Failed to delete project:', error);
+      if (error.response?.status === 401 && error.response?.data?.message?.includes('namespace does not belong to the user')) {
+        setError(error.response.data.message);
+      } else {
+        setError('Failed to delete project. Please try again.');
+      }
+      setIsDeleteDialogOpen(false);
+      setProjectToDelete(null);
+    }
   };
 
   const handleCreateProject = async (data) => {
-    console.log('Project Data to Save:', data);
     try {
       const response = await postMethod(projectCreate, data);
       setProjects([...projects, response]);
-      handleCloseModal();
+      setIsModalOpen(false);
       fetchProjects();
     } catch (error) {
       console.error('Failed to create project:', error);
@@ -66,115 +88,144 @@ const ProjectPage = () => {
     }
   };
 
-  const handleOpenConfirmModal = (projectId) => {
-    const hasApps = apps.some(app => app.projectId === projectId);
-    if (hasApps) {
-      setIsAppWarningModalOpen(true);
-    } else {
-      setProjectIdToDelete(projectId);
-      setIsConfirmModalOpen(true);
-    }
-  };
-
-  const handleCloseConfirmModal = () => {
-    setIsConfirmModalOpen(false);
-    setProjectIdToDelete(null);
-  };
-
-  const handleCloseAppWarningModal = () => {
-    setIsAppWarningModalOpen(false);
-  };
-
-  const handleDeleteProject = async () => {
-    try {
-      await deleteMethod(`project/${projectIdToDelete}`);
-      setProjects(projects.filter(project => project.id !== projectIdToDelete)); // Remove the project from the list
-      handleCloseConfirmModal();
-    } catch (error) {
-      console.error('Failed to delete project:', error);
-      setError('Failed to delete project. Please try again.');
-    }
-  };
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col lg:ml-64 p-4 relative min-h-screen bg-gray-100">
-      <div className="flex justify-between items-center mb-4">
-        <Typography variant="h4">Projects</Typography>
-        <Tooltip title={projects.length >= 2 ? 'You can only create two projects.' : ''}>
-          <span>
-            <Button
-              variant="contained"
-              color="primary"
-              size="small"
-              onClick={handleOpenModal}
-              disabled={projects.length >= 2}
-            >
-              Create Project
-            </Button>
-          </span>
-        </Tooltip>
+    <div className="flex flex-col lg:ml-64 p-6 bg-gray-50 min-h-screen">
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Projects</h1>
+          <p className="text-gray-500 mt-1">Manage your projects and applications</p>
+        </div>
+        <Button
+          onClick={() => setIsModalOpen(true)}
+          disabled={projects.length >= 2}
+          className="bg-blue-600 hover:bg-blue-700"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Create Project
+        </Button>
       </div>
 
-      {loading ? (
-        <Typography>Loading...</Typography>
-      ) : error ? (
-        <Typography color="error">{error}</Typography>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {projects.map((project) => (
-            <Card key={project.id} className="relative">
-              <CardContent>
-                <Typography variant="h6" className="mb-2">{project.name}</Typography>
-                <Typography className="mb-4">{project.description}</Typography>
-                <Button
-                  component={Link}
-                  to={`/project/${project.id}/apps`}
-                  variant="contained"
-                  color="primary"
-                >
-                  View Apps
-                </Button>
-                <IconButton
-                  onClick={() => handleOpenConfirmModal(project.id)}
-                  className="absolute top-1 right-1 text-red-500 hover:text-red-600"
-                >
-                  <FontAwesomeIcon icon={faTrash} />
-                </IconButton>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+      {error && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        {projects.map((project) => (
+          <Card key={project.id} className="relative group">
+            <CardHeader className="pb-4">
+              <div className="flex justify-between items-start">
+                <CardTitle className="text-xl font-semibold">{project.name}</CardTitle>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => handleDeleteClick(project)}
+                >
+                  <Trash2 className="h-5 w-5" />
+                </Button>
+              </div>
+              <CardDescription className="text-gray-500">
+                {project.description}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex justify-between items-center">
+                <div className="text-sm text-gray-500">
+                  {getProjectAppCount(project.id)} Applications
+                </div>
+                <Button variant="ghost" asChild className="text-blue-600 hover:text-blue-700">
+                  <Link to={`/project/${project.id}/apps`} className="flex items-center">
+                    View Apps
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Create Project Modal */}
       {isModalOpen && (
-        <CreateProjectForm onSubmit={handleCreateProject} onClose={handleCloseModal} />
+        <CreateProjectForm onSubmit={handleCreateProject} onClose={() => setIsModalOpen(false)} />
       )}
-      <ConfirmModal
-        isOpen={isConfirmModalOpen}
-        onClose={handleCloseConfirmModal}
-        onConfirm={handleDeleteProject}
-        message="Are you sure you want to delete this project?"
-      />
-      <Modal
-        open={isAppWarningModalOpen}
-        onClose={handleCloseAppWarningModal}
-        aria-labelledby="app-warning-modal-title"
-        aria-describedby="app-warning-modal-description"
-      >
-        <Box className="absolute top-1/4 left-1/4 w-1/2 bg-white p-4 rounded shadow-lg">
-          <Typography variant="h6" id="app-warning-modal-title" className="mb-4">Delete Project</Typography>
-          <Typography id="app-warning-modal-description" className="mb-4">
-            Please delete all the apps associated with this project first.
-          </Typography>
-          <div className="flex justify-end space-x-2">
-            <Button variant="contained" color="primary" onClick={handleCloseAppWarningModal}>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-[425px] bg-white p-0">
+          <div className="flex justify-between items-start p-6 pb-4">
+            <DialogTitle className="text-xl font-semibold">Delete Project</DialogTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsDeleteDialogOpen(false)}
+              className="text-gray-400 hover:text-gray-500"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <DialogDescription className="px-6 pb-6 text-base text-gray-600">
+            Are you sure you want to delete this project?
+            <div className="mt-2">This action cannot be undone.</div>
+          </DialogDescription>
+          <div className="flex justify-end gap-3 p-4 border-t border-gray-100">
+            <Button
+              variant="outline"
+              onClick={() => setIsDeleteDialogOpen(false)}
+              className="border-gray-300 min-w-[100px]"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDeleteConfirm}
+              className="bg-red-600 hover:bg-red-700 text-white min-w-[100px]"
+            >
+              Delete Project
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Warning Dialog for Projects with Apps */}
+      <Dialog open={isWarningDialogOpen} onOpenChange={setIsWarningDialogOpen}>
+        <DialogContent className="sm:max-w-[425px] bg-white p-0">
+          <div className="flex justify-between items-start p-6 pb-4">
+            <DialogTitle className="text-xl font-semibold">Cannot Delete Project</DialogTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsWarningDialogOpen(false)}
+              className="text-gray-400 hover:text-gray-500"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <DialogDescription className="px-6 pb-6 text-base text-gray-600">
+            Please delete all applications associated with this project before deleting the project.
+          </DialogDescription>
+          <div className="flex justify-end p-4 border-t border-gray-100">
+            <Button
+              onClick={() => setIsWarningDialogOpen(false)}
+              className="bg-[#3B82F6] hover:bg-blue-600 text-white min-w-[100px]"
+            >
               OK
             </Button>
           </div>
-        </Box>
-      </Modal>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
 
-export default ProjectPage;
+export default ProjectListPage;

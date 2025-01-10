@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { ChevronLeft, Cpu, MemoryStick, HardDrive, Plus, ChevronRight } from 'lucide-react';
+import { AppCreationDialog } from '../../components/app/AppCreationDialog';
 
 const ProjectDetailPage = () => {
   const { projectId } = useParams();
@@ -12,6 +13,7 @@ const ProjectDetailPage = () => {
   const [apps, setApps] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [metrics, setMetrics] = useState({
     cpu: { used: 0, total: 1, percentage: 0 },
     ram: { used: 0, total: 1, percentage: 0 },
@@ -28,46 +30,56 @@ const ProjectDetailPage = () => {
       };
 
       ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        
-        // Convert memory and storage from Gi to GB (1Gi = 1.074GB)
-        const memoryTotal = parseFloat(data.resourceQuota.memory.replace('Gi', '')) * 1.074;
-        const memoryUsed = parseFloat(data.usage.memory.replace('Gi', '')) * 1.074;
-        const storageTotal = parseFloat(data.resourceQuota.storage.replace('Gi', '')) * 1.074;
-        const storageUsed = parseFloat(data.usage.storage.replace('Gi', '')) * 1.074;
-        
-        // Convert CPU cores
-        const cpuTotal = parseFloat(data.resourceQuota.cpu);
-        const cpuUsed = parseFloat(data.usage.cpu);
-
-        setMetrics({
-          cpu: {
-            used: cpuUsed,
-            total: cpuTotal,
-            percentage: Math.round((cpuUsed / cpuTotal) * 100) || 0,
-            allocated: `${cpuUsed}/${cpuTotal} Cores`
-          },
-          ram: {
-            used: memoryUsed,
-            total: memoryTotal,
-            percentage: Math.round((memoryUsed / memoryTotal) * 100) || 0,
-            allocated: `${memoryUsed.toFixed(1)}/${memoryTotal.toFixed(1)} GB`
-          },
-          storage: {
-            used: storageUsed,
-            total: storageTotal,
-            percentage: Math.round((storageUsed / storageTotal) * 100) || 0,
-            allocated: `${storageUsed.toFixed(1)}/${storageTotal.toFixed(1)} GB`
+        try {
+          const data = JSON.parse(event.data);
+          
+          if (!data.resourceQuota || !data.usage) {
+            console.error('Invalid data format received:', data);
+            return;
           }
-        });
+
+          // Convert memory and storage from Gi to GB (1Gi = 1.074GB)
+          const memoryTotal = parseFloat(data.resourceQuota.memory?.replace('Gi', '') || 0) * 1.074;
+          const memoryUsed = parseFloat(data.usage.memory?.replace('Gi', '') || 0) * 1.074;
+          const storageTotal = parseFloat(data.resourceQuota.storage?.replace('Gi', '') || 0) * 1.074;
+          const storageUsed = parseFloat(data.usage.storage?.replace('Gi', '') || 0) * 1.074;
+          
+          // Convert CPU cores
+          const cpuTotal = parseFloat(data.resourceQuota.cpu || 0);
+          const cpuUsed = parseFloat(data.usage.cpu || 0);
+
+          setMetrics({
+            cpu: {
+              used: cpuUsed,
+              total: cpuTotal || 1, // Prevent division by zero
+              percentage: Math.round((cpuUsed / (cpuTotal || 1)) * 100) || 0,
+              allocated: `${cpuUsed.toFixed(1)}/${cpuTotal.toFixed(1)} Cores`
+            },
+            ram: {
+              used: memoryUsed,
+              total: memoryTotal || 1,
+              percentage: Math.round((memoryUsed / (memoryTotal || 1)) * 100) || 0,
+              allocated: `${memoryUsed.toFixed(1)}/${memoryTotal.toFixed(1)} GB`
+            },
+            storage: {
+              used: storageUsed,
+              total: storageTotal || 1,
+              percentage: Math.round((storageUsed / (storageTotal || 1)) * 100) || 0,
+              allocated: `${storageUsed.toFixed(1)}/${storageTotal.toFixed(1)} GB`
+            }
+          });
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error);
+          console.log('Raw message:', event.data);
+        }
       };
 
       ws.onerror = (error) => {
         console.error('WebSocket error:', error);
       };
 
-      ws.onclose = () => {
-        console.log('WebSocket disconnected');
+      ws.onclose = (event) => {
+        console.log('WebSocket disconnected:', event.code, event.reason);
         // Attempt to reconnect after 5 seconds
         setTimeout(connectWebSocket, 5000);
       };
@@ -144,6 +156,24 @@ const ProjectDetailPage = () => {
     </Card>
   );
 
+  const handleOpenCreateModal = () => {
+    setIsCreateModalOpen(true);
+  };
+
+  const handleCloseCreateModal = () => {
+    setIsCreateModalOpen(false);
+  };
+
+  const handleAppCreated = async () => {
+    try {
+      const appsResponse = await getMethod(`project/${projectId}/apps`);
+      setApps(appsResponse.data);
+      handleCloseCreateModal();
+    } catch (err) {
+      console.error('Failed to refresh apps:', err);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -188,10 +218,12 @@ const ProjectDetailPage = () => {
               Resource usage and applications
             </p>
           </div>
-          <Button className="bg-blue-600 hover:bg-blue-700">
-            <Plus className="h-4 w-4 mr-2" />
-            New Application
-          </Button>
+          {apps.length > 0 && (
+            <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleOpenCreateModal}>
+              <Plus className="h-4 w-4 mr-2" />
+              New Application
+            </Button>
+          )}
         </div>
 
         {/* Resource Metrics */}
@@ -242,7 +274,7 @@ const ProjectDetailPage = () => {
             ) : (
               <div className="p-8 text-center">
                 <p className="text-gray-500">No applications found in this project.</p>
-                <Button variant="outline" className="mt-4">
+                <Button variant="outline" className="mt-4" onClick={handleOpenCreateModal}>
                   <Plus className="h-4 w-4 mr-2" />
                   Create Application
                 </Button>
@@ -251,6 +283,13 @@ const ProjectDetailPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Application Creation Modal */}
+      <AppCreationDialog
+        open={isCreateModalOpen}
+        onOpenChange={setIsCreateModalOpen}
+        onAppCreated={handleAppCreated}
+      />
     </div>
   );
 };

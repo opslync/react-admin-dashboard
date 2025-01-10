@@ -9,8 +9,10 @@ import { X } from 'lucide-react';
 import { postMethod, getMethod } from "../../library/api";
 import { listProject } from "../../library/constant";
 import { ChevronDown } from 'lucide-react';
+import { useHistory } from 'react-router-dom';
 
 export const AppCreationDialog = ({ open, onOpenChange, onAppCreated }) => {
+  const history = useHistory();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [selectedProject, setSelectedProject] = useState('');
@@ -20,6 +22,7 @@ export const AppCreationDialog = ({ open, onOpenChange, onAppCreated }) => {
   const [branches, setBranches] = useState([]);  
   const [selectedBranch, setSelectedBranch] = useState('');
   const [loadingBranches, setLoadingBranches] = useState(false);
+  const [port, setPort] = useState('');
   
   const [projects, setProjects] = useState([]);
   const [privateRepos, setPrivateRepos] = useState([]);
@@ -135,12 +138,14 @@ export const AppCreationDialog = ({ open, onOpenChange, onAppCreated }) => {
         description,
         projectId: selectedProject,
         repoUrl: finalRepoUrl,
-        branch: selectedBranch
+        branch: selectedBranch,
+        port: parseInt(port, 10)
       };
 
-      await postMethod('app/create', payload);
+      const response = await postMethod('app/create', payload);
       onAppCreated();
       onOpenChange(false);
+      history.push(`/app/${response.data.id}/details`);
     } catch (err) {
       const errorMessage = err.response?.data?.message || err.response?.data?.error || 'Something went wrong while creating the app. Please try again.';
       setError(errorMessage);
@@ -213,6 +218,20 @@ export const AppCreationDialog = ({ open, onOpenChange, onAppCreated }) => {
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Enter app description"
                 required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="port">Port</Label>
+              <Input
+                id="port"
+                type="number"
+                value={port}
+                onChange={(e) => setPort(e.target.value)}
+                placeholder="Enter port number"
+                required
+                min="1"
+                max="65535"
               />
             </div>
 
