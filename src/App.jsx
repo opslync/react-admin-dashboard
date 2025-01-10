@@ -72,7 +72,7 @@ const App = () => {
               <Route path="/app/:appId/build-history" component={BuildHistoryPage} />
               <Route path="/app/:appId/deployment-history" component={DeploymentHistoryPage} />
               <Route path="/app/:appId/metrics" component={AppMetricsPage} />
-              <Route path="/app/:appId/app-configuration" component={AppConfigurationPage} />
+              <Route path="/app/:appId/app-settings" component={AppConfigurationPage} />
               <Route path="/app/:appId/pod-shell" component={PodShellPage} />
               <Route path="/app/:appId/workflow" component={WorkflowCanvas} />
 

@@ -31,9 +31,9 @@ const BuildDeployPage = () => {
       `/app/${appId}/details`,
       `/app/${appId}/build-deploy`,
       `/app/${appId}/build-history`,
-      `/app/${appId}/deployment-history`,
+      // `/app/${appId}/deployment-history`,
       `/app/${appId}/metrics`,
-      `/app/${appId}/app-configuration`,
+      `/app/${appId}/app-settings`,
     ];
     const activeTab = paths.indexOf(location.pathname);
     if (activeTab !== -1) {
@@ -47,9 +47,9 @@ const BuildDeployPage = () => {
       `/app/${appId}/details`,
       `/app/${appId}/build-deploy`,
       `/app/${appId}/build-history`,
-      `/app/${appId}/deployment-history`,
+      // `/app/${appId}/deployment-history`,
       `/app/${appId}/metrics`,
-      `/app/${appId}/app-configuration`,
+      `/app/${appId}/app-settings`,
     ];
     history.push(paths[newValue]);
   };
@@ -104,9 +104,9 @@ const BuildDeployPage = () => {
             <Tab label="App Details" />
             <Tab label="Build & Deploy" />
             <Tab label="Build History" />
-            <Tab label="Deployment History" />
+            {/* <Tab label="Deployment History" /> */}
             <Tab label="Metrics" />
-            <Tab label="App Configuration" />
+            <Tab label="App Settings" />
           </Tabs>
         </Toolbar>
       </AppBar>
