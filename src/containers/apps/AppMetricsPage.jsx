@@ -10,19 +10,23 @@ import {
     CircularProgress,
     Paper,
     Box,
+    IconButton,
 } from '@mui/material';
 import { LineChart, Line, ResponsiveContainer } from 'recharts';
+import { ArrowBack as ArrowBackIcon } from '@mui/icons-material';
+import { getMethod } from '../../library/api';
 
 const AppMetricsPage = () => {
     const { appId } = useParams();
     const history = useHistory();
     const location = useLocation();
-    const [tabValue, setTabValue] = useState(4); // Default to "Metrics"
+    const [tabValue, setTabValue] = useState(4);
     const [metricsData, setMetricsData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [appDetails, setAppDetails] = useState(null);
 
-    const namespace = 'argo'; // Namespace is set to "argo" by default
+    const namespace = 'argo';
 
     const [cpuUsage, setCpuUsage] = useState(0);
     const [memoryUsage, setMemoryUsage] = useState(0);
@@ -31,6 +35,26 @@ const AppMetricsPage = () => {
     const [cpuTrend, setCpuTrend] = useState([10, 20, 15, 30, 25]);
     const [memoryTrend, setMemoryTrend] = useState([30, 50, 40, 60, 55]);
     const [diskTrend, setDiskTrend] = useState([20, 25, 30, 28, 32]);
+
+    useEffect(() => {
+        fetchAppDetails();
+        setupWebSocket();
+        return () => {
+            if (window.currentWebSocket) {
+                window.currentWebSocket.close();
+            }
+        };
+    }, [appId]);
+
+    const fetchAppDetails = async () => {
+        try {
+            const response = await getMethod(`app/${appId}`);
+            setAppDetails(response.data);
+        } catch (err) {
+            console.error('Failed to fetch app details:', err);
+            setError('Failed to fetch app details');
+        }
+    };
 
     const handleTabChange = (event, newValue) => {
         setTabValue(newValue);
@@ -99,10 +123,6 @@ const AppMetricsPage = () => {
         };
     };
 
-    useEffect(() => {
-        setupWebSocket();
-    }, []);
-
     const renderCard = (title, percentage, trend, color) => (
         <Paper
             elevation={3}
@@ -161,18 +181,59 @@ const AppMetricsPage = () => {
 
     return (
         <div className="flex flex-col lg:ml-64 p-4 bg-gray-100 min-h-screen">
-            <AppBar position="static" color="default" className="mb-4">
-                <Toolbar>
-                    <Tabs value={tabValue} onChange={handleTabChange} aria-label="app detail tabs">
-                        <Tab label="App Details" />
-                        <Tab label="Build & Deploy" />
-                        <Tab label="Build History" />
-                        {/* <Tab label="Deployment History" /> */}
-                        <Tab label="Metrics" />
-                        <Tab label="App Settings" />
-                    </Tabs>
-                </Toolbar>
-            </AppBar>
+            {/* App Name Header with Status */}
+            <div className="flex items-center gap-2 mb-6">
+                <h1 className="text-2xl font-semibold">{appDetails?.name || 'App Metrics'}</h1>
+                <div className="flex items-center gap-2 px-2 py-1 rounded-full bg-gray-100">
+                    <div className={`w-2 h-2 rounded-full ${metricsData[0]?.status === 'Running' ? 'bg-green-500 animate-pulse' : 'bg-gray-500'}`} />
+                    <span className="text-sm font-medium">{metricsData[0]?.status || 'Unknown'}</span>
+                </div>
+            </div>
+
+            {/* Back Button */}
+            <div className="flex items-center mb-6">
+                <IconButton onClick={() => history.push('/apps')} className="mr-2">
+                    <ArrowBackIcon />
+                </IconButton>
+            </div>
+
+            {/* Navigation */}
+            <div className="border-b border-gray-200 mb-6">
+                <Tabs 
+                    value={tabValue} 
+                    onChange={handleTabChange} 
+                    aria-label="app detail tabs" 
+                    variant="scrollable" 
+                    scrollButtons="auto"
+                    className="bg-white"
+                >
+                    <Tab 
+                        icon={<div className="mr-2">📄</div>} 
+                        label="App Details" 
+                        iconPosition="start"
+                    />
+                    <Tab 
+                        icon={<div className="mr-2">⚙️</div>} 
+                        label="Build & Deploy" 
+                        iconPosition="start"
+                    />
+                    <Tab 
+                        icon={<div className="mr-2">📜</div>} 
+                        label="Build History" 
+                        iconPosition="start"
+                    />
+                    <Tab 
+                        icon={<div className="mr-2">📈</div>} 
+                        label="Metrics" 
+                        iconPosition="start"
+                    />
+                    <Tab 
+                        icon={<div className="mr-2">⚡</div>} 
+                        label="Configuration" 
+                        iconPosition="start"
+                    />
+                </Tabs>
+            </div>
 
             <Typography variant="h6" className="mb-6">Live App Metrics</Typography>
 

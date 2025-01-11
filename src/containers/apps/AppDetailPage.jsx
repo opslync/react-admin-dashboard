@@ -17,128 +17,49 @@ import {
   DialogContent,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import InfoIcon from '@mui/icons-material/Info';
-import { Input } from "../../components/ui/input";
+import { Terminal, Play, RotateCw, Code2, GitBranch, Clock, Activity, Database, Layers } from 'lucide-react';
 import { Button } from "../../components/ui/button";
-import { Label } from "../../components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
-import { Terminal } from 'lucide-react';
 import { PodShell } from '../../components/app-detail/PodShell';
 
 const AppDetailPage = () => {
   const { appId } = useParams();
   const history = useHistory();
   const location = useLocation();
-  const [deployments, setDeployments] = useState([]);
-  const [statusMap, setStatusMap] = useState({});
+  const [appDetails, setAppDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [tabValue, setTabValue] = useState(1);
-  const [isSaving, setIsSaving] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    buildPack: 'dockerfile',
-    repoUrl: '',
-    port: '3000',
-    branch: ''
-  });
-
-  const [branches, setBranches] = useState([]);
-  const [loadingBranches, setLoadingBranches] = useState(false);
-  const [selectedBranch, setSelectedBranch] = useState('');
-
-  const [pods, setPods] = useState([]);
-
+  const [tabValue, setTabValue] = useState(0);
   const [isShellOpen, setIsShellOpen] = useState(false);
+  const [pods, setPods] = useState([]);
+  const [logs, setLogs] = useState([]);
+  const [wsConnection, setWsConnection] = useState(null);
 
   useEffect(() => {
-    const fetchAppDetails = async () => {
-      try {
-        const response = await getMethod(`app/${appId}`);
-        const data = response.data;
-        setFormData({
-          name: data.name || '',
-          description: data.description || '',
-          buildPack: 'dockerfile',
-          repoUrl: data.repoUrl || '',
-          port: data.port || '3000',
-          branch: data.branch || ''
-        });
-
-        // Set the branch from app detail
-        const branch = data.branch;
-        setBranches([branch]);
-        setSelectedBranch(branch);
-
-        setLoading(false);
-      } catch (err) {
-        setError('Failed to fetch app details. Please try again.');
-        setLoading(false);
-      }
-    };
-
     fetchAppDetails();
-  }, [appId]);
+    fetchPodStatus();
+    fetchLogs();
+    const statusInterval = setInterval(fetchPodStatus, 10000);
+    const logsInterval = setInterval(fetchLogs, 5000);
 
-  useEffect(() => {
-    const fetchDeploymentHistory = async () => {
-      try {
-        const response = await getMethod(`app/${appId}/deployments`);
-        setDeployments(response.data);
-        setLoading(false);
-      } catch (err) {
-        setError('Failed to fetch deployment history. Please try again.');
-        setLoading(false);
+    return () => {
+      clearInterval(statusInterval);
+      clearInterval(logsInterval);
+      if (wsConnection) {
+        wsConnection.close();
       }
     };
-
-    fetchDeploymentHistory();
   }, [appId]);
 
-  useEffect(() => {
-    const fetchStatus = async () => {
-      try {
-        const cachedStatus = localStorage.getItem(`podStatus-${appId}`);
-        const now = new Date();
-
-        if (cachedStatus) {
-          const parsedCache = JSON.parse(cachedStatus);
-          if (now - new Date(parsedCache.timestamp) < 300000) { // 5 minutes cache
-            setStatusMap(parsedCache.data);
-            return;
-          }
-        }
-
-        const statusPromises = deployments.map(async (deployment) => {
-          const response = await getMethod(`app/${appId}/pod/status`);
-          return { releaseName: deployment.releaseName, status: response.data[0].status };
-        });
-
-        const statusResults = await Promise.all(statusPromises);
-        const newStatusMap = statusResults.reduce((map, { releaseName, status }) => {
-          map[releaseName] = status;
-          return map;
-        }, {});
-
-        setStatusMap(newStatusMap);
-        localStorage.setItem(`podStatus-${appId}`, JSON.stringify({ data: newStatusMap, timestamp: new Date() }));
-      } catch (err) {
-        console.error('Failed to fetch pod status:', err);
-      }
-    };
-
-    if (deployments.length) {
-      const cachedStatus = localStorage.getItem(`podStatus-${appId}`);
-      if (cachedStatus) {
-        const parsedCache = JSON.parse(cachedStatus);
-        setStatusMap(parsedCache.data);
-      }
-      fetchStatus();
-      const intervalId = setInterval(fetchStatus, 300000); // Fetch status every 5 minutes
-      return () => clearInterval(intervalId); // Cleanup interval on component unmount
+  const fetchAppDetails = async () => {
+    try {
+      const response = await getMethod(`app/${appId}`);
+      setAppDetails(response.data);
+      setLoading(false);
+    } catch (err) {
+      setError('Failed to fetch app details');
+      setLoading(false);
     }
-  }, [deployments, appId]);
+  };
 
   const fetchPodStatus = async () => {
     try {
@@ -149,55 +70,12 @@ const AppDetailPage = () => {
     }
   };
 
-  useEffect(() => {
-    fetchPodStatus();
-    const intervalId = setInterval(fetchPodStatus, 10000); // Refresh every 10 seconds
-
-    return () => clearInterval(intervalId);
-  }, [appId]);
-
-  const handleInputChange = (field) => (e) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: e.target.value
-    }));
-  };
-
-  const handleSelectChange = (field) => (value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  const handleSave = async () => {
+  const fetchLogs = async () => {
     try {
-      setIsSaving(true);
-      setError('');
-
-      // Validate required fields
-      if (!formData.name || !formData.buildPack || !formData.port || !formData.branch) {
-        setError('Please fill in all required fields');
-        return;
-      }
-
-      const response = await putMethod(`app/${appId}`, {
-        name: formData.name,
-        description: formData.description,
-        buildPack: formData.buildPack,
-        repoUrl: formData.repoUrl,
-        port: formData.port,
-        branch: formData.branch
-      });
-
-      if (response.data) {
-        // Show success message using toast or other notification
-        console.log('App updated successfully');
-      }
-    } catch (error) {
-      setError(error.response?.data?.message || 'Failed to update app. Please try again.');
-    } finally {
-      setIsSaving(false);
+      const response = await getMethod(`app/${appId}/logs`);
+      setLogs(response.data || []);
+    } catch (err) {
+      console.error('Failed to fetch logs:', err);
     }
   };
 
@@ -207,358 +85,343 @@ const AppDetailPage = () => {
       `/app/${appId}/details`,
       `/app/${appId}/build-deploy`,
       `/app/${appId}/build-history`,
-      // `/app/${appId}/deployment-history`,
       `/app/${appId}/metrics`,
       `/app/${appId}/app-settings`,
     ];
     history.push(paths[newValue]);
   };
 
-  const handleBack = () => {
-    history.push('/apps');
+  const handleOpenShell = () => setIsShellOpen(true);
+  const handleCloseShell = () => setIsShellOpen(false);
+
+  const handleStartApp = async () => {
+    try {
+      await putMethod(`app/${appId}/start`);
+      fetchPodStatus();
+    } catch (err) {
+      setError('Failed to start application');
+    }
   };
 
-  useEffect(() => {
-    const paths = [
-      `/app/${appId}/details`,
-      `/app/${appId}/build-deploy`,
-      `/app/${appId}/build-history`,
-      // `/app/${appId}/deployment-history`,
-      `/app/${appId}/metrics`,
-      `/app/${appId}/app-settings`,
-    ];
-    const activeTab = paths.indexOf(location.pathname);
-    setTabValue(activeTab);
-  }, [location.pathname, appId]);
-
-  const statusCounts = deployments.reduce((acc, deployment) => {
-    const status = statusMap[deployment.releaseName] || 'Unknown';
-    acc[status] = (acc[status] || 0) + 1;
-    return acc;
-  }, {});
-
-  const chartData = Object.keys(statusCounts).map(status => ({
-    name: status,
-    value: statusCounts[status]
-  }));
-
-  const handleBuild = async () => {
-    // Add your build logic here
+  const handleRebuildDeploy = async () => {
+    try {
+      await putMethod(`app/${appId}/rebuild`);
+      fetchPodStatus();
+    } catch (err) {
+      setError('Failed to rebuild and deploy');
+    }
   };
 
-  const handleClearError = () => {
-    setError('');
+  const getStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'running':
+        return 'bg-green-500';
+      case 'failed':
+        return 'bg-red-500';
+      case 'pending':
+        return 'bg-yellow-500';
+      default:
+        return 'bg-gray-500';
+    }
   };
 
-  const handleOpenShell = () => {
-    setIsShellOpen(true);
+  const getUptime = () => {
+    if (!appDetails?.startTime) return 'N/A';
+    return moment(appDetails.startTime).fromNow(true);
   };
 
-  const handleCloseShell = () => {
-    setIsShellOpen(false);
-  };
-
-  if (loading) return <CircularProgress />;
-  if (error) return (
-    <div className="flex flex-col lg:ml-64 p-4">
-      <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded relative">
-        <div className="flex">
-          <div className="flex-shrink-0">
-            <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-            </svg>
-          </div>
-          <div className="ml-3">
-            <h3 className="text-sm font-medium text-red-800">Error</h3>
-            <div className="mt-2 text-sm text-red-700">{error}</div>
-          </div>
-        </div>
-        <button
-          onClick={handleClearError}
-          className="absolute top-4 right-4 text-red-500 hover:text-red-700"
-        >
-          <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-          </svg>
-        </button>
-      </div>
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-screen">
+      <CircularProgress />
     </div>
   );
 
   return (
     <div className="flex flex-col lg:ml-64 p-4 bg-gray-100 min-h-screen">
-      <div className="flex items-center mb-4">
-        <IconButton onClick={handleBack} className="mr-2">
+      {/* App Name Header with Status */}
+      <div className="flex items-center gap-2 mb-6">
+        <h1 className="text-2xl font-semibold">{appDetails?.name}</h1>
+        <div className="flex items-center gap-2 px-2 py-1 rounded-full bg-gray-100">
+          <div className={`w-2 h-2 rounded-full ${getStatusColor(pods[0]?.status)} ${
+            pods[0]?.status === 'Running' ? 'animate-pulse' : ''
+          }`} />
+          <span className="text-sm font-medium">{pods[0]?.status || 'Unknown'}</span>
+        </div>
+      </div>
+
+      {/* Back Button and Description */}
+      <div className="flex items-center mb-6">
+        <IconButton onClick={() => history.push('/apps')} className="mr-2">
           <ArrowBackIcon />
         </IconButton>
       </div>
-      <AppBar position="static" color="default" className="mb-4">
-        <Toolbar>
-          <Tabs value={tabValue} onChange={handleTabChange} aria-label="app detail tabs">
-            <Tab label="App Details" />
-            <Tab label="Build & Deploy" />
-            <Tab label="Build History" />
-            {/* <Tab label="Deployment History" /> */}
-            <Tab label="Metrics" />
-            <Tab label="App Settings" />
-          </Tabs>
-        </Toolbar>
-      </AppBar>
-      <Grid container spacing={3}>
-        {deployments.length > 0 && (
-          <>
-            <Grid item xs={12} sm={6}>
-              <Card>
-                <CardContent>
-                  <div className="flex justify-between items-start mb-4">
-                    <Typography variant="h6">Application Status</Typography>
-                    {pods.length > 0 && pods[0].status === 'Running' && (
-                      <Button
-                        variant="outlined"
-                        onClick={handleOpenShell}
-                        className="bg-gray-900 text-white hover:bg-gray-800 flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-colors"
-                      >
-                        <Terminal className="w-5 h-5" />
-                        <span className="text-xs font-medium">Shell</span>
-                      </Button>
-                    )}
-                  </div>
-                  <div className="space-y-4">
-                    {pods.map((pod, index) => (
-                      <div key={index} className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div className="relative">
-                            {pod.status === 'Running' && (
-                              <div className="absolute -left-1 -top-1 w-7 h-7 animate-ping rounded-full bg-green-400 opacity-20" />
-                            )}
-                            <div className={`w-5 h-5 rounded-full ${
-                              pod.status === 'Running' ? 'bg-green-500' :
-                              pod.status === 'Failed' ? 'bg-red-500' :
-                              pod.status === 'Pending' ? 'bg-yellow-500' :
-                              'bg-gray-500'
-                            } ${
-                              pod.status === 'Running' ? 'animate-pulse' : ''
-                            }`} />
-                          </div>
-                          <div>
-                            <Typography variant="body2" className={`
-                              ${pod.status === 'Running' ? 'text-green-600' :
-                                pod.status === 'Failed' ? 'text-red-600' :
-                                pod.status === 'Pending' ? 'text-yellow-600' :
-                                'text-gray-600'
-                              }
-                            `}>
-                              {pod.status}
-                            </Typography>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <Card>
-                <CardContent>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <Typography variant="h6" gutterBottom>Deployed Commit</Typography>
-                      <Typography variant="body2" color="textSecondary">
-                        {deployments[0].tag}
-                      </Typography>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Grid>
 
-            {/* Shell Modal */}
-            <Dialog
-              open={isShellOpen}
-              onClose={handleCloseShell}
-              maxWidth="lg"
-              fullWidth
-              PaperProps={{
-                style: {
-                  backgroundColor: '#1e1e1e',
-                  borderRadius: '12px',
-                }
-              }}
-            >
-              <div className="flex justify-between items-center bg-gray-800 px-4 py-3">
-                <Typography className="text-gray-200 font-medium flex items-center gap-2">
-                  <Terminal className="w-4 h-4" />
-                  Terminal Session
-                </Typography>
-                <IconButton 
-                  onClick={handleCloseShell}
-                  className="text-gray-400 hover:text-gray-200"
-                  size="small"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </IconButton>
-              </div>
-              <DialogContent className="p-0">
-                {pods.length > 0 && (
-                  <PodShell
-                    podDetails={{
-                      namespace: pods[0].Namespace,
-                      podName: pods[0].name,
-                      container: pods[0].containers[0]
-                    }}
-                    appId={appId}
-                  />
-                )}
-              </DialogContent>
-            </Dialog>
-          </>
-        )}
-        <Grid item xs={12}>
-          <div className="flex justify-between items-center mb-4">
-            {/* <Typography variant="h4">App Details</Typography> */}
-          </div>
-          <Card>
+      {/* Navigation */}
+      <div className="border-b border-gray-200 mb-6">
+        <Tabs 
+          value={tabValue} 
+          onChange={handleTabChange} 
+          aria-label="app detail tabs" 
+          variant="scrollable" 
+          scrollButtons="auto"
+          className="bg-white"
+        >
+          <Tab 
+            icon={<div className="mr-2">📄</div>} 
+            label="App Details" 
+            iconPosition="start"
+          />
+          <Tab 
+            icon={<div className="mr-2">⚙️</div>} 
+            label="Build & Deploy" 
+            iconPosition="start"
+          />
+          <Tab 
+            icon={<div className="mr-2">📜</div>} 
+            label="Build History" 
+            iconPosition="start"
+          />
+          {/* <Tab 
+            icon={<div className="mr-2">📊</div>} 
+            label="Deployment History" 
+            iconPosition="start"
+          /> */}
+          <Tab 
+            icon={<div className="mr-2">📈</div>} 
+            label="Metrics" 
+            iconPosition="start"
+          />
+          <Tab 
+            icon={<div className="mr-2">⚡</div>} 
+            label="Configuration" 
+            iconPosition="start"
+          />
+        </Tabs>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Content - Left Column */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Application Status Card */}
+          <Card className="overflow-visible">
             <CardContent>
-              <Grid container spacing={2}>
-                <Grid item xs={12} md={6}>
-                  <div className="space-y-2">
-                    <Label>
-                      Name <span className="text-red-500">*</span>
-                    </Label>
-                    <Input 
-                      value={formData.name}
-                      onChange={handleInputChange('name')}
-                    />
+              <Typography variant="h6" className="mb-4">Application Status</Typography>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Status */}
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <Activity className="w-5 h-5 text-gray-600" />
+                    <div className={`absolute -right-1 -top-1 w-3 h-3 rounded-full ${getStatusColor(pods[0]?.status)} ${
+                      pods[0]?.status === 'Running' ? 'animate-pulse' : ''
+                    }`} />
                   </div>
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <div className="space-y-2">
-                    <Label>Description</Label>
-                    <Input 
-                      value={formData.description}
-                      onChange={handleInputChange('description')}
-                      placeholder="Enter description"
-                    />
+                  <div>
+                    <Typography variant="body2" color="textSecondary">Status</Typography>
+                    <Typography variant="body1" className="font-medium">
+                      {pods[0]?.status || 'Unknown'}
+                    </Typography>
                   </div>
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <div className="space-y-2">
-                    <Label>
-                      Build Pack <span className="text-red-500">*</span>
-                    </Label>
-                    <Select 
-                      value={formData.buildPack}
-                      onValueChange={handleSelectChange('buildPack')}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select build pack" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="dockerfile">Dockerfile</SelectItem>
-                        <SelectItem value="buildpacks">Buildpacks</SelectItem>
-                      </SelectContent>
-                    </Select>
+                </div>
+
+                {/* Uptime */}
+                <div className="flex items-center gap-3">
+                  <Clock className="w-5 h-5 text-gray-600" />
+                  <div>
+                    <Typography variant="body2" color="textSecondary">Uptime</Typography>
+                    <Typography variant="body1" className="font-medium">
+                      {getUptime()}
+                    </Typography>
                   </div>
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <div className="space-y-2">
-                    <Label>
-                      Repository URL
-                    </Label>
-                    <Input 
-                      value={formData.repoUrl}
-                      onChange={handleInputChange('repoUrl')}
-                      placeholder="Enter repository URL"
-                    />
+                </div>
+
+                {/* Latest Commit */}
+                <div className="flex items-center gap-3">
+                  <GitBranch className="w-5 h-5 text-gray-600" />
+                  <div>
+                    <Typography variant="body2" color="textSecondary">Latest Commit</Typography>
+                    <Typography variant="body1" className="font-medium font-mono">
+                      {appDetails?.commit?.slice(0, 7) || 'N/A'}
+                    </Typography>
                   </div>
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <div className="space-y-2">
-                    <Label>
-                      Branch <span className="text-red-500">*</span>
-                    </Label>
-                    <Select 
-                      value={selectedBranch || "no-branch"}
-                      onValueChange={(value) => {
-                        setFormData(prev => ({ ...prev, branch: value }));
-                        setSelectedBranch(value);
-                      }}
-                      disabled={true}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select branch" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Array.isArray(branches) && branches.length > 0 ? (
-                          branches.map((branchName) => (
-                            <SelectItem key={branchName} value={branchName || "no-branch"}>
-                              {branchName || "No branch available"}
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <SelectItem value="no-branch">No branch available</SelectItem>
-                        )}
-                      </SelectContent>
-                    </Select>
+                </div>
+
+                {/* Additional Info */}
+                <div className="flex items-center gap-3">
+                  <Database className="w-5 h-5 text-gray-600" />
+                  <div>
+                    <Typography variant="body2" color="textSecondary">Database</Typography>
+                    <Typography variant="body1" className="font-medium">
+                      {appDetails?.database || 'Not configured'}
+                    </Typography>
                   </div>
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <div className="space-y-2">
-                    <Label>
-                      Application Port <span className="text-red-500">*</span>
-                    </Label>
-                    <Input 
-                      value={formData.port}
-                      onChange={handleInputChange('port')}
-                      placeholder="Enter application port"
-                      type="number"
-                      min="1"
-                      max="65535"
-                    />
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Code2 className="w-5 h-5 text-gray-600" />
+                  <div>
+                    <Typography variant="body2" color="textSecondary">Build Pack</Typography>
+                    <Typography variant="body1" className="font-medium">
+                      {appDetails?.buildPack || 'Dockerfile'}
+                    </Typography>
                   </div>
-                </Grid>
-                <Grid item xs={12}>
-                  {error && (
-                    <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded mb-4 relative">
-                      <div className="flex">
-                        <div className="flex-shrink-0">
-                          <svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                          </svg>
-                        </div>
-                        <div className="ml-3">
-                          <h3 className="text-sm font-medium text-red-800">Error</h3>
-                          <div className="mt-2 text-sm text-red-700">{error}</div>
-                        </div>
-                      </div>
-                      <button
-                        onClick={handleClearError}
-                        className="absolute top-4 right-4 text-red-500 hover:text-red-700"
-                      >
-                        <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                        </svg>
-                      </button>
-                    </div>
-                  )}
-                  <div className="flex justify-end mt-4">
-                    <Button 
-                      onClick={handleSave} 
-                      disabled={isSaving} 
-                      className="bg-blue-500 text-white hover:bg-blue-600 transition duration-200 ease-in-out rounded-lg shadow-md px-4 py-2"
-                    >
-                      {isSaving ? 'Saving...' : 'Save'}
-                    </Button>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Layers className="w-5 h-5 text-gray-600" />
+                  <div>
+                    <Typography variant="body2" color="textSecondary">Port</Typography>
+                    <Typography variant="body1" className="font-medium">
+                      {appDetails?.port || '3000'}
+                    </Typography>
                   </div>
-                </Grid>
-              </Grid>
+                </div>
+              </div>
             </CardContent>
           </Card>
-        </Grid>
-      </Grid>
+
+          {/* Application Logs */}
+          <Card>
+            <CardContent>
+              <div className="flex justify-between items-center mb-4">
+                <Typography variant="h6">Application Logs</Typography>
+                <Button variant="outline" size="sm" onClick={() => fetchLogs()}>
+                  Refresh Logs
+                </Button>
+              </div>
+              <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm text-gray-300 h-[300px] overflow-y-auto">
+                {logs.length > 0 ? (
+                  logs.map((log, index) => (
+                    <div key={index} className="whitespace-pre-wrap mb-1">
+                      {log}
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-gray-500 text-center py-4">
+                    No logs available
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Quick Actions - Right Column */}
+        <div className="space-y-6">
+          <Card>
+            <CardContent>
+              <Typography variant="h6" className="mb-4">Quick Actions</Typography>
+              <div className="space-y-3">
+                {pods[0]?.status === 'Running' && (
+                  <Button
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                    onClick={handleOpenShell}
+                  >
+                    <Terminal className="w-4 h-4 mr-2" />
+                    Open Shell
+                  </Button>
+                )}
+                
+                <Button
+                  className="w-full bg-green-600 hover:bg-green-700 text-white"
+                  onClick={handleStartApp}
+                >
+                  <Play className="w-4 h-4 mr-2" />
+                  Start Application
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleRebuildDeploy}
+                >
+                  <RotateCw className="w-4 h-4 mr-2" />
+                  Rebuild & Deploy
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Resource Usage */}
+          <Card>
+            <CardContent>
+              <Typography variant="h6" className="mb-4">Resource Usage</Typography>
+              <div className="space-y-4">
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <Typography variant="body2" color="textSecondary">CPU Usage</Typography>
+                    <Typography variant="body2">30%</Typography>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="bg-blue-600 h-2 rounded-full" style={{ width: '30%' }}></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <Typography variant="body2" color="textSecondary">Memory Usage</Typography>
+                    <Typography variant="body2">45%</Typography>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="bg-green-600 h-2 rounded-full" style={{ width: '45%' }}></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <Typography variant="body2" color="textSecondary">Storage Usage</Typography>
+                    <Typography variant="body2">15%</Typography>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div className="bg-purple-600 h-2 rounded-full" style={{ width: '15%' }}></div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Shell Modal */}
+      <Dialog
+        open={isShellOpen}
+        onClose={handleCloseShell}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{
+          style: {
+            backgroundColor: '#1e1e1e',
+            borderRadius: '12px',
+          }
+        }}
+      >
+        <div className="flex justify-between items-center bg-gray-800 px-4 py-3">
+          <Typography className="text-gray-200 font-medium flex items-center gap-2">
+            <Terminal className="w-4 h-4" />
+            Terminal Session
+          </Typography>
+          <IconButton 
+            onClick={handleCloseShell}
+            className="text-gray-400 hover:text-gray-200"
+            size="small"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </IconButton>
+        </div>
+        <DialogContent className="p-0">
+          {pods.length > 0 && (
+            <PodShell
+              podDetails={{
+                namespace: pods[0].Namespace,
+                podName: pods[0].name,
+                container: pods[0].containers[0]
+              }}
+              appId={appId}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
