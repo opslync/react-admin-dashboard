@@ -7,12 +7,9 @@ import {
     Storage as StorageIcon,
     Speed as SpeedIcon,
 } from '@mui/icons-material';
-import { formatCPU, formatMemory } from '../../utils/formatters';
 
 export const ClusterMetrics = ({ metrics }) => {
     if (!metrics) return null;
-
-    const node = metrics.nodes[0];
 
     return (
         <Grid container spacing={3} sx={{ mb: 4 }}>
@@ -22,25 +19,25 @@ export const ClusterMetrics = ({ metrics }) => {
             <Grid item xs={12} sm={6} md={3}>
                 <MetricCard
                     icon={SpeedIcon}
-                    title="CPU Usage"
-                    value={formatCPU(node.cpu_usage)}
+                    title="Total CPU"
+                    value={metrics.total_cpu}
                     unit="cores"
                 />
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
                 <MetricCard
                     icon={MemoryIcon}
-                    title="Memory Usage"
-                    value={formatMemory(node.memory_usage)}
-                    unit="MB"
+                    title="Total Memory"
+                    value={metrics.total_memory}
+                    unit=""
                 />
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
                 <MetricCard
                     icon={StorageIcon}
                     title="Total Storage"
-                    value={formatMemory(node.total_storage)}
-                    unit="GB"
+                    value={metrics.total_storage}
+                    unit=""
                 />
             </Grid>
         </Grid>
