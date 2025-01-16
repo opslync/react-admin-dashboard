@@ -18,7 +18,7 @@ import {
   DialogContent,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { Terminal, Play, RotateCw, Code2, GitBranch, Clock, Activity, Database, Layers } from 'lucide-react';
+import { Terminal, Play, RotateCw, Code2, GitBranch, Clock, Activity, Database, Layers, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from "../../components/ui/button";
 import { PodShell } from '../../components/app-detail/PodShell';
 
@@ -34,6 +34,7 @@ const AppDetailPage = () => {
   const [pods, setPods] = useState([]);
   const [logs, setLogs] = useState([]);
   const [wsConnection, setWsConnection] = useState(null);
+  const [showLogs, setShowLogs] = useState(false);
 
   const connectToLogs = (podName, container) => {
     if (wsConnection) {
@@ -133,7 +134,6 @@ const AppDetailPage = () => {
     setTabValue(newValue);
     const paths = [
       `/app/${appId}/details`,
-      `/app/${appId}/build-deploy`,
       `/app/${appId}/build-history`,
       `/app/${appId}/metrics`,
       `/app/${appId}/app-settings`,
@@ -176,8 +176,10 @@ const AppDetailPage = () => {
   };
 
   const getUptime = () => {
-    if (!appDetails?.startTime) return 'N/A';
-    return moment(appDetails.startTime).fromNow(true);
+    if (pods && pods.length > 0 && pods[0].uptime) {
+      return pods[0].uptime;
+    }
+    return 'N/A';
   };
 
   if (loading) return (
@@ -222,20 +224,10 @@ const AppDetailPage = () => {
             iconPosition="start"
           />
           <Tab 
-            icon={<div className="mr-2">⚙️</div>} 
-            label="Build & Deploy" 
-            iconPosition="start"
-          />
-          <Tab 
             icon={<div className="mr-2">📜</div>} 
             label="Build History" 
             iconPosition="start"
           />
-          {/* <Tab 
-            icon={<div className="mr-2">📊</div>} 
-            label="Deployment History" 
-            iconPosition="start"
-          /> */}
           <Tab 
             icon={<div className="mr-2">📈</div>} 
             label="Metrics" 
@@ -259,16 +251,11 @@ const AppDetailPage = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* Status */}
                 <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <Activity className="w-5 h-5 text-gray-600" />
-                    <div className={`absolute -right-1 -top-1 w-3 h-3 rounded-full ${getStatusColor(pods[0]?.status)} ${
-                      pods[0]?.status === 'Running' ? 'animate-pulse' : ''
-                    }`} />
-                  </div>
+                  <Activity className="w-5 h-5 text-gray-600" />
                   <div>
                     <Typography variant="body2" color="textSecondary">Status</Typography>
                     <Typography variant="body1" className="font-medium">
-                      {pods[0]?.status || 'Unknown'}
+                      {pods[0]?.status || 'Not Deployed'}
                     </Typography>
                   </div>
                 </div>
@@ -289,23 +276,24 @@ const AppDetailPage = () => {
                   <GitBranch className="w-5 h-5 text-gray-600" />
                   <div>
                     <Typography variant="body2" color="textSecondary">Latest Commit</Typography>
-                    <Typography variant="body1" className="font-medium font-mono">
-                      {appDetails?.commit?.slice(0, 7) || 'N/A'}
+                    <Typography variant="body1" className="font-medium">
+                      {appDetails?.lastCommit || 'N/A'}
                     </Typography>
                   </div>
                 </div>
 
-                {/* Additional Info */}
+                {/* Database */}
                 <div className="flex items-center gap-3">
                   <Database className="w-5 h-5 text-gray-600" />
                   <div>
                     <Typography variant="body2" color="textSecondary">Database</Typography>
                     <Typography variant="body1" className="font-medium">
-                      {appDetails?.database || 'Not configured'}
+                      Not configured
                     </Typography>
                   </div>
                 </div>
 
+                {/* Build Pack */}
                 <div className="flex items-center gap-3">
                   <Code2 className="w-5 h-5 text-gray-600" />
                   <div>
@@ -316,6 +304,7 @@ const AppDetailPage = () => {
                   </div>
                 </div>
 
+                {/* Port */}
                 <div className="flex items-center gap-3">
                   <Layers className="w-5 h-5 text-gray-600" />
                   <div>
@@ -329,40 +318,69 @@ const AppDetailPage = () => {
             </CardContent>
           </Card>
 
-          {/* Application Logs */}
-          <Card>
-            <CardContent>
-              <div className="flex justify-between items-center mb-4">
-                <Typography variant="h6">Application Logs</Typography>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => {
-                    setLogs([]);
-                    if (pods.length > 0) {
-                      const pod = pods[0];
-                      connectToLogs(pod.name, pod.containers[0]);
-                    }
-                  }}
+          {/* Application Logs - Now Collapsible */}
+          {pods[0]?.status === 'Running' && (
+            <Card>
+              <CardContent>
+                <div 
+                  className="flex justify-between items-center cursor-pointer"
+                  onClick={() => setShowLogs(!showLogs)}
                 >
-                  Refresh Logs
-                </Button>
-              </div>
-              <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm text-gray-300 h-[300px] overflow-y-auto">
-                {logs.length > 0 ? (
-                  logs.map((log, index) => (
-                    <div key={index} className="whitespace-pre-wrap mb-1">
-                      {log}
+                  <Typography variant="h6">Application Logs</Typography>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="flex items-center gap-2"
+                  >
+                    {showLogs ? (
+                      <>
+                        Hide Logs
+                        <ChevronUp className="h-4 w-4" />
+                      </>
+                    ) : (
+                      <>
+                        View Logs
+                        <ChevronDown className="h-4 w-4" />
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {showLogs && (
+                  <>
+                    <div className="flex justify-end mt-4">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => {
+                          setLogs([]);
+                          if (pods.length > 0) {
+                            const pod = pods[0];
+                            connectToLogs(pod.name, pod.containers[0]);
+                          }
+                        }}
+                      >
+                        Refresh Logs
+                      </Button>
                     </div>
-                  ))
-                ) : (
-                  <div className="text-gray-500 text-center py-4">
-                    No logs available
-                  </div>
+                    <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm text-gray-300 h-[300px] overflow-y-auto mt-4">
+                      {logs.length > 0 ? (
+                        logs.map((log, index) => (
+                          <div key={index} className="whitespace-pre-wrap mb-1">
+                            {log}
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-gray-500 text-center py-4">
+                          No logs available
+                        </div>
+                      )}
+                    </div>
+                  </>
                 )}
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Quick Actions - Right Column */}

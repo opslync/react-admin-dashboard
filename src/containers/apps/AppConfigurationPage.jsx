@@ -121,7 +121,6 @@ const AppConfigurationPage = () => {
         setTabValue(newValue);
         const paths = [
             `/app/${appId}/details`,
-            `/app/${appId}/build-deploy`,
             `/app/${appId}/build-history`,
             `/app/${appId}/metrics`,
             `/app/${appId}/app-settings`,
@@ -209,11 +208,6 @@ const AppConfigurationPage = () => {
                     <Tab 
                         icon={<div className="mr-2">📄</div>} 
                         label="App Details" 
-                        iconPosition="start"
-                    />
-                    <Tab 
-                        icon={<div className="mr-2">⚙️</div>} 
-                        label="Build & Deploy" 
                         iconPosition="start"
                     />
                     <Tab 

@@ -60,9 +60,7 @@ const AppMetricsPage = () => {
         setTabValue(newValue);
         const paths = [
             `/app/${appId}/details`,
-            `/app/${appId}/build-deploy`,
             `/app/${appId}/build-history`,
-            // `/app/${appId}/deployment-history`,
             `/app/${appId}/metrics`,
             `/app/${appId}/app-settings`,
         ];
@@ -210,11 +208,6 @@ const AppMetricsPage = () => {
                     <Tab 
                         icon={<div className="mr-2">📄</div>} 
                         label="App Details" 
-                        iconPosition="start"
-                    />
-                    <Tab 
-                        icon={<div className="mr-2">⚙️</div>} 
-                        label="Build & Deploy" 
                         iconPosition="start"
                     />
                     <Tab 

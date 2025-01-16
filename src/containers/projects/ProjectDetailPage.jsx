@@ -99,9 +99,18 @@ const ProjectDetailPage = () => {
   useEffect(() => {
     const fetchProjectDetails = async () => {
       try {
-        const appsResponse = await getMethod(`project/${projectId}/apps`);
-        setApps(appsResponse.data);
+        const projectResponse = await getMethod(`project/${projectId}/apps`);
+        setProject(projectResponse.data);
+        // Initialize apps with Unknown status
+        const initialApps = projectResponse.data.map(app => ({
+          ...app,
+          status: 'Unknown'
+        }));
+        setApps(initialApps);
         setLoading(false);
+        
+        // Fetch pod statuses separately
+        fetchPodStatuses(initialApps);
       } catch (err) {
         setError('Failed to fetch project details. Please try again.');
         setLoading(false);
@@ -109,7 +118,42 @@ const ProjectDetailPage = () => {
     };
 
     fetchProjectDetails();
+    
+    // Set up interval to refresh pod status
+    const statusInterval = setInterval(() => fetchPodStatuses(apps), 10000);
+
+    return () => {
+      clearInterval(statusInterval);
+    };
   }, [projectId]);
+
+  const fetchPodStatuses = async (currentApps) => {
+    const updatedApps = [...currentApps];
+    
+    // Fetch pod status for each app in parallel
+    const statusPromises = currentApps.map(async (app) => {
+      try {
+        const podResponse = await getMethod(`app/${app.ID}/pod/list`);
+        if (podResponse.data && podResponse.data.length > 0) {
+          const pod = podResponse.data[0];
+          const index = updatedApps.findIndex(a => a.ID === app.ID);
+          if (index !== -1) {
+            updatedApps[index] = {
+              ...updatedApps[index],
+              status: pod.status || 'Unknown'
+            };
+            // Update state for each status change
+            setApps([...updatedApps]);
+          }
+        }
+      } catch (err) {
+        console.error(`Failed to fetch pod status for app ${app.ID}:`, err);
+      }
+    });
+
+    // Wait for all status updates to complete
+    await Promise.all(statusPromises);
+  };
 
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {

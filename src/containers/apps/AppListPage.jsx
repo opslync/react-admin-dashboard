@@ -5,7 +5,7 @@ import { AppFilters } from '../../components/app/AppFilters';
 import { AppGrid } from '../../components/app/AppGrid';
 import { AppCreationDialog } from '../../components/app/AppCreationDialog';
 import { getMethod, deleteMethod } from '../../library/api';
-import { listApps } from '../../library/constant';
+import { listApps, listProject } from '../../library/constant';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../../components/ui/dialog";
 import { Input } from "../../components/ui/input";
 import { Button } from "../../components/ui/button";
@@ -105,19 +105,53 @@ const AppListPage = () => {
   const [appToDelete, setAppToDelete] = useState(null);
   const [deleteError, setDeleteError] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [projects, setProjects] = useState([]);
+
+  const fetchProjects = async () => {
+    try {
+      const response = await getMethod(listProject);
+      setProjects(response.data || []);
+    } catch (err) {
+      console.error('Failed to fetch projects:', err);
+      setProjects([]);
+    }
+  };
 
   const fetchApps = async () => {
     try {
       const response = await getMethod(listApps);
-      const mappedApps = response.data.map(app => ({
+      // First set the apps with initial status
+      const initialApps = response.data.map(app => ({
         id: app.ID,
         name: app.name,
         repository: app.repoUrl,
-        status: app.status || 'unknown',
-        project: app.projectId || 'Development'
+        status: 'Not Deployed',
+        project: app.project?.name || 'Default',
+        projectId: app.project?.id
       }));
-      setApps(mappedApps);
+      setApps(initialApps);
       setLoading(false);
+
+      // Then update status for each app
+      const updatedApps = [...initialApps];
+      for (const app of response.data) {
+        try {
+          const podResponse = await getMethod(`app/${app.ID}/pod/list`);
+          if (podResponse.data && podResponse.data.length > 0) {
+            const pod = podResponse.data[0];
+            const index = updatedApps.findIndex(a => a.id === app.ID);
+            if (index !== -1) {
+              updatedApps[index] = {
+                ...updatedApps[index],
+                status: pod.status || 'Not Deployed'
+              };
+              setApps([...updatedApps]); // Update state with each status change
+            }
+          }
+        } catch (err) {
+          console.error(`Failed to fetch pod status for app ${app.ID}:`, err);
+        }
+      }
     } catch (err) {
       console.error('Failed to fetch apps:', err);
       setLoading(false);
@@ -126,6 +160,7 @@ const AppListPage = () => {
 
   useEffect(() => {
     fetchApps();
+    fetchProjects();
   }, []);
 
   const handleFilterChange = (filterType, value) => {
@@ -138,11 +173,32 @@ const AppListPage = () => {
   const filteredApps = apps.filter(app => {
     const matchesSearch = app.name.toLowerCase().includes(filters.search.toLowerCase()) ||
                          app.repository.toLowerCase().includes(filters.search.toLowerCase());
-    const matchesStatus = filters.status === 'all' || app.status === filters.status;
-    const matchesProject = filters.project === 'all' || app.project.toLowerCase() === filters.project.toLowerCase();
+    const matchesStatus = filters.status === 'all' || app.status.toLowerCase() === filters.status.toLowerCase();
+    const matchesProject = filters.project === 'all' || 
+                          (app.projectId && app.projectId.toString() === filters.project.toString());
     
     return matchesSearch && matchesStatus && matchesProject;
   });
+
+  const getStatusOptions = () => {
+    return [
+      { label: 'All Status', value: 'all' },
+      { label: 'Running', value: 'running' },
+      { label: 'Not Deployed', value: 'not deployed' },
+      { label: 'Failed', value: 'failed' },
+      { label: 'Pending', value: 'pending' }
+    ];
+  };
+
+  const getProjectOptions = () => {
+    return [
+      { label: 'All Projects', value: 'all' },
+      ...projects.map(project => ({
+        label: project.name || 'Unnamed Project',
+        value: project.id.toString()
+      }))
+    ];
+  };
 
   const handleViewDetails = (appId) => {
     return `/app/${appId}/details`;
