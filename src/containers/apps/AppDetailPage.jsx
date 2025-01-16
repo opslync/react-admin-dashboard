@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useHistory, useLocation } from 'react-router-dom';
 import { getMethod, putMethod } from '../../library/api';
+import { API_BASE_URL } from '../../library/constant';
 import moment from 'moment';
 import {
   Card,
@@ -34,16 +35,66 @@ const AppDetailPage = () => {
   const [logs, setLogs] = useState([]);
   const [wsConnection, setWsConnection] = useState(null);
 
+  const connectToLogs = (podName, container) => {
+    if (wsConnection) {
+      wsConnection.close();
+    }
+
+    const wsBaseUrl = API_BASE_URL.replace(/^http/, 'ws').replace(/\/?$/, '/');
+    const ws = new WebSocket(`${wsBaseUrl}app/${appId}/pods/logs`);
+    
+    console.log('Connecting to WebSocket:', `${wsBaseUrl}app/${appId}/pods/logs`);
+    
+    ws.onopen = () => {
+      console.log('WebSocket Connected, sending initial request');
+      const request = {
+        pod_name: podName,
+        container: 'opslync-chart',
+        tail_lines: 100,
+        follow: true
+      };
+      console.log('Sending request:', request);
+      ws.send(JSON.stringify(request));
+      
+      setLogs(prev => [...prev, 'Connected to logs...']);
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        console.log('Received message:', event.data);
+        const logData = JSON.parse(event.data);
+        if (logData.content) {
+          setLogs(prev => [...prev, logData.content]);
+        } else if (typeof logData === 'string') {
+          setLogs(prev => [...prev, logData]);
+        }
+      } catch (error) {
+        console.error('Error parsing log message:', error);
+        setLogs(prev => [...prev, event.data]);
+      }
+    };
+
+    ws.onerror = (error) => {
+      console.error('WebSocket Error:', error);
+      setLogs(prev => [...prev, 'Error connecting to logs']);
+    };
+
+    ws.onclose = (event) => {
+      console.log('WebSocket Disconnected:', event.code, event.reason);
+      setLogs(prev => [...prev, 'Connection closed']);
+    };
+
+    setWsConnection(ws);
+  };
+
   useEffect(() => {
     fetchAppDetails();
     fetchPodStatus();
-    fetchLogs();
+    
     const statusInterval = setInterval(fetchPodStatus, 10000);
-    const logsInterval = setInterval(fetchLogs, 5000);
 
     return () => {
       clearInterval(statusInterval);
-      clearInterval(logsInterval);
       if (wsConnection) {
         wsConnection.close();
       }
@@ -65,17 +116,16 @@ const AppDetailPage = () => {
     try {
       const response = await getMethod(`app/${appId}/pod/list`);
       setPods(response.data);
+      
+      if (response.data && response.data.length > 0) {
+        const pod = response.data[0];
+        console.log('Pod details:', pod);
+        if (pod.name) {
+          connectToLogs(pod.name, 'opslync-chart');
+        }
+      }
     } catch (err) {
       console.error('Failed to fetch pod status:', err);
-    }
-  };
-
-  const fetchLogs = async () => {
-    try {
-      const response = await getMethod(`app/${appId}/logs`);
-      setLogs(response.data || []);
-    } catch (err) {
-      console.error('Failed to fetch logs:', err);
     }
   };
 
@@ -284,7 +334,17 @@ const AppDetailPage = () => {
             <CardContent>
               <div className="flex justify-between items-center mb-4">
                 <Typography variant="h6">Application Logs</Typography>
-                <Button variant="outline" size="sm" onClick={() => fetchLogs()}>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    setLogs([]);
+                    if (pods.length > 0) {
+                      const pod = pods[0];
+                      connectToLogs(pod.name, pod.containers[0]);
+                    }
+                  }}
+                >
                   Refresh Logs
                 </Button>
               </div>
