@@ -29,6 +29,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { API_BASE_URL } from '../../library/constant';
+import { getMethod, deleteMethod } from '../../library/api';
 
 const GitHubAppDetails = () => {
   const { appId } = useParams();
@@ -42,18 +43,14 @@ const GitHubAppDetails = () => {
   const [token, setToken] = useState(localStorage.getItem('github_token') || '');
   const [showToken, setShowToken] = useState(false);
   const [generatingToken, setGeneratingToken] = useState(false);
+  
 
   const fetchAppDetails = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}user/github/apps/${appId}`, {
-        method: 'GET',
-      });
+      const response = await getMethod(`user/github/apps/${appId}`);
       
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success && result.data) {
-          setApp(result.data);
-        }
+      if (response.data.success && response.data.data) {
+        setApp(response.data.data);
       }
     } catch (error) {
       console.error('Error fetching app details:', error);
@@ -80,9 +77,7 @@ const GitHubAppDetails = () => {
   const handleDeleteApp = async () => {
     setDeleteLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}user/github/app/${appId}`, {
-        method: 'DELETE',
-      });
+      const response = await deleteMethod(`user/github/app/${appId}`);
 
       if (response.ok) {
         history.push('/settings/git-account');
@@ -105,16 +100,11 @@ const GitHubAppDetails = () => {
   const handleGenerateToken = async () => {
     setGeneratingToken(true);
     try {
-      const response = await fetch(`${API_BASE_URL}user/github/token?app_id=${appId}`, {
-        method: 'GET',
-      });
+      const response = await getMethod(`user/github/token?app_id=${appId}`);
       
-      if (response.ok) {
-        const result = await response.json();
-        if (result.token) {
-          setToken(result.token);
-          localStorage.setItem('github_token', result.token);
-        }
+      if (response.data) {
+        setToken(response.data.token);
+        localStorage.setItem('github_token', response.data.token);
       }
     } catch (error) {
       console.error('Error generating token:', error);

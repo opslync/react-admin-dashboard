@@ -1,25 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { InputText } from 'primereact/inputtext';
-import { Password } from 'primereact/password';
-import { Button } from 'primereact/button';
-import { useFormik, Form, FormikProvider } from 'formik';
+import { useFormik } from 'formik';
 import * as Yup from 'yup';
-import { classNames } from 'primereact/utils';
-import axios from 'axios';
 import { getMethod, putMethod } from '../../library/api';
+import { Card, CardContent } from '../../components/ui/card';
+import { Input } from '../../components/ui/input';
+import { Button } from '../../components/ui/button';
+import { Label } from '../../components/ui/label';
+import { Avatar, AvatarImage, AvatarFallback } from '../../components/ui/avatar';
+import { Mail, Phone, MapPin, Globe, Pencil } from 'lucide-react';
 
 const UserProfilePage = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
   const [profilePic, setProfilePic] = useState(null);
 
   useEffect(() => {
-    // Fetch user profile details from the API
     const fetchUserProfile = async () => {
       try {
         const response = await getMethod('userprofile');
-        setUser(response.data);
+        if (response.data.status === 'success') {
+          setUser(response.data.user);
+        }
         setLoading(false);
       } catch (err) {
         setError('Failed to fetch user profile. Please try again.');
@@ -52,17 +55,17 @@ const UserProfilePage = () => {
     enableReinitialize: true,
     validationSchema: UserProfileSchema,
     onSubmit: async (data) => {
-      console.log(data);
       try {
         const response = await putMethod('userprofile', data);
-        setUser(response.data);
+        if (response.data.status === 'success') {
+          setUser(response.data.user);
+          setIsEditing(false);
+        }
       } catch (err) {
         setError('Failed to update user profile. Please try again.');
       }
     },
   });
-
-  const { errors, touched, isSubmitting, handleSubmit } = formik;
 
   const handleProfilePicChange = (event) => {
     const file = event.target.files[0];
@@ -71,119 +74,161 @@ const UserProfilePage = () => {
     }
   };
 
-  if (loading) return <div className="flex justify-center items-center h-full">Loading...</div>;
-  if (error) return <div className="flex justify-center items-center h-full text-red-500">{error}</div>;
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  const UserInfoCard = () => (
+    <Card className="w-full max-w-3xl mx-auto">
+      <CardContent className="p-6">
+        <div className="flex flex-col items-center">
+          <Avatar className="h-24 w-24 mb-4">
+            <AvatarImage src={profilePic || user?.avatar || 'https://github.com/shadcn.png'} />
+            <AvatarFallback>{user?.username?.charAt(0)?.toUpperCase() || 'U'}</AvatarFallback>
+          </Avatar>
+          <h2 className="text-2xl font-bold">{user?.username}</h2>
+          <p className="text-gray-500 mb-6">User ID: {user?.id}</p>
+
+          <div className="space-y-4 w-full max-w-lg">
+            <div className="flex items-center gap-3">
+              <Mail className="h-5 w-5 text-gray-500" />
+              <span>{user?.email}</span>
+            </div>
+          </div>
+
+          <Button 
+            onClick={() => setIsEditing(true)}
+            className="mt-8 flex items-center gap-2"
+          >
+            <Pencil className="h-4 w-4" />
+            Edit Profile
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const EditProfileForm = () => (
+    <Card className="w-full max-w-3xl mx-auto">
+      <CardContent className="p-6">
+        <form onSubmit={formik.handleSubmit} className="space-y-6">
+          <div className="flex justify-center mb-8">
+            <div className="relative">
+              <Avatar className="h-24 w-24">
+                <AvatarImage src={profilePic || user?.avatar || 'https://github.com/shadcn.png'} />
+                <AvatarFallback>{user?.username?.charAt(0)?.toUpperCase() || 'U'}</AvatarFallback>
+              </Avatar>
+              <label 
+                htmlFor="avatar-upload" 
+                className="absolute bottom-0 right-0 p-1 bg-white rounded-full shadow-lg cursor-pointer hover:bg-gray-50"
+              >
+                <Pencil className="h-4 w-4 text-gray-600" />
+                <input
+                  id="avatar-upload"
+                  type="file"
+                  className="hidden"
+                  accept="image/*"
+                  onChange={handleProfilePicChange}
+                />
+              </label>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="username">Username</Label>
+              <Input
+                id="username"
+                name="username"
+                value={formik.values.username}
+                onChange={formik.handleChange}
+                className={formik.errors.username && formik.touched.username ? 'border-red-500' : ''}
+              />
+              {formik.errors.username && formik.touched.username && (
+                <p className="text-sm text-red-500">{formik.errors.username}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                value={formik.values.email}
+                onChange={formik.handleChange}
+                className={formik.errors.email && formik.touched.email ? 'border-red-500' : ''}
+              />
+              {formik.errors.email && formik.touched.email && (
+                <p className="text-sm text-red-500">{formik.errors.email}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="newPassword">New Password</Label>
+              <Input
+                id="newPassword"
+                name="newPassword"
+                type="password"
+                value={formik.values.newPassword}
+                onChange={formik.handleChange}
+                className={formik.errors.newPassword && formik.touched.newPassword ? 'border-red-500' : ''}
+              />
+              {formik.errors.newPassword && formik.touched.newPassword && (
+                <p className="text-sm text-red-500">{formik.errors.newPassword}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Input
+                id="confirmPassword"
+                name="confirmPassword"
+                type="password"
+                value={formik.values.confirmPassword}
+                onChange={formik.handleChange}
+                className={formik.errors.confirmPassword && formik.touched.confirmPassword ? 'border-red-500' : ''}
+              />
+              {formik.errors.confirmPassword && formik.touched.confirmPassword && (
+                <p className="text-sm text-red-500">{formik.errors.confirmPassword}</p>
+              )}
+            </div>
+          </div>
+
+          {error && (
+            <div className="bg-red-50 text-red-500 p-3 rounded-md text-sm">
+              {error}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-4">
+            <Button 
+              type="button" 
+              variant="outline"
+              onClick={() => setIsEditing(false)}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="submit" 
+              className="bg-blue-600 hover:bg-blue-700"
+              disabled={formik.isSubmitting}
+            >
+              {formik.isSubmitting ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
 
   return (
-    <div className="flex flex-col items-center p-6 min-h-screen bg-gray-100">
-      <div className="w-full max-w-2xl bg-white p-6 rounded-lg shadow-md">
-        <h2 className="text-2xl font-semibold mb-4 text-center">User Profile</h2>
-        <div className="flex justify-center mb-4">
-          <div className="relative">
-            <img
-              src={profilePic || 'https://via.placeholder.com/150'}
-              alt="Profile"
-              className="w-32 h-32 rounded-full object-cover"
-            />
-            <input
-              type="file"
-              className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer"
-              onChange={handleProfilePicChange}
-            />
-          </div>
-        </div>
-        <FormikProvider value={formik}>
-          <Form onSubmit={handleSubmit} className="p-fluid space-y-4">
-            <div className="p-field">
-              <span className="p-float-label">
-                <InputText
-                  id="username"
-                  name="username"
-                  value={formik.values.username}
-                  onChange={formik.handleChange}
-                  className={classNames({ 'p-invalid': Boolean(touched.username && errors.username) })}
-                />
-                <label htmlFor="username" className={classNames({ 'p-error': Boolean(touched.username && errors.username) })}>
-                  Username*
-                </label>
-              </span>
-              {Boolean(touched.username && errors.username) && (
-                <small className="p-error">{formik.errors.username}</small>
-              )}
-            </div>
-
-            <div className="p-field">
-              <span className="p-float-label">
-                <InputText
-                  id="email"
-                  name="email"
-                  value={formik.values.email}
-                  onChange={formik.handleChange}
-                  className={classNames({ 'p-invalid': Boolean(touched.email && errors.email) })}
-                />
-                <label htmlFor="email" className={classNames({ 'p-error': Boolean(touched.email && errors.email) })}>
-                  Email*
-                </label>
-              </span>
-              {Boolean(touched.email && errors.email) && (
-                <small className="p-error">{formik.errors.email}</small>
-              )}
-            </div>
-
-            <div className="p-field">
-              <span className="p-float-label">
-                <Password
-                  id="newPassword"
-                  name="newPassword"
-                  toggleMask
-                  feedback={false}
-                  value={formik.values.newPassword}
-                  onChange={formik.handleChange}
-                  className={classNames({ 'p-invalid': Boolean(touched.newPassword && errors.newPassword) })}
-                />
-                <label htmlFor="newPassword" className={classNames({ 'p-error': Boolean(touched.newPassword && errors.newPassword) })}>
-                  New Password
-                </label>
-              </span>
-              {Boolean(touched.newPassword && errors.newPassword) && (
-                <small className="p-error">{formik.errors.newPassword}</small>
-              )}
-            </div>
-
-            <div className="p-field">
-              <span className="p-float-label">
-                <Password
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  toggleMask
-                  feedback={false}
-                  value={formik.values.confirmPassword}
-                  onChange={formik.handleChange}
-                  className={classNames({ 'p-invalid': Boolean(touched.confirmPassword && errors.confirmPassword) })}
-                />
-                <label htmlFor="confirmPassword" className={classNames({ 'p-error': Boolean(touched.confirmPassword && errors.confirmPassword) })}>
-                  Confirm Password
-                </label>
-              </span>
-              {Boolean(touched.confirmPassword && errors.confirmPassword) && (
-                <small className="p-error">{formik.errors.confirmPassword}</small>
-              )}
-            </div>
-
-            <div className="submitBtnBox text-center">
-              <Button
-                type="submit"
-                label="Update"
-                iconPos="right"
-                loading={isSubmitting}
-                className="mt-4 submitBtn"
-                color="primary"
-                disabled={isSubmitting}
-              />
-            </div>
-          </Form>
-        </FormikProvider>
-      </div>
+    <div className="flex flex-col lg:ml-64 p-6 bg-gray-50 min-h-screen">
+      {isEditing ? <EditProfileForm /> : <UserInfoCard />}
     </div>
   );
 };

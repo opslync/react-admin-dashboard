@@ -4,8 +4,24 @@ import { getMethod } from '../../library/api';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
-import { ChevronLeft, Cpu, MemoryStick, HardDrive, Plus, ChevronRight } from 'lucide-react';
+import { ChevronLeft, Cpu, MemoryStick, HardDrive, Plus, ChevronRight, ChevronDown } from 'lucide-react';
 import { AppCreationDialog } from '../../components/app/AppCreationDialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../../components/ui/dropdown-menu";
+
+class CustomWebSocket extends WebSocket {
+  constructor(url, token) {
+    // Create a URL object to modify the query parameters
+    const wsUrl = new URL(url);
+    // Add the token as a query parameter
+    wsUrl.searchParams.append('token', token);
+    super(wsUrl.toString());
+  }
+}
 
 const ProjectDetailPage = () => {
   const { projectId } = useParams();
@@ -23,7 +39,8 @@ const ProjectDetailPage = () => {
 
   useEffect(() => {
     const connectWebSocket = () => {
-      const ws = new WebSocket(`ws://localhost:8080/api/projects/${projectId}/metrics`);
+      const token = localStorage.getItem('token');
+      const ws = new CustomWebSocket(`ws://localhost:8080/projects/${projectId}/metrics`, token);
 
       ws.onopen = () => {
         console.log('WebSocket connected');
@@ -262,12 +279,23 @@ const ProjectDetailPage = () => {
               Resource usage and applications
             </p>
           </div>
-          {apps.length > 0 && (
-            <Button className="bg-blue-600 hover:bg-blue-700" onClick={handleOpenCreateModal}>
-              <Plus className="h-4 w-4 mr-2" />
-              New Application
-            </Button>
-          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="bg-blue-600 hover:bg-blue-700">
+                <Plus className="h-4 w-4 mr-2" />
+                New Application
+                <ChevronDown className="h-4 w-4 ml-2" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={() => setIsCreateModalOpen(true)}>
+                From GitHub
+              </DropdownMenuItem>
+              <DropdownMenuItem disabled>
+                From Docker Image
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Resource Metrics */}
@@ -318,10 +346,23 @@ const ProjectDetailPage = () => {
             ) : (
               <div className="p-8 text-center">
                 <p className="text-gray-500">No applications found in this project.</p>
-                <Button variant="outline" className="mt-4" onClick={handleOpenCreateModal}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Application
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="mt-4">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Application
+                      <ChevronDown className="h-4 w-4 ml-2" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem onClick={() => setIsCreateModalOpen(true)}>
+                      From GitHub
+                    </DropdownMenuItem>
+                    <DropdownMenuItem disabled>
+                      From Docker Image
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             )}
           </div>

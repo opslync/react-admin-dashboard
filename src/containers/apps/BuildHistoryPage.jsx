@@ -7,11 +7,11 @@ import { getMethod, postMethod } from '../../library/api';
 import { useParams, useHistory, useLocation } from 'react-router-dom';
 import { API_BASE_URL } from '../../library/constant';
 import {
-  AppBar,
-  Tabs,
-  Tab,
-  Toolbar,
-  IconButton,
+    AppBar,
+    Tabs,
+    Tab,
+    Toolbar,
+    IconButton,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../../components/ui/dialog";
@@ -19,11 +19,11 @@ import { Button } from "../../components/ui/button";
 import * as ScrollArea from '@radix-ui/react-scroll-area';
 
 const BuildHistoryPage = () => {
-  const { appId } = useParams();
-  const history = useHistory();
-  const location = useLocation();
+    const { appId } = useParams();
+    const history = useHistory();
+    const location = useLocation();
   const [buildHistory, setBuildHistory] = useState([]);
-  const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [logs, setLogs] = useState([]);
   const [wsConnection, setWsConnection] = useState(null);
@@ -66,14 +66,14 @@ const BuildHistoryPage = () => {
     try {
       const response = await getMethod(`app/${appId}/pod/list`);
       setPods(response.data);
-    } catch (err) {
+            } catch (err) {
       console.error('Failed to fetch pod status:', err);
-    }
-  };
+            }
+        };
 
   useEffect(() => {
     fetchAppDetails();
-    fetchBuildHistory();
+        fetchBuildHistory();
     fetchPodStatus();
     const statusInterval = setInterval(fetchPodStatus, 10000);
 
@@ -83,7 +83,7 @@ const BuildHistoryPage = () => {
         wsConnection.close();
       }
     };
-  }, [appId]);
+    }, [appId]);
 
   useEffect(() => {
     const paths = [
@@ -98,16 +98,16 @@ const BuildHistoryPage = () => {
     }
   }, [location.pathname, appId]);
 
-  const handleTabChange = (event, newValue) => {
-    setTabValue(newValue);
-    const paths = [
-      `/app/${appId}/details`,
-      `/app/${appId}/build-history`,
-      `/app/${appId}/metrics`,
+    const handleTabChange = (event, newValue) => {
+        setTabValue(newValue);
+        const paths = [
+            `/app/${appId}/details`,
+            `/app/${appId}/build-history`,
+            `/app/${appId}/metrics`,
       `/app/${appId}/app-settings`,
-    ];
-    history.push(paths[newValue]);
-  };
+        ];
+        history.push(paths[newValue]);
+    };
 
   const calculateBuildTime = (startedAt, finishedAt) => {
     const start = new Date(startedAt);
@@ -173,7 +173,8 @@ const BuildHistoryPage = () => {
 
     // Replace http/https with ws/wss in the API URL
     const wsBase = API_BASE_URL.replace(/^http/, 'ws');
-    const wsUrl = `${wsBase}app/${appId}/workflows/build/logs?workflowID=${workflowId}`;
+    const token = localStorage.getItem('token');
+    const wsUrl = `${wsBase}app/${appId}/workflows/build/logs?workflowID=${workflowId}&token=${token}`;
     
     const ws = new WebSocket(wsUrl);
 
@@ -398,7 +399,7 @@ const BuildHistoryPage = () => {
 
   if (error) {
     return (
-      <div className="flex flex-col lg:ml-64 p-4 bg-gray-100 min-h-screen">
+        <div className="flex flex-col lg:ml-64 p-4 bg-gray-100 min-h-screen">
         <p className="text-red-600">{error}</p>
       </div>
     );
@@ -454,7 +455,7 @@ const BuildHistoryPage = () => {
             label="Configuration" 
             iconPosition="start"
           />
-        </Tabs>
+                    </Tabs>
       </div>
 
       {/* Build Pipeline */}
@@ -572,8 +573,8 @@ const BuildHistoryPage = () => {
       )}
 
       {showDeployModal && <DeployModal />}
-    </div>
-  );
+        </div>
+    );
 };
 
 export default BuildHistoryPage;

@@ -22,6 +22,7 @@ import GitHubIcon from '@mui/icons-material/GitHub';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { API_BASE_URL } from '../../library/constant';
 import GitHubAppRegistration from './GitHubAppRegistration';
+import { getMethod } from '../../library/api';
 
 const GitUserPage = () => {
   const [tabValue, setTabValue] = useState(0);
@@ -36,18 +37,13 @@ const GitUserPage = () => {
   // Fetch GitHub apps
   const fetchApps = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}user/github/apps`, {
-        method: 'GET',
-      });
+      const response = await getMethod(`user/github/apps`);
       
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success && Array.isArray(result.data)) {
-          setApps(result.data);
-        } else {
-          setApps([]);
-          console.error('Invalid data format received');
-        }
+      if (response.data.success && Array.isArray(response.data.data)) {
+        setApps(response.data.data);
+      } else {
+        setApps([]);
+        console.error('Invalid data format received');
       }
     } catch (error) {
       console.error('Error fetching apps:', error);
@@ -60,18 +56,13 @@ const GitUserPage = () => {
   // Fetch app details
   const fetchAppDetails = async (appId) => {
     try {
-      const response = await fetch(`${API_BASE_URL}user/github/apps/${appId}`, {
-        method: 'GET',
-      });
+      const response = await getMethod(`user/github/apps/${appId}`);
       
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success && result.data) {
-          setSelectedApp(result.data);
-          setIsAppDetailsOpen(true);
-        } else {
-          console.error('Invalid app details format received');
-        }
+      if (response.data.success && response.data.data) {
+        setSelectedApp(response.data.data);
+        setIsAppDetailsOpen(true);
+      } else {
+        console.error('Invalid app details format received');
       }
     } catch (error) {
       console.error('Error fetching app details:', error);

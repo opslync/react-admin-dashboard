@@ -225,7 +225,7 @@ const ProjectListPage = () => {
   const fetchProjects = async () => {
     try {
       const response = await getMethod(listProject);
-      setProjects(response.data);
+      setProjects(response.data.projects || []);
       setLoading(false);
     } catch (err) {
       setError('Failed to fetch projects. Please try again.');

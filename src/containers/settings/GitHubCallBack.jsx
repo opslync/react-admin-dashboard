@@ -4,6 +4,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import { CircularProgress } from '@mui/material';
 import { API_BASE_URL } from '../../config/github.config';
+import { postMethod } from '../../library/api';
 
 const GitHubCallback = () => {
   const history = useHistory();
@@ -36,15 +37,9 @@ const GitHubCallback = () => {
       }
 
       try {
-        const response = await fetch(`${API_BASE_URL}/api/user/github-setup`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            code: params.code,
-            state: params.state,
-          }),
+        const response = await postMethod('user/github-setup', {
+          code: params.code,
+          state: params.state,
         });
 
         if (!response.ok) {

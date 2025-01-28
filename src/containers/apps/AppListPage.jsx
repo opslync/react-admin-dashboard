@@ -219,7 +219,7 @@ const AppListPage = () => {
     try {
       await deleteMethod(`app/${appToDelete.id}`);
       setShowDeleteDialog(false);
-      fetchApps();
+      window.location.reload();
     } catch (err) {
       setDeleteError(err.response?.data?.message || 'Failed to delete app. Please try again.');
     } finally {

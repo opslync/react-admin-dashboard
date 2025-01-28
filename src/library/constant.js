@@ -8,11 +8,11 @@ export const API_BASE_URL = process.env.REACT_APP_BASE_URL || process.env.BASE_U
 
 export const WsbaseUrl = process.env.REACT_APP_WS_BASE_URL || "ws://localhost:8080/api/";
 
-export const loginUrl = "signin";
-export const RegisterUrl = "signup"
+export const loginUrl = "http://localhost:8080/users/signin";
+export const RegisterUrl = "users/signup"
 export const githubuser = "githubuser"
-export const projectCreate = "project/create"
-export const appCreate = "app/create"
+export const projectCreate = "projects/create"
+export const appCreate = "apps/create"
 export const listProject = "projects"
 export const listApps = "apps"
 export const containerRegistry = 'container/account'; 

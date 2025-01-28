@@ -1,10 +1,7 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-
-import { postMethod } from "../api";
-
-import { loginUrl } from "../constant";
-
+import { loginUrl, baseUrl } from "../constant";
 import { createSelector } from "@reduxjs/toolkit";
+import axios from "axios";
 
 const initialState = {
   value: {
@@ -26,15 +23,19 @@ export const authenticateUser = createAsyncThunk(
   "authentication/user",
   async (data, thunkAPI) => {
     try {
-      const response = await postMethod(loginUrl, data);
+      const response = await axios.post(loginUrl, data, {
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
       if (response.status === 200) {
-        // Assuming the response structure includes a 'token' field
         return { isLogged: true, username: response.data.user.username, token: response.data.token };
       } else {
-        return thunkAPI.rejectWithValue(response.data); // Handle non-200 status codes
+        return thunkAPI.rejectWithValue(response.data);
       }
     } catch (error) {
-      return thunkAPI.rejectWithValue(error.message); // Handle network errors or exceptions
+      return thunkAPI.rejectWithValue(error.message);
     }
   }
 );

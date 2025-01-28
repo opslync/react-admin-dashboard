@@ -29,9 +29,38 @@ export const AppCreationDialog = ({ open, onOpenChange, onAppCreated }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // Reset form when dialog closes
+  const resetForm = () => {
+    setName('');
+    setDescription('');
+    setSelectedProject('');
+    setRepoType('public');
+    setRepoUrl('');
+    setSelectedRepo('');
+    setBranches([]);
+    setSelectedBranch('');
+    setPort('');
+    setError(null);
+    setLoading(false);
+  };
+
+  const handleClose = () => {
+    resetForm();
+    onOpenChange(false);
+    window.location.reload();
+  };
+
   useEffect(() => {
-    fetchProjects();
-  }, []);
+    if (!open) {
+      resetForm();
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (open) {
+      fetchProjects();
+    }
+  }, [open]);
 
   useEffect(() => {
     if (repoType === 'private') {
@@ -42,7 +71,7 @@ export const AppCreationDialog = ({ open, onOpenChange, onAppCreated }) => {
   const fetchProjects = async () => {
     try {
       const response = await getMethod(listProject);
-      setProjects(response.data);
+      setProjects(response.data.projects || []);
     } catch (err) {
       setError('Failed to fetch projects');
       console.error('Failed to fetch projects:', err);
@@ -183,7 +212,7 @@ export const AppCreationDialog = ({ open, onOpenChange, onAppCreated }) => {
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="bg-white p-0 gap-0 shadow-lg border-0 max-h-[90vh] flex flex-col">
         <div className="flex justify-between items-center p-6 border-b">
           <DialogTitle className="text-xl font-semibold">Create New App</DialogTitle>
@@ -191,7 +220,7 @@ export const AppCreationDialog = ({ open, onOpenChange, onAppCreated }) => {
             variant="ghost" 
             size="icon" 
             className="h-6 w-6" 
-            onClick={() => onOpenChange(false)}
+            onClick={handleClose}
           >
             <X className="h-4 w-4" />
           </Button>
@@ -340,7 +369,7 @@ export const AppCreationDialog = ({ open, onOpenChange, onAppCreated }) => {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => onOpenChange(false)}
+                onClick={handleClose}
                 disabled={loading}
               >
                 Cancel

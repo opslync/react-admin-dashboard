@@ -12,15 +12,9 @@ const InstallGitHubApp = ({ appId }) => {
 
   const fetchAppDetails = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}user/github/apps/${appId}`, {
-        method: 'GET',
-      });
-      
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success && result.data) {
-          setApp(result.data);
-        }
+      const result = await getMethod(`user/github/apps/${appId}`);
+      if (result.success && result.data) {
+        setApp(result.data);
       }
     } catch (error) {
       console.error('Error fetching app details:', error);
