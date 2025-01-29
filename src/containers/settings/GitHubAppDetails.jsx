@@ -63,6 +63,32 @@ const GitHubAppDetails = () => {
     fetchAppDetails();
   }, [appId]);
 
+  // Add auto token refresh mechanism
+  useEffect(() => {
+    let tokenRefreshInterval;
+
+    const autoRefreshToken = async () => {
+      if (app?.installation_id) {
+        await handleGenerateToken();
+      }
+    };
+
+    if (app?.installation_id) {
+      // Initial token generation
+      autoRefreshToken();
+      
+      // Set up interval for every 10 minutes (600000 milliseconds)
+      tokenRefreshInterval = setInterval(autoRefreshToken, 600000);
+    }
+
+    // Cleanup interval on component unmount or when installation_id changes
+    return () => {
+      if (tokenRefreshInterval) {
+        clearInterval(tokenRefreshInterval);
+      }
+    };
+  }, [app?.installation_id]); // Depend on installation_id to restart interval if it changes
+
   const handleInstallApp = () => {
     if (app && app.name) {
       const returnUrl = `${window.location.origin}/settings/git-account`;

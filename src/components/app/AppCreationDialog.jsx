@@ -86,7 +86,7 @@ export const AppCreationDialog = ({ open, onOpenChange, onAppCreated }) => {
         return;
       }
 
-      const response = await postMethod('github/projectlist', { github_token: token });
+      const response = await postMethod('user/github/repo-list', { github_token: token });
       console.log('Repository response:', response);
       
       if (Array.isArray(response.data)) {
@@ -186,28 +186,19 @@ export const AppCreationDialog = ({ open, onOpenChange, onAppCreated }) => {
   const handleRepoTypeChange = async (type) => {
     setRepoType(type);
     if (type === 'private') {
-      try {
-        const response = await getMethod('user/github/check-app'); // Endpoint to check if GitHub app exists
-        console.log('GitHub app check response:', response); // Log the response
-        if (response.data.status === "success" && response.data.exists) {
-          console.log('GitHub app exists. Fetching token...');
-          // // Fetch GitHub token if app exists
-          // const tokenResponse = await getMethod('user/github/token');
-          // if (tokenResponse?.data?.status === 'success') {
-          //   const token = tokenResponse.data.token;
-          //   localStorage.setItem('github_token', token);
-          //   console.log('GitHub token stored successfully.');
-          // } else {
-          //   console.error('Failed to fetch GitHub token.');
-          // }
-        } else {
-          console.log('GitHub app does not exist. Redirecting to create app page...');
-          // Redirect to GitHub app creation page
-          window.location.href = '/github-app/create';
-        }
-      } catch (err) {
-        console.error('Error checking GitHub app:', err);
+      // Check if GitHub token exists
+      const token = localStorage.getItem('github_token');
+      if (!token) {
+        setError('GitHub app installation is not complete. You will be redirected to complete the installation.');
+        // Wait for 2 seconds to show the message before redirecting
+        setTimeout(() => {
+          window.location.href = '/settings/git-account';
+        }, 2000);
+        return;
       }
+      
+      // Token exists, proceed with fetching repos
+      await fetchPrivateRepos();
     }
   };
 
