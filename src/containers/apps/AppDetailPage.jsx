@@ -35,6 +35,7 @@ const AppDetailPage = () => {
   const [logs, setLogs] = useState([]);
   const [wsConnection, setWsConnection] = useState(null);
   const [showLogs, setShowLogs] = useState(false);
+  const [pollingInterval, setPollingInterval] = useState(null);
 
   const connectToLogs = (podName, container) => {
     if (wsConnection) {
@@ -88,19 +89,72 @@ const AppDetailPage = () => {
     setWsConnection(ws);
   };
 
+  const shouldPollStatus = (status) => {
+    const pollingStates = ['pending', 'containerCreating', 'waiting'];
+    return pollingStates.includes(status?.toLowerCase());
+  };
+
+  const fetchPodStatus = async () => {
+    try {
+      const response = await getMethod(`app/${appId}/pod/list`);
+      setPods(response.data);
+      
+      // Check if we should continue polling based on pod status
+      const podStatus = response.data[0]?.status?.toLowerCase();
+      if (!shouldPollStatus(podStatus)) {
+        // Stop polling if we reach a final state
+        if (pollingInterval) {
+          clearInterval(pollingInterval);
+          setPollingInterval(null);
+        }
+      }
+      
+      if (response.data && response.data.length > 0) {
+        const pod = response.data[0];
+        console.log('Pod details:', pod);
+        if (pod.name && !wsConnection) {
+          connectToLogs(pod.name, 'opslync-chart');
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch pod status:', err);
+      // Stop polling on error
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+        setPollingInterval(null);
+      }
+    }
+  };
+
   useEffect(() => {
     fetchAppDetails();
     fetchPodStatus();
     
-    const statusInterval = setInterval(fetchPodStatus, 10000);
-
     return () => {
-      clearInterval(statusInterval);
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
       if (wsConnection) {
         wsConnection.close();
       }
     };
   }, [appId]);
+
+  // Start polling when pod status changes to a state that needs polling
+  useEffect(() => {
+    const podStatus = pods[0]?.status?.toLowerCase();
+    
+    if (shouldPollStatus(podStatus) && !pollingInterval) {
+      const interval = setInterval(fetchPodStatus, 10000);
+      setPollingInterval(interval);
+    }
+
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+    };
+  }, [pods[0]?.status]);
 
   const fetchAppDetails = async () => {
     try {
@@ -110,23 +164,6 @@ const AppDetailPage = () => {
     } catch (err) {
       setError('Failed to fetch app details');
       setLoading(false);
-    }
-  };
-
-  const fetchPodStatus = async () => {
-    try {
-      const response = await getMethod(`app/${appId}/pod/list`);
-      setPods(response.data);
-      
-      if (response.data && response.data.length > 0) {
-        const pod = response.data[0];
-        console.log('Pod details:', pod);
-        if (pod.name) {
-          connectToLogs(pod.name, 'opslync-chart');
-        }
-      }
-    } catch (err) {
-      console.error('Failed to fetch pod status:', err);
     }
   };
 

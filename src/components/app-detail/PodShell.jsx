@@ -1,136 +1,142 @@
-import React, { useEffect, useRef } from 'react';
-import { Box, Paper } from '@mui/material';
+import React, { useEffect, useRef, useState } from 'react';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
+import { WebLinksAddon } from '@xterm/addon-web-links';
 import 'xterm/css/xterm.css';
 import { API_BASE_URL } from '../../library/constant';
 
 export const PodShell = ({ podDetails, appId }) => {
     const terminalRef = useRef(null);
-    const terminalInstanceRef = useRef(null);
-    const wsRef = useRef(null);
+    const containerRef = useRef(null);
+    const [terminal, setTerminal] = useState(null);
+    const [wsConnection, setWsConnection] = useState(null);
 
     useEffect(() => {
-        if (!terminalRef.current || !podDetails || !appId) return;
+        // Debug pod details and app ID
+        console.log('Pod Details:', podDetails);
+        console.log('App ID:', appId);
 
         // Initialize terminal
-        const terminal = new Terminal({
+        const term = new Terminal({
             cursorBlink: true,
             fontSize: 14,
             fontFamily: 'Menlo, Monaco, "Courier New", monospace',
             theme: {
                 background: '#1e1e1e',
-                foreground: '#ffffff',
-                cursor: '#ffffff',
-                selection: 'rgba(255, 255, 255, 0.3)',
-                black: '#000000',
-                brightBlack: '#666666',
-                red: '#ff0000',
-                brightRed: '#ff0000',
-                green: '#33ff00',
-                brightGreen: '#33ff00',
-                yellow: '#ffff00',
-                brightYellow: '#ffff00',
-                blue: '#0066ff',
-                brightBlue: '#0066ff',
-                magenta: '#cc00ff',
-                brightMagenta: '#cc00ff',
-                cyan: '#00ffff',
-                brightCyan: '#00ffff',
-                white: '#d0d0d0',
-                brightWhite: '#ffffff'
+                foreground: '#ffffff'
             }
         });
 
         const fitAddon = new FitAddon();
-        terminal.loadAddon(fitAddon);
+        term.loadAddon(fitAddon);
+        term.loadAddon(new WebLinksAddon());
 
-        // Create WebSocket connection
-        const wsBase = API_BASE_URL.replace(/^http/, 'ws');
-        const ws = new WebSocket(`${wsBase}app/${appId}/pod/shell`);
-        wsRef.current = ws;
-
-        ws.onopen = () => {
-            terminal.write('\r\n\x1b[1;34mConnecting to pod shell...\x1b[0m\r\n');
-
-            // Send pod details
-            ws.send(JSON.stringify({
-                namespace: podDetails.namespace,
-                pod_name: podDetails.podName,
-                container: podDetails.container
-            }));
-        };
-
-        ws.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data);
-                if (data.output) {
-                    terminal.write(data.output);
+        // Wait for the container to be available in the DOM
+        if (containerRef.current) {
+            console.log('Terminal container mounted');
+            term.open(containerRef.current);
+            
+            // Fit the terminal to container
+            setTimeout(() => {
+                try {
+                    fitAddon.fit();
+                    console.log('Terminal fitted successfully');
+                } catch (error) {
+                    console.error('Error fitting terminal:', error);
                 }
-            } catch (error) {
-                // If not JSON, write directly
-                terminal.write(event.data);
-            }
-        };
+            }, 0);
 
-        ws.onerror = (error) => {
-            console.error('WebSocket error:', error);
-            terminal.write('\r\n\x1b[1;31mError: Failed to connect to pod shell\x1b[0m\r\n');
-        };
+            // Handle window resize
+            const handleResize = () => {
+                try {
+                    fitAddon.fit();
+                } catch (error) {
+                    console.error('Error during resize:', error);
+                }
+            };
+            window.addEventListener('resize', handleResize);
 
-        ws.onclose = () => {
-            terminal.write('\r\n\x1b[1;33mConnection closed\x1b[0m\r\n');
-        };
+            // Connect to WebSocket
+            const wsBaseUrl = API_BASE_URL.replace(/^http/, 'ws');
+            const wsUrl = `${wsBaseUrl}app/${appId}/pods/shell?pod_name=${podDetails.podName}&container=${podDetails.container}`;
+            console.log('Attempting WebSocket connection to:', wsUrl);
 
-        // Handle terminal input
-        terminal.onData(data => {
-            if (ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ input: data }));
-            }
-        });
+            const ws = new WebSocket(wsUrl);
 
-        // Mount terminal
-        terminal.open(terminalRef.current);
-        fitAddon.fit();
-        terminalInstanceRef.current = terminal;
+            ws.onopen = () => {
+                console.log('WebSocket connection established');
+                // term.writeln('Connected to pod shell...');
+            };
 
-        // Handle window resize
-        const handleResize = () => {
-            fitAddon.fit();
-        };
-        window.addEventListener('resize', handleResize);
+            ws.onmessage = (event) => {
+                try {
+                    console.log('WebSocket message received:', event.data);
+                    term.write(event.data);
+                } catch (error) {
+                    console.error('Error processing WebSocket message:', error);
+                    term.writeln('\r\nError processing message: ' + error.message);
+                }
+            };
 
-        // Cleanup
-        return () => {
-            window.removeEventListener('resize', handleResize);
-            if (wsRef.current) {
-                wsRef.current.close();
-            }
-            if (terminalInstanceRef.current) {
-                terminalInstanceRef.current.dispose();
-            }
-        };
-    }, [podDetails, appId]);
+            ws.onerror = (error) => {
+                console.error('WebSocket Error:', error);
+                console.error('WebSocket Error Details:', {
+                    readyState: ws.readyState,
+                    bufferedAmount: ws.bufferedAmount,
+                    protocol: ws.protocol,
+                    url: ws.url
+                });
+                term.writeln('WebSocket Error: ' + (error.message || 'Connection failed'));
+            };
+
+            ws.onclose = (event) => {
+                console.log('WebSocket closed:', {
+                    code: event.code,
+                    reason: event.reason,
+                    wasClean: event.wasClean
+                });
+                term.writeln(`\r\nConnection closed (Code: ${event.code}${event.reason ? ', Reason: ' + event.reason : ''})`);
+            };
+
+            // Handle terminal input
+            term.onData(data => {
+                if (ws.readyState === WebSocket.OPEN) {
+                    try {
+                        console.log('Sending data to WebSocket:', data);
+                        ws.send(data);
+                    } catch (error) {
+                        console.error('Error sending data to WebSocket:', error);
+                        term.writeln('\r\nError sending command: ' + error.message);
+                    }
+                } else {
+                    console.warn('WebSocket not in OPEN state. Current state:', ws.readyState);
+                    term.writeln('\r\nWebSocket not connected. Cannot send command.');
+                }
+            });
+
+            setTerminal(term);
+            setWsConnection(ws);
+
+            // Cleanup
+            return () => {
+                console.log('Cleaning up terminal and WebSocket');
+                window.removeEventListener('resize', handleResize);
+                term.dispose();
+                if (ws) {
+                    console.log('Closing WebSocket connection');
+                    ws.close();
+                }
+            };
+        } else {
+            console.error('Terminal container not found in DOM');
+        }
+    }, [appId, podDetails]);
 
     return (
-        <Paper
-            elevation={3}
-            sx={{
-                width: '100%',
-                height: '500px',
-                overflow: 'hidden',
-                backgroundColor: '#1e1e1e',
-                borderRadius: 1
-            }}
-        >
-            <Box
-                ref={terminalRef}
-                sx={{
-                    width: '100%',
-                    height: '100%',
-                    padding: 1
-                }}
-            />
-        </Paper>
+        <div 
+            ref={containerRef} 
+            className="h-[500px] w-full bg-[#1e1e1e] p-4"
+            style={{ minHeight: '500px' }}
+        />
     );
 };

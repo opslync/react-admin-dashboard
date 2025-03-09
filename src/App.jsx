@@ -5,6 +5,9 @@ import Layout from "./components/layout/Layout";
 import ToastManager from "./components/common/ToastManager";
 import { APP_ROUTES } from "./constants/routes";
 import WorkflowCanvas from "./components/workflow/WorkflowCanvas";
+import SessionTimeout from './components/session/SessionTimeout';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 // Auth Pages
 import LoginPage from "./containers/auth/LoginPage";
@@ -49,59 +52,73 @@ import NotFoundPage from "./containers/user/NotFoundPage";
 
 const App = () => {
   return (
-    <Router>
-      <Switch>
-        {/* Public Routes */}
-        <Route exact path={["/", APP_ROUTES.AUTH.LOGIN]} component={LoginPage} />
-        <Route path={APP_ROUTES.AUTH.REGISTER} component={RegisterPage} />
-        <Route path={APP_ROUTES.AUTH.FORGOT_PASSWORD} component={ForgotPasswordPage} />
-        <Route path={APP_ROUTES.AUTH.CHANGE_PASSWORD} component={ChangePasswordPage} />
+    <>
+      <SessionTimeout />
+      <Router>
+        <Switch>
+          {/* Public Routes */}
+          <Route exact path={["/", APP_ROUTES.AUTH.LOGIN]} component={LoginPage} />
+          <Route path={APP_ROUTES.AUTH.REGISTER} component={RegisterPage} />
+          <Route path={APP_ROUTES.AUTH.FORGOT_PASSWORD} component={ForgotPasswordPage} />
+          <Route path={APP_ROUTES.AUTH.CHANGE_PASSWORD} component={ChangePasswordPage} />
 
-        {/* Private Routes */}
-        <PrivateRoute path="/">
-          <Layout>
-            <Switch>
-              <Route exact path={APP_ROUTES.APP.DASHBOARD} component={DashboardPage} />
-              <Route exact path={APP_ROUTES.APP.OVERVIEW} component={OverviewPage} />
-              <Route exact path={APP_ROUTES.APP.PROJECTS} component={ProjectListPage} />
-              <Route exact path={APP_ROUTES.APP.APPS} component={AppListPage} />
-              
-              {/* App Routes */}
-              <Route path="/app/:appId/details" component={AppDetailPage} />
-              <Route path="/app/:appId/build-deploy" component={BuildDeployPage} />
-              <Route path="/app/:appId/build-history" component={BuildHistoryPage} />
-              <Route path="/app/:appId/deployment-history" component={DeploymentHistoryPage} />
-              <Route path="/app/:appId/metrics" component={AppMetricsPage} />
-              <Route path="/app/:appId/app-settings" component={AppConfigurationPage} />
-              <Route path="/app/:appId/pod-shell" component={PodShellPage} />
-              <Route path="/app/:appId/workflow" component={WorkflowCanvas} />
+          {/* Private Routes */}
+          <PrivateRoute path="/">
+            <Layout>
+              <Switch>
+                <Route exact path={APP_ROUTES.APP.DASHBOARD} component={DashboardPage} />
+                <Route exact path={APP_ROUTES.APP.OVERVIEW} component={OverviewPage} />
+                <Route exact path={APP_ROUTES.APP.PROJECTS} component={ProjectListPage} />
+                <Route exact path={APP_ROUTES.APP.APPS} component={AppListPage} />
+                
+                {/* App Routes */}
+                <Route path="/app/:appId/details" component={AppDetailPage} />
+                <Route path="/app/:appId/build-deploy" component={BuildDeployPage} />
+                <Route path="/app/:appId/build-history" component={BuildHistoryPage} />
+                <Route path="/app/:appId/deployment-history" component={DeploymentHistoryPage} />
+                <Route path="/app/:appId/metrics" component={AppMetricsPage} />
+                <Route path="/app/:appId/app-settings" component={AppConfigurationPage} />
+                <Route path="/app/:appId/pod-shell" component={PodShellPage} />
+                <Route path="/app/:appId/workflow" component={WorkflowCanvas} />
 
-              {/* Settings Routes */}
-              <Route exact path={APP_ROUTES.SETTINGS.ROOT} component={SettingsPage} />
-              <Route exact path={APP_ROUTES.SETTINGS.GIT_ACCOUNT} component={GitUserPage} />
-              <Route exact path={APP_ROUTES.SETTINGS.CONTAINER_REGISTRY} component={ContainerRegistryPage} />
-              <Route exact path="/github-source" component={GitHubCallBack} />
-              <Route exact path="/github-callback" component={GitHubCallBack} />
-              <Route exact path="/settings/github-app/:appId" component={GitHubAppDetails} />
+                {/* Settings Routes */}
+                <Route exact path={APP_ROUTES.SETTINGS.ROOT} component={SettingsPage} />
+                <Route exact path={APP_ROUTES.SETTINGS.GIT_ACCOUNT} component={GitUserPage} />
+                <Route exact path={APP_ROUTES.SETTINGS.CONTAINER_REGISTRY} component={ContainerRegistryPage} />
+                <Route exact path="/github-source" component={GitHubCallBack} />
+                <Route exact path="/github-callback" component={GitHubCallBack} />
+                <Route exact path="/settings/github-app/:appId" component={GitHubAppDetails} />
 
-              <Route exact path="/user-profile" component={UserProfilePage} />
-              <Route path="/project/:projectId/apps" component={ProjectDetailPage} />
-              
-              {/* Cluster Routes */}
-              <PrivateRoute exact path="/cluster" component={ClusterPage} />
-              <PrivateRoute exact path="/services" component={ServicesPage} />
-              {/* Workflow Routes */}
-              {/* <Route exact path="/workflow" component={WorkflowCanvas} /> */}
-              <Route path="*" component={NotFoundPage} />
+                <Route exact path="/user-profile" component={UserProfilePage} />
+                <Route path="/project/:projectId/apps" component={ProjectDetailPage} />
+                
+                {/* Cluster Routes */}
+                <PrivateRoute exact path="/cluster" component={ClusterPage} />
+                <PrivateRoute exact path="/services" component={ServicesPage} />
+                {/* Workflow Routes */}
+                {/* <Route exact path="/workflow" component={WorkflowCanvas} /> */}
+                <Route path="*" component={NotFoundPage} />
 
 
-              
-            </Switch>
-          </Layout>
-        </PrivateRoute>
-      </Switch>
+                
+              </Switch>
+            </Layout>
+          </PrivateRoute>
+        </Switch>
+      </Router>
+      <ToastContainer 
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
       <ToastManager />
-    </Router>
+    </>
   );
 };
 

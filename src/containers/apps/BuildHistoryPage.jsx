@@ -17,6 +17,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../../components/ui/dialog";
 import { Button } from "../../components/ui/button";
 import * as ScrollArea from '@radix-ui/react-scroll-area';
+import { toast } from 'react-toastify';
 
 const BuildHistoryPage = () => {
     const { appId } = useParams();
@@ -249,10 +250,9 @@ const BuildHistoryPage = () => {
 
       setBuildHistory(builds);
 
-      // Select first build by default if none selected and connect WebSocket
+      // Select first build by default if none selected
       if (!selectedWorkflowId && builds.length > 0) {
         setSelectedWorkflowId(builds[0].id);
-        setShowLogs(true);
         connectWebSocket(builds[0].id);
       }
 
@@ -272,7 +272,7 @@ const BuildHistoryPage = () => {
     setSelectedWorkflowId(buildId);
     setLogs([]); // Clear existing logs
     setShowLogs(true); // Show logs when a build is selected
-    connectWebSocket(buildId); // Connect WebSocket immediately when build is selected
+    connectWebSocket(buildId); // Connect WebSocket when build is selected
   };
 
   const handleBuildClick = () => {
@@ -295,12 +295,16 @@ const BuildHistoryPage = () => {
     setDeployLoading(true);
     try {
       await postMethod(`app/${appId}/deploy`, {
-        "tag": selectedBuild.commitId,
+        "tag": selectedBuild.commitHash,
         "ingress.enabled": "false"
       });
       setShowDeployModal(false);
-      // Refresh build history after deployment
-      fetchBuildHistory();
+      // Show success message
+      toast.success('Deployment completed successfully!');
+      // Redirect to app details page after a short delay
+      setTimeout(() => {
+        history.push(`/app/${appId}/details`);
+      }, 1500);
     } catch (err) {
       setDeployError(err.response?.data?.message || 'Failed to deploy application. Please try again.');
     } finally {

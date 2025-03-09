@@ -10,6 +10,7 @@ import { useHistory } from "react-router-dom";
 import * as Yup from "yup";
 import { useFormik, Form, FormikProvider } from "formik";
 import { Link } from "react-router-dom";
+import { getMethod } from "../../library/api";
 
 export default function LoginPage() {
   const dispatch = useDispatch();
@@ -115,7 +116,7 @@ export default function LoginPage() {
               </div>
 
               <div className="signupBox mt-3 text-center">
-                Don’t have an account? <Link to="/register">Get started</Link>
+                Don't have an account? <Link to="/register">Get started</Link>
               </div>
             </Form>
           </FormikProvider>

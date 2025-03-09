@@ -40,7 +40,7 @@ const ProjectDetailPage = () => {
   useEffect(() => {
     const connectWebSocket = () => {
       const token = localStorage.getItem('token');
-      const ws = new CustomWebSocket(`ws://localhost:8080/projects/${projectId}/metrics`, token);
+      const ws = new CustomWebSocket(`ws://localhost:8080/api/projects/${projectId}/metrics`, token);
 
       ws.onopen = () => {
         console.log('WebSocket connected');
