@@ -10,6 +10,7 @@ import { postMethod, getMethod } from "../../library/api";
 import { listProject } from "../../library/constant";
 import { ChevronDown } from 'lucide-react';
 import { useHistory } from 'react-router-dom';
+import githubTokenManager from '../../utils/githubTokenManager';
 
 export const AppCreationDialog = ({ open, onOpenChange, onAppCreated }) => {
   const history = useHistory();
@@ -186,19 +187,26 @@ export const AppCreationDialog = ({ open, onOpenChange, onAppCreated }) => {
   const handleRepoTypeChange = async (type) => {
     setRepoType(type);
     if (type === 'private') {
-      // Check if GitHub token exists
-      const token = localStorage.getItem('github_token');
-      if (!token) {
-        setError('GitHub app installation is not complete. You will be redirected to complete the installation.');
-        // Wait for 2 seconds to show the message before redirecting
+      try {
+        // Wait for token to be available (with 5 second timeout)
+        const token = await githubTokenManager.waitForToken(5000);
+        
+        if (!token) {
+          setError('GitHub app installation required for private repositories. Redirecting to setup...');
+          setTimeout(() => {
+            window.location.href = '/settings/git-account';
+          }, 2000);
+          return;
+        }
+        
+        // Token is available, proceed with fetching repos
+        await fetchPrivateRepos();
+      } catch (error) {
+        setError('GitHub token not available. Please complete GitHub app setup.');
         setTimeout(() => {
           window.location.href = '/settings/git-account';
         }, 2000);
-        return;
       }
-      
-      // Token exists, proceed with fetching repos
-      await fetchPrivateRepos();
     }
   };
 

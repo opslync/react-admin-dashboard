@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { BrowserRouter as Router, Switch, Route } from "react-router-dom";
 import { PrivateRoute } from "./components/common/PrivateRoute";
 import Layout from "./components/layout/Layout";
@@ -8,6 +8,7 @@ import WorkflowCanvas from "./components/workflow/WorkflowCanvas";
 import SessionTimeout from './components/session/SessionTimeout';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import githubTokenManager from './utils/githubTokenManager';
 
 // Auth Pages
 import LoginPage from "./containers/auth/LoginPage";
@@ -51,6 +52,29 @@ import UserProfilePage from "./containers/user/UserProfilePage";
 import NotFoundPage from "./containers/user/NotFoundPage";
 
 const App = () => {
+  // Initialize GitHub token manager when app starts
+  useEffect(() => {
+    const initializeGitHubTokenManager = async () => {
+      // Only initialize if user is logged in AND token manager isn't already initialized
+      const token = localStorage.getItem('token');
+      if (token && !githubTokenManager.isInitialized) {
+        console.log('🚀 User already logged in, initializing GitHub Token Manager...');
+        try {
+          await githubTokenManager.initialize();
+        } catch (error) {
+          console.log('GitHub Token Manager initialization failed:', error);
+        }
+      }
+    };
+
+    initializeGitHubTokenManager();
+
+    // Cleanup on app unmount
+    return () => {
+      githubTokenManager.destroy();
+    };
+  }, []);
+
   return (
     <>
       <SessionTimeout />
@@ -98,9 +122,6 @@ const App = () => {
                 {/* Workflow Routes */}
                 {/* <Route exact path="/workflow" component={WorkflowCanvas} /> */}
                 <Route path="*" component={NotFoundPage} />
-
-
-                
               </Switch>
             </Layout>
           </PrivateRoute>

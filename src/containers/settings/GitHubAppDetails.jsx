@@ -30,6 +30,7 @@ import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { API_BASE_URL } from '../../library/constant';
 import { getMethod, deleteMethod } from '../../library/api';
+import githubTokenManager from '../../utils/githubTokenManager';
 
 const GitHubAppDetails = () => {
   const { appId } = useParams();
@@ -63,31 +64,21 @@ const GitHubAppDetails = () => {
     fetchAppDetails();
   }, [appId]);
 
-  // Add auto token refresh mechanism
+  // Update global token manager when app details are loaded
   useEffect(() => {
-    let tokenRefreshInterval;
-
-    const autoRefreshToken = async () => {
-      if (app?.installation_id) {
-        await handleGenerateToken();
-      }
-    };
-
     if (app?.installation_id) {
-      // Initial token generation
-      autoRefreshToken();
+      // Add this app to the global token manager
+      githubTokenManager.addApp(app);
       
-      // Set up interval for every 10 minutes (600000 milliseconds)
-      tokenRefreshInterval = setInterval(autoRefreshToken, 600000);
-    }
-
-    // Cleanup interval on component unmount or when installation_id changes
-    return () => {
-      if (tokenRefreshInterval) {
-        clearInterval(tokenRefreshInterval);
+      // Get current token or generate a new one
+      const currentToken = githubTokenManager.getCurrentToken();
+      if (!currentToken) {
+        handleGenerateToken();
+      } else {
+        setToken(currentToken);
       }
-    };
-  }, [app?.installation_id]); // Depend on installation_id to restart interval if it changes
+    }
+  }, [app?.installation_id]);
 
   const handleInstallApp = () => {
     if (app && app.name) {
@@ -106,6 +97,8 @@ const GitHubAppDetails = () => {
       const response = await deleteMethod(`user/github/app/${appId}`);
 
       if (response.ok) {
+        // Remove app from global token manager
+        githubTokenManager.removeApp(appId);
         history.push('/settings/git-account');
       } else {
         console.error('Failed to delete app');
@@ -134,6 +127,21 @@ const GitHubAppDetails = () => {
       }
     } catch (error) {
       console.error('Error generating token:', error);
+    } finally {
+      setGeneratingToken(false);
+    }
+  };
+
+  const handleForceRefreshAllTokens = async () => {
+    setGeneratingToken(true);
+    try {
+      await githubTokenManager.forceRefresh();
+      const updatedToken = githubTokenManager.getCurrentToken();
+      if (updatedToken) {
+        setToken(updatedToken);
+      }
+    } catch (error) {
+      console.error('Error force refreshing tokens:', error);
     } finally {
       setGeneratingToken(false);
     }
@@ -233,15 +241,31 @@ const GitHubAppDetails = () => {
             {app.installation_id && (
               <div className="mt-4">
                 <div className="flex justify-between items-center mb-2">
-                  <Typography variant="subtitle2" color="textSecondary">Access Token</Typography>
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    onClick={handleGenerateToken}
-                    disabled={generatingToken}
-                  >
-                    {generatingToken ? 'Generating...' : 'Generate Token'}
-                  </Button>
+                  <div>
+                    <Typography variant="subtitle2" color="textSecondary">Access Token</Typography>
+                    <Typography variant="caption" color="primary" className="block">
+                      ✓ Auto-refreshes every 10 minutes globally
+                    </Typography>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      onClick={handleGenerateToken}
+                      disabled={generatingToken}
+                    >
+                      {generatingToken ? 'Generating...' : 'Generate Token'}
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      color="secondary"
+                      onClick={handleForceRefreshAllTokens}
+                      disabled={generatingToken}
+                    >
+                      Force Refresh
+                    </Button>
+                  </div>
                 </div>
                 {token && (
                   <TextField

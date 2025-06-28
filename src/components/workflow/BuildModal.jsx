@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Play, GitCommit } from 'lucide-react';
 import { postMethod, getMethod } from '../../library/api';
 import { useParams } from 'react-router-dom';
+import githubTokenManager from '../../utils/githubTokenManager';
 
 export default function BuildModal({ onClose, onStartBuild }) {
   const { appId } = useParams();
@@ -29,9 +30,10 @@ export default function BuildModal({ onClose, onStartBuild }) {
 
   const fetchCommits = async (appData) => {
     try {
-      const githubToken = localStorage.getItem('github_token');
+      // Wait for GitHub token to be available
+      const githubToken = await githubTokenManager.waitForToken(5000);
       if (!githubToken) {
-        setError('GitHub token not found. Please reconnect your GitHub account.');
+        setError('GitHub token not available. Please setup GitHub integration in Settings.');
         setLoading(false);
         return;
       }
@@ -49,7 +51,7 @@ export default function BuildModal({ onClose, onStartBuild }) {
       setSelectedCommit(response.data[0]);
       setLoading(false);
     } catch (err) {
-      setError('Failed to fetch commits');
+      setError('Failed to fetch commits. Please check your GitHub integration.');
       setLoading(false);
     }
   };

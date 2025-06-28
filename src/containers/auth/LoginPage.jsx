@@ -11,6 +11,7 @@ import * as Yup from "yup";
 import { useFormik, Form, FormikProvider } from "formik";
 import { Link } from "react-router-dom";
 import { getMethod } from "../../library/api";
+import githubTokenManager from '../../utils/githubTokenManager';
 
 export default function LoginPage() {
   const dispatch = useDispatch();
@@ -40,6 +41,16 @@ export default function LoginPage() {
         const response = await dispatch(authenticateUser(data)).unwrap();
         if (response && response.token) {
           localStorage.setItem('token', response.token);
+          
+          // Initialize GitHub token manager immediately (no delay)
+          console.log('🚀 Initializing GitHub Token Manager after login...');
+          try {
+            const result = await githubTokenManager.initialize();
+            console.log('GitHub Token Manager initialization result:', result);
+          } catch (error) {
+            console.log('GitHub Token Manager initialization failed (normal for users without GitHub apps):', error);
+          }
+          
           history.push("/overview");
         }
       } catch (err) {
