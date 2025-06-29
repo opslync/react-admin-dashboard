@@ -37,7 +37,7 @@ const GitHubCallback = () => {
       }
 
       try {
-        const response = await postMethod('user/github-setup', {
+        const response = await postMethod('api/user/github-setup', {
           code: params.code,
           state: params.state,
         });

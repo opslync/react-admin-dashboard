@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { InputText } from "primereact/inputtext";
 import { Password } from "primereact/password";
 import { Button } from "primereact/button";
@@ -10,7 +10,8 @@ import { useHistory } from "react-router-dom";
 import * as Yup from "yup";
 import { useFormik, Form, FormikProvider } from "formik";
 import { Link } from "react-router-dom";
-import { Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from "@mui/material";
+import { Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, CircularProgress, Typography, Box } from "@mui/material";
+import { CheckCircle, Error } from "@mui/icons-material";
 
 export default function RegisterPage() {
   const dispatch = useDispatch();
@@ -18,6 +19,16 @@ export default function RegisterPage() {
   const [openDialog, setOpenDialog] = useState(false);
   const [dialogMessage, setDialogMessage] = useState('');
   const [isError, setIsError] = useState(false);
+  const [redirectCountdown, setRedirectCountdown] = useState(0);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+
+  // Cleanup countdown on component unmount
+  useEffect(() => {
+    return () => {
+      setRedirectCountdown(0);
+      setIsRedirecting(false);
+    };
+  }, []);
 
   const RegistrationSchema = Yup.object().shape({
     username: Yup.string().required("Username is required"),
@@ -40,18 +51,30 @@ export default function RegisterPage() {
       console.log(data);
       try {
         const response = await dispatch(registerUser(data)).unwrap();
-        setDialogMessage('Account created successfully! ');
+        setDialogMessage('Account created successfully! Welcome to Opslync.');
         setIsError(false);
         setOpenDialog(true);
-        setTimeout(() => {
-          formik.setSubmitting(false);
-          history.push('/login');
-        }, 1000); // 3-second delay before redirect
+        setIsRedirecting(true);
+        setRedirectCountdown(4); // Start 4-second countdown
+        
+        // Start countdown timer
+        const countdownInterval = setInterval(() => {
+          setRedirectCountdown((prev) => {
+            if (prev <= 1) {
+              clearInterval(countdownInterval);
+              formik.setSubmitting(false);
+              history.push('/login');
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+        
       } catch (error) {
         if (error.message.includes('Request failed with status code 400')) {
-          setDialogMessage('Error: Username already exists.');
+          setDialogMessage('Error: Username already exists. Please choose a different username.');
         } else {
-          setDialogMessage(`Error: ${error.message}`);
+          setDialogMessage(`Registration failed: ${error.message}`);
         }
         setIsError(true);
         setOpenDialog(true);
@@ -166,16 +189,67 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
-        <DialogTitle>{isError ? 'Error' : 'Success'}</DialogTitle>
-        <DialogContent>
-          <DialogContentText>{dialogMessage}</DialogContentText>
+      <Dialog 
+        open={openDialog} 
+        onClose={isRedirecting ? undefined : () => setOpenDialog(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          style: {
+            borderRadius: '12px',
+            padding: '8px'
+          }
+        }}
+      >
+        <DialogTitle sx={{ textAlign: 'center', pb: 1 }}>
+          <Box display="flex" alignItems="center" justifyContent="center" gap={1}>
+            {isError ? (
+              <Error color="error" sx={{ fontSize: 32 }} />
+            ) : (
+              <CheckCircle color="success" sx={{ fontSize: 32 }} />
+            )}
+            <Typography variant="h6" component="span">
+              {isError ? 'Registration Failed' : 'Registration Successful!'}
+            </Typography>
+          </Box>
+        </DialogTitle>
+        
+        <DialogContent sx={{ textAlign: 'center', py: 2 }}>
+          <DialogContentText sx={{ fontSize: '16px', mb: 2 }}>
+            {dialogMessage}
+          </DialogContentText>
+          
+          {isRedirecting && !isError && (
+            <Box sx={{ mt: 3 }}>
+              <CircularProgress size={24} sx={{ mb: 2 }} />
+              <Typography variant="body2" color="text.secondary">
+                Redirecting to login page in {redirectCountdown} second{redirectCountdown !== 1 ? 's' : ''}...
+              </Typography>
+            </Box>
+          )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDialog(false)} color="primary">
-            Close
-          </Button>
-        </DialogActions>
+        
+        {!isRedirecting && (
+          <DialogActions sx={{ justifyContent: 'center', pb: 2 }}>
+            <Button 
+              onClick={() => {
+                setOpenDialog(false);
+                if (!isError) {
+                  history.push('/login');
+                }
+              }} 
+              variant="contained"
+              color={isError ? "error" : "primary"}
+              sx={{ 
+                borderRadius: '8px',
+                px: 4,
+                py: 1
+              }}
+            >
+              {isError ? 'Try Again' : 'Go to Login'}
+            </Button>
+          </DialogActions>
+        )}
       </Dialog>
     </div>
   );

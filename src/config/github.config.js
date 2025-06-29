@@ -9,4 +9,5 @@ export const GITHUB_STATE_PARAM = 'setup_action';
 export const API_ENDPOINTS = {
   WEBHOOK: `${API_BASE_URL}/api/user/github/ws`,
   SETUP: `${APP_BASE_URL}/github-callback`,
+  GITHUB_SETUP: `${API_BASE_URL}/api/user/github-setup`,
 }; 

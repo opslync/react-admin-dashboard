@@ -46,7 +46,7 @@ export default function BuildModal({ onClose, onStartBuild }) {
         branch: appData.branch || 'main'
       };
 
-      const response = await postMethod('user/github/commits', payload);
+      const response = await postMethod('api/user/github/commits', payload);
       setCommits(response.data);
       setSelectedCommit(response.data[0]);
       setLoading(false);

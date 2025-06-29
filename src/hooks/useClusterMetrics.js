@@ -5,7 +5,8 @@ export const useClusterMetrics = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const ws = new WebSocket('ws://localhost:8080/api/cluster/metrics/stream');
+    const token = localStorage.getItem('token');
+    const ws = new WebSocket(`ws://localhost:8080/api/cluster/metrics/stream?token=${token}`);
 
     ws.onmessage = (event) => {
       try {

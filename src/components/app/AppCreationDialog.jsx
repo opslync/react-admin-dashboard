@@ -87,7 +87,7 @@ export const AppCreationDialog = ({ open, onOpenChange, onAppCreated }) => {
         return;
       }
 
-      const response = await postMethod('user/github/repo-list', { github_token: token });
+              const response = await postMethod('api/user/github/repo-list', { github_token: token });
       console.log('Repository response:', response);
       
       if (Array.isArray(response.data)) {

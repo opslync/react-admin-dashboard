@@ -122,7 +122,6 @@ const AppConfigurationPage = () => {
         const paths = [
             `/app/${appId}/details`,
             `/app/${appId}/build-history`,
-            `/app/${appId}/metrics`,
             `/app/${appId}/app-settings`,
         ];
         history.push(paths[newValue]);
@@ -213,11 +212,6 @@ const AppConfigurationPage = () => {
                     <Tab 
                         icon={<div className="mr-2">📜</div>} 
                         label="Build History" 
-                        iconPosition="start"
-                    />
-                    <Tab 
-                        icon={<div className="mr-2">📈</div>} 
-                        label="Metrics" 
                         iconPosition="start"
                     />
                     <Tab 

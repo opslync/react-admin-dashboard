@@ -76,30 +76,67 @@ const AppMetricsPage = () => {
             window.currentWebSocket.close();
         }
 
-        const ws = new WebSocket(`ws://localhost:8080/api/pods/metrics/stream?namespace=${namespace}`);
+        const token = localStorage.getItem('token');
+        const ws = new WebSocket(`ws://localhost:8080/api/pods/metrics/stream?namespace=${namespace}&token=${token}`);
 
         ws.onopen = () => {
             console.log(`Connected to WebSocket for namespace: ${namespace}`);
         };
 
         ws.onmessage = (event) => {
+            console.group('📊 Metrics WebSocket Data Received');
+            console.log('📦 Raw Event Data:', event.data);
+            console.log('🔤 Data Type:', typeof event.data);
+            
+            let content;
+            let dataFormat = 'unknown';
+            
             try {
-                const data = JSON.parse(event.data);
-                if (data.pods) {
-                    setMetricsData(data.pods);
+                // Check if it looks like JSON
+                const trimmedData = event.data.trim();
+                if (trimmedData.startsWith('{') && trimmedData.endsWith('}')) {
+                    // Looks like JSON, try to parse it
+                    const data = JSON.parse(event.data);
+                    console.log('✅ Successfully parsed JSON:', data);
+                    dataFormat = 'JSON';
+                    
+                    if (data.pods) {
+                        setMetricsData(data.pods);
+                    }
+
+                    // Update metrics with real data or mock data
+                    setCpuUsage((Math.random() * 10).toFixed(1));
+                    setMemoryUsage((Math.random() * 40).toFixed(1));
+                    setDiskUsage((Math.random() * 30).toFixed(1));
+
+                    setCpuTrend((prev) => [...prev.slice(1), Math.random() * 100]);
+                    setMemoryTrend((prev) => [...prev.slice(1), Math.random() * 100]);
+                    setDiskTrend((prev) => [...prev.slice(1), Math.random() * 100]);
+                    setLoading(false);
+                } else {
+                    // Plain text message (like "Connected", status messages, etc.)
+                    console.log('📝 Received plain text message:', event.data);
+                    dataFormat = 'Plain Text';
+                    
+                    // Handle connection messages without trying to parse as JSON
+                    if (event.data.includes('Connected') || event.data.includes('connected')) {
+                        console.log('🟢 Connection established message received');
+                        setLoading(false);
+                    }
                 }
-
-                setCpuUsage((Math.random() * 10).toFixed(1));
-                setMemoryUsage((Math.random() * 40).toFixed(1));
-                setDiskUsage((Math.random() * 30).toFixed(1));
-
-                setCpuTrend((prev) => [...prev.slice(1), Math.random() * 100]);
-                setMemoryTrend((prev) => [...prev.slice(1), Math.random() * 100]);
-                setDiskTrend((prev) => [...prev.slice(1), Math.random() * 100]);
-                setLoading(false);
+                
+                console.log('📋 Data Format:', dataFormat);
+                console.groupEnd();
+                
             } catch (error) {
-                console.error('Error parsing WebSocket message:', error);
-                setError('Failed to parse WebSocket message');
+                console.error('❌ Error processing WebSocket message:', error);
+                console.log('📝 Treating as plain text:', event.data);
+                console.groupEnd();
+                
+                // Don't set error for plain text messages
+                if (!event.data || typeof event.data !== 'string') {
+                    setError('Failed to parse WebSocket message');
+                }
                 setLoading(false);
             }
         };
