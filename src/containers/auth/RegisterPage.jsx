@@ -12,6 +12,9 @@ import { useFormik, Form, FormikProvider } from "formik";
 import { Link } from "react-router-dom";
 import { Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions, CircularProgress, Typography, Box } from "@mui/material";
 import { CheckCircle, Error } from "@mui/icons-material";
+import OnboardingFlow from "../../components/onboarding/OnboardingFlow";
+import { postMethod } from "../../library/api";
+import onboardingManager from "../../utils/onboardingManager";
 
 export default function RegisterPage() {
   const dispatch = useDispatch();
@@ -21,6 +24,8 @@ export default function RegisterPage() {
   const [isError, setIsError] = useState(false);
   const [redirectCountdown, setRedirectCountdown] = useState(0);
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [registrationComplete, setRegistrationComplete] = useState(false);
 
   // Cleanup countdown on component unmount
   useEffect(() => {
@@ -51,19 +56,31 @@ export default function RegisterPage() {
       console.log(data);
       try {
         const response = await dispatch(registerUser(data)).unwrap();
+        
+        // Initialize onboarding for the new user
+        try {
+          await postMethod('onboarding/start');
+          // Mark user as new user in the onboarding manager
+          onboardingManager.markAsNewUser();
+        } catch (onboardingError) {
+          console.log('Onboarding initialization failed:', onboardingError);
+        }
+        
         setDialogMessage('Account created successfully! Welcome to Opslync.');
         setIsError(false);
+        setRegistrationComplete(true);
         setOpenDialog(true);
         setIsRedirecting(true);
-        setRedirectCountdown(4); // Start 4-second countdown
+        setRedirectCountdown(3); // Start 3-second countdown
         
         // Start countdown timer
         const countdownInterval = setInterval(() => {
           setRedirectCountdown((prev) => {
             if (prev <= 1) {
               clearInterval(countdownInterval);
+              setOpenDialog(false);
+              setShowOnboarding(true); // Show onboarding instead of redirecting to login
               formik.setSubmitting(false);
-              history.push('/login');
               return 0;
             }
             return prev - 1;
@@ -84,6 +101,24 @@ export default function RegisterPage() {
   });
 
   const { errors, touched, isSubmitting, handleSubmit } = formik;
+
+  const handleOnboardingComplete = () => {
+    setShowOnboarding(false);
+    // After onboarding completion, redirect to login with a message
+    localStorage.setItem('registration-onboarding-completed', 'true');
+    history.push('/login');
+  };
+
+  const handleOnboardingClose = () => {
+    setShowOnboarding(false);
+    // If user closes onboarding, still redirect to login
+    history.push('/login');
+  };
+
+  const handleSkipOnboarding = () => {
+    setShowOnboarding(false);
+    history.push('/login');
+  };
 
   return (
     <div className="form-box">
@@ -223,7 +258,7 @@ export default function RegisterPage() {
             <Box sx={{ mt: 3 }}>
               <CircularProgress size={24} sx={{ mb: 2 }} />
               <Typography variant="body2" color="text.secondary">
-                Redirecting to login page in {redirectCountdown} second{redirectCountdown !== 1 ? 's' : ''}...
+                Starting your setup guide in {redirectCountdown} second{redirectCountdown !== 1 ? 's' : ''}...
               </Typography>
             </Box>
           )}
@@ -235,7 +270,11 @@ export default function RegisterPage() {
               onClick={() => {
                 setOpenDialog(false);
                 if (!isError) {
-                  history.push('/login');
+                  if (registrationComplete) {
+                    setShowOnboarding(true);
+                  } else {
+                    history.push('/login');
+                  }
                 }
               }} 
               variant="contained"
@@ -246,11 +285,18 @@ export default function RegisterPage() {
                 py: 1
               }}
             >
-              {isError ? 'Try Again' : 'Go to Login'}
+              {isError ? 'Try Again' : 'Start Setup Guide'}
             </Button>
           </DialogActions>
         )}
       </Dialog>
+
+      {/* Onboarding Flow for New Users */}
+      <OnboardingFlow
+        open={showOnboarding}
+        onClose={handleOnboardingClose}
+        onComplete={handleOnboardingComplete}
+      />
     </div>
   );
 }

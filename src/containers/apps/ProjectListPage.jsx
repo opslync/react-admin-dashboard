@@ -4,11 +4,11 @@ const CreateProjectDialog = ({ open, onClose, onSubmit }) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
-  const [resourceLimitsEnabled, setResourceLimitsEnabled] = useState(false);
   const [resources, setResources] = useState({
-    cpu: 2,
-    ram: 1024,
-    storage: 1024
+    enabled: true,
+    cpu: '0.5',
+    memory: '256Mi',
+    storage: '100Mi'
   });
 
   const handleSubmit = (e) => {
@@ -21,7 +21,7 @@ const CreateProjectDialog = ({ open, onClose, onSubmit }) => {
     const projectData = {
       name: name.trim(),
       description: description.trim(),
-      resourceLimits: resourceLimitsEnabled ? resources : null
+      resources: resources
     };
 
     onSubmit(projectData);
@@ -32,11 +32,11 @@ const CreateProjectDialog = ({ open, onClose, onSubmit }) => {
     setName('');
     setDescription('');
     setError('');
-    setResourceLimitsEnabled(false);
     setResources({
-      cpu: 2,
-      ram: 1024,
-      storage: 1024
+      enabled: true,
+      cpu: '0.5',
+      memory: '256Mi',
+      storage: '100Mi'
     });
     onClose();
   };
@@ -76,39 +76,24 @@ const CreateProjectDialog = ({ open, onClose, onSubmit }) => {
                   </p>
                 </div>
                 <Switch
-                  checked={resourceLimitsEnabled}
-                  onCheckedChange={setResourceLimitsEnabled}
+                  checked={resources.enabled}
+                  onCheckedChange={(checked) => setResources(prev => ({...prev, enabled: checked}))}
                 />
               </div>
 
-              {resourceLimitsEnabled && (
+              {resources.enabled && (
                 <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
                   <div>
                     <div className="flex items-center justify-between">
                       <Label>CPU</Label>
                       <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          className="p-1 hover:bg-gray-200 rounded"
-                          onClick={() => setResources(prev => ({...prev, cpu: Math.max(0.1, prev.cpu - 0.1)}))}
-                        >
-                          -
-                        </button>
                         <Input
-                          type="number"
+                          type="text"
                           value={resources.cpu}
-                          onChange={(e) => setResources(prev => ({...prev, cpu: parseFloat(e.target.value)}))}
+                          onChange={(e) => setResources(prev => ({...prev, cpu: e.target.value}))}
+                          placeholder="0.5"
                           className="w-24 text-center"
-                          step="0.1"
-                          min="0.1"
                         />
-                        <button
-                          type="button"
-                          className="p-1 hover:bg-gray-200 rounded"
-                          onClick={() => setResources(prev => ({...prev, cpu: prev.cpu + 0.1}))}
-                        >
-                          +
-                        </button>
                         <span className="text-sm text-gray-500">Cores</span>
                       </div>
                     </div>
@@ -116,62 +101,32 @@ const CreateProjectDialog = ({ open, onClose, onSubmit }) => {
 
                   <div>
                     <div className="flex items-center justify-between">
-                      <Label>RAM</Label>
+                      <Label>Memory</Label>
                       <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          className="p-1 hover:bg-gray-200 rounded"
-                          onClick={() => setResources(prev => ({...prev, ram: Math.max(32, prev.ram - 32)}))}
-                        >
-                          -
-                        </button>
                         <Input
-                          type="number"
-                          value={resources.ram}
-                          onChange={(e) => setResources(prev => ({...prev, ram: parseInt(e.target.value)}))}
+                          type="text"
+                          value={resources.memory}
+                          onChange={(e) => setResources(prev => ({...prev, memory: e.target.value}))}
+                          placeholder="256Mi"
                           className="w-24 text-center"
-                          step="32"
-                          min="32"
                         />
-                        <button
-                          type="button"
-                          className="p-1 hover:bg-gray-200 rounded"
-                          onClick={() => setResources(prev => ({...prev, ram: prev.ram + 32}))}
-                        >
-                          +
-                        </button>
-                        <span className="text-sm text-gray-500">MB</span>
+                        <span className="text-sm text-gray-500">MB/GB</span>
                       </div>
                     </div>
                   </div>
 
                   <div>
                     <div className="flex items-center justify-between">
-                      <Label>Eph. Storage</Label>
+                      <Label>Storage</Label>
                       <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          className="p-1 hover:bg-gray-200 rounded"
-                          onClick={() => setResources(prev => ({...prev, storage: Math.max(5, prev.storage - 5)}))}
-                        >
-                          -
-                        </button>
                         <Input
-                          type="number"
+                          type="text"
                           value={resources.storage}
-                          onChange={(e) => setResources(prev => ({...prev, storage: parseInt(e.target.value)}))}
+                          onChange={(e) => setResources(prev => ({...prev, storage: e.target.value}))}
+                          placeholder="100Mi"
                           className="w-24 text-center"
-                          step="5"
-                          min="5"
                         />
-                        <button
-                          type="button"
-                          className="p-1 hover:bg-gray-200 rounded"
-                          onClick={() => setResources(prev => ({...prev, storage: prev.storage + 5}))}
-                        >
-                          +
-                        </button>
-                        <span className="text-sm text-gray-500">MB</span>
+                        <span className="text-sm text-gray-500">MB/GB</span>
                       </div>
                     </div>
                   </div>

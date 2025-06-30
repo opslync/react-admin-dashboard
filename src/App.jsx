@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router, Switch, Route } from "react-router-dom";
 import { PrivateRoute } from "./components/common/PrivateRoute";
 import Layout from "./components/layout/Layout";
@@ -9,6 +9,8 @@ import SessionTimeout from './components/session/SessionTimeout';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import githubTokenManager from './utils/githubTokenManager';
+import onboardingManager from './utils/onboardingManager';
+import OnboardingFlow from './components/onboarding/OnboardingFlow';
 
 // Auth Pages
 import LoginPage from "./containers/auth/LoginPage";
@@ -52,28 +54,61 @@ import UserProfilePage from "./containers/user/UserProfilePage";
 import NotFoundPage from "./containers/user/NotFoundPage";
 
 const App = () => {
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingStatus, setOnboardingStatus] = useState(null);
+
   // Initialize GitHub token manager when app starts
   useEffect(() => {
-    const initializeGitHubTokenManager = async () => {
-      // Only initialize if user is logged in AND token manager isn't already initialized
+    const initializeApp = async () => {
+      // Only initialize if user is logged in
       const token = localStorage.getItem('token');
-      if (token && !githubTokenManager.isInitialized) {
-        console.log('🚀 User already logged in, initializing GitHub Token Manager...');
+      if (token) {
+        // Initialize GitHub token manager
+        if (!githubTokenManager.isInitialized) {
+          console.log('🚀 User already logged in, initializing GitHub Token Manager...');
+          try {
+            await githubTokenManager.initialize();
+          } catch (error) {
+            console.log('GitHub Token Manager initialization failed:', error);
+          }
+        }
+
+        // Check onboarding status but don't auto-show onboarding
+        // Onboarding is only shown during registration process
         try {
-          await githubTokenManager.initialize();
+          const status = await onboardingManager.checkOnboardingStatus();
+          setOnboardingStatus(status);
+          // Don't automatically show onboarding - only during registration
+          setShowOnboarding(false);
         } catch (error) {
-          console.log('GitHub Token Manager initialization failed:', error);
+          console.log('Onboarding status check failed:', error);
         }
       }
     };
 
-    initializeGitHubTokenManager();
+    initializeApp();
+
+    // Listen for onboarding status changes
+    const unsubscribe = onboardingManager.addListener((status) => {
+      setOnboardingStatus(status);
+      // Don't automatically show onboarding based on status changes
+    });
 
     // Cleanup on app unmount
     return () => {
       githubTokenManager.destroy();
+      unsubscribe();
     };
   }, []);
+
+  const handleOnboardingComplete = () => {
+    onboardingManager.markCompleted();
+    setShowOnboarding(false);
+  };
+
+  const handleOnboardingClose = () => {
+    setShowOnboarding(false);
+  };
 
   return (
     <>
@@ -127,6 +162,14 @@ const App = () => {
           </PrivateRoute>
         </Switch>
       </Router>
+
+      {/* Onboarding Flow */}
+      <OnboardingFlow
+        open={showOnboarding}
+        onClose={handleOnboardingClose}
+        onComplete={handleOnboardingComplete}
+      />
+
       <ToastContainer 
         position="top-right"
         autoClose={3000}

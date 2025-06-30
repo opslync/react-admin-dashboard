@@ -12,6 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "../../components/ui/dropdown-menu";
+import { parseCPU, parseMemory, formatCPUDisplay, formatMemoryDisplay } from '../../utils/formatters';
 
 class CustomWebSocket extends WebSocket {
   constructor(url, token) {
@@ -55,34 +56,38 @@ const ProjectDetailPage = () => {
             return;
           }
 
-          // Convert memory and storage from Gi to GB (1Gi = 1.074GB)
-          const memoryTotal = parseFloat(data.resourceQuota.memory?.replace('Gi', '') || 0) * 1.074;
-          const memoryUsed = parseFloat(data.usage.memory?.replace('Gi', '') || 0) * 1.074;
-          const storageTotal = parseFloat(data.resourceQuota.storage?.replace('Gi', '') || 0) * 1.074;
-          const storageUsed = parseFloat(data.usage.storage?.replace('Gi', '') || 0) * 1.074;
-          
-          // Convert CPU cores
-          const cpuTotal = parseFloat(data.resourceQuota.cpu || 0);
-          const cpuUsed = parseFloat(data.usage.cpu || 0);
+          // Use new formatters for CPU, memory, and storage
+          const cpuTotal = parseCPU(data.resourceQuota.cpu);
+          const cpuUsed = parseCPU(data.usage.cpu);
+
+          const memTotalMi = parseMemory(data.resourceQuota.memory);
+          const memUsedMi = parseMemory(data.usage.memory);
+          const memTotalDisplay = formatMemoryDisplay(data.resourceQuota.memory);
+          const memUsedDisplay = formatMemoryDisplay(data.usage.memory);
+
+          const storageTotalMi = parseMemory(data.resourceQuota.storage);
+          const storageUsedMi = parseMemory(data.usage.storage);
+          const storageTotalDisplay = formatMemoryDisplay(data.resourceQuota.storage);
+          const storageUsedDisplay = formatMemoryDisplay(data.usage.storage);
 
           setMetrics({
             cpu: {
               used: cpuUsed,
-              total: cpuTotal || 1, // Prevent division by zero
+              total: cpuTotal || 1,
               percentage: Math.round((cpuUsed / (cpuTotal || 1)) * 100) || 0,
-              allocated: `${cpuUsed.toFixed(1)}/${cpuTotal.toFixed(1)} Cores`
+              allocated: `${formatCPUDisplay(cpuUsed)}/${formatCPUDisplay(cpuTotal)} Cores`
             },
             ram: {
-              used: memoryUsed,
-              total: memoryTotal || 1,
-              percentage: Math.round((memoryUsed / (memoryTotal || 1)) * 100) || 0,
-              allocated: `${memoryUsed.toFixed(1)}/${memoryTotal.toFixed(1)} GB`
+              used: memUsedMi,
+              total: memTotalMi || 1,
+              percentage: Math.round((memUsedMi / (memTotalMi || 1)) * 100) || 0,
+              allocated: `${memUsedDisplay.value}/${memTotalDisplay.value} ${memTotalDisplay.unit}`
             },
             storage: {
-              used: storageUsed,
-              total: storageTotal || 1,
-              percentage: Math.round((storageUsed / (storageTotal || 1)) * 100) || 0,
-              allocated: `${storageUsed.toFixed(1)}/${storageTotal.toFixed(1)} GB`
+              used: storageUsedMi,
+              total: storageTotalMi || 1,
+              percentage: Math.round((storageUsedMi / (storageTotalMi || 1)) * 100) || 0,
+              allocated: `${storageUsedDisplay.value}/${storageTotalDisplay.value} ${storageTotalDisplay.unit}`
             }
           });
         } catch (error) {

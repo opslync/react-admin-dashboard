@@ -15,27 +15,66 @@ const CreateProjectForm = ({ onSubmit, onClose }) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState('');
-  const [resourceLimitsEnabled, setResourceLimitsEnabled] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [resources, setResources] = useState({
-    cpu: 2,
-    ram: 1024,
-    storage: 1024
+    enabled: true,
+    cpu: '0.5',
+    memory: '256Mi',
+    storage: '100Mi'
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!name.trim()) {
       setError('Project name is required');
       return;
     }
 
+    setLoading(true);
+    setError('');
+
     const projectData = {
       name: name.trim(),
       description: description.trim(),
-      resourceLimits: resourceLimitsEnabled ? resources : null
+      resources: resources
     };
 
-    onSubmit(projectData);
+    try {
+      await onSubmit(projectData);
+      // If successful, the parent will close the modal
+    } catch (err) {
+      // Handle errors from the parent component
+      console.error('Project creation failed:', err);
+      
+      // Use custom error message if available, otherwise use generic message
+      let errorMessage = 'Failed to create project. Please try again.';
+      
+      if (err.customMessage) {
+        errorMessage = err.customMessage;
+      } else if (err.message && err.message !== 'Failed to create project. Please try again.') {
+        errorMessage = err.message;
+      } else if (err.response?.data?.message) {
+        const responseMessage = err.response.data.message;
+        if (responseMessage.toLowerCase().includes('namespace') && 
+            responseMessage.toLowerCase().includes('already exists')) {
+          errorMessage = `Project name "${name}" is already taken. Please choose a different name.`;
+        } else {
+          errorMessage = responseMessage;
+        }
+      } else if (err.response?.data?.error) {
+        const responseError = err.response.data.error;
+        if (responseError.toLowerCase().includes('namespace') && 
+            responseError.toLowerCase().includes('already exists')) {
+          errorMessage = `Project name "${name}" is already taken. Please choose a different name.`;
+        } else {
+          errorMessage = responseError;
+        }
+      }
+      
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -83,39 +122,24 @@ const CreateProjectForm = ({ onSubmit, onClose }) => {
                   </p>
                 </div>
                 <Switch
-                  checked={resourceLimitsEnabled}
-                  onCheckedChange={setResourceLimitsEnabled}
+                  checked={resources.enabled}
+                  onCheckedChange={(checked) => setResources(prev => ({...prev, enabled: checked}))}
                 />
               </div>
 
-              {resourceLimitsEnabled && (
+              {resources.enabled && (
                 <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
                   <div>
                     <div className="flex items-center justify-between">
                       <Label>CPU</Label>
                       <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          className="p-1 hover:bg-gray-200 rounded"
-                          onClick={() => setResources(prev => ({...prev, cpu: Math.max(0.1, prev.cpu - 0.1)}))}
-                        >
-                          -
-                        </button>
                         <Input
-                          type="number"
+                          type="text"
                           value={resources.cpu}
-                          onChange={(e) => setResources(prev => ({...prev, cpu: parseFloat(e.target.value)}))}
+                          onChange={(e) => setResources(prev => ({...prev, cpu: e.target.value}))}
+                          placeholder="0.5"
                           className="w-24 text-center"
-                          step="0.1"
-                          min="0.1"
                         />
-                        <button
-                          type="button"
-                          className="p-1 hover:bg-gray-200 rounded"
-                          onClick={() => setResources(prev => ({...prev, cpu: prev.cpu + 0.1}))}
-                        >
-                          +
-                        </button>
                         <span className="text-sm text-gray-500">Cores</span>
                       </div>
                     </div>
@@ -123,87 +147,71 @@ const CreateProjectForm = ({ onSubmit, onClose }) => {
 
                   <div>
                     <div className="flex items-center justify-between">
-                      <Label>RAM</Label>
+                      <Label>Memory</Label>
                       <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          className="p-1 hover:bg-gray-200 rounded"
-                          onClick={() => setResources(prev => ({...prev, ram: Math.max(32, prev.ram - 32)}))}
-                        >
-                          -
-                        </button>
                         <Input
-                          type="number"
-                          value={resources.ram}
-                          onChange={(e) => setResources(prev => ({...prev, ram: parseInt(e.target.value)}))}
+                          type="text"
+                          value={resources.memory}
+                          onChange={(e) => setResources(prev => ({...prev, memory: e.target.value}))}
+                          placeholder="256Mi"
                           className="w-24 text-center"
-                          step="32"
-                          min="32"
                         />
-                        <button
-                          type="button"
-                          className="p-1 hover:bg-gray-200 rounded"
-                          onClick={() => setResources(prev => ({...prev, ram: prev.ram + 32}))}
-                        >
-                          +
-                        </button>
-                        <span className="text-sm text-gray-500">MB</span>
+                        <span className="text-sm text-gray-500">MB/GB</span>
                       </div>
                     </div>
                   </div>
 
                   <div>
                     <div className="flex items-center justify-between">
-                      <Label>Eph. Storage</Label>
+                      <Label>Storage</Label>
                       <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          className="p-1 hover:bg-gray-200 rounded"
-                          onClick={() => setResources(prev => ({...prev, storage: Math.max(5, prev.storage - 5)}))}
-                        >
-                          -
-                        </button>
                         <Input
-                          type="number"
+                          type="text"
                           value={resources.storage}
-                          onChange={(e) => setResources(prev => ({...prev, storage: parseInt(e.target.value)}))}
+                          onChange={(e) => setResources(prev => ({...prev, storage: e.target.value}))}
+                          placeholder="100Mi"
                           className="w-24 text-center"
-                          step="5"
-                          min="5"
                         />
-                        <button
-                          type="button"
-                          className="p-1 hover:bg-gray-200 rounded"
-                          onClick={() => setResources(prev => ({...prev, storage: prev.storage + 5}))}
-                        >
-                          +
-                        </button>
-                        <span className="text-sm text-gray-500">MB</span>
+                        <span className="text-sm text-gray-500">MB/GB</span>
                       </div>
                     </div>
                   </div>
                 </div>
               )}
             </div>
-
-            {error && (
-              <div className="text-red-500 text-sm">{error}</div>
-            )}
           </div>
+
+          {error && (
+            <div className="px-6 pb-4">
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            </div>
+          )}
+
           <div className="flex justify-end gap-3 p-4 border-t border-gray-100">
             <Button
-              type="button"
               variant="outline"
               onClick={onClose}
+              disabled={loading}
               className="border-gray-300"
             >
               Cancel
             </Button>
             <Button
               type="submit"
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              disabled={loading}
+              className="bg-blue-600 hover:bg-blue-700"
             >
-              Create Project
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                  Creating...
+                </>
+              ) : (
+                'Create Project'
+              )}
             </Button>
           </div>
         </form>
@@ -284,10 +292,46 @@ const ProjectListPage = () => {
       const response = await postMethod(projectCreate, data);
       setProjects([...projects, response]);
       setIsModalOpen(false);
+      setError(''); // Clear any previous errors
       fetchProjects();
     } catch (error) {
       console.error('Failed to create project:', error);
-      setError('Failed to create project. Please try again.');
+      
+      // Handle specific error cases
+      let errorMessage = 'Failed to create project. Please try again.';
+      
+      if (error.response) {
+        const { status, data: responseData } = error.response;
+        
+        // Check all possible error fields and patterns
+        const errorText = responseData?.message || responseData?.error || responseData?.detail || '';
+        
+        if (errorText) {
+          const lowerErrorText = errorText.toLowerCase();
+          if ((lowerErrorText.includes('namespace') && lowerErrorText.includes('already exists')) ||
+              (lowerErrorText.includes('namespace') && lowerErrorText.includes('exist')) ||
+              lowerErrorText.includes('already exists') ||
+              lowerErrorText.includes('duplicate') ||
+              lowerErrorText.includes('conflict')) {
+            errorMessage = `Project name "${data.name}" is already taken. Please choose a different name.`;
+          } else if (lowerErrorText.includes('namespace')) {
+            errorMessage = `Namespace error: ${errorText}`;
+          } else {
+            errorMessage = errorText;
+          }
+        } else if (status === 409) {
+          errorMessage = `Project name "${data.name}" already exists. Please choose a different name.`;
+        } else if (status === 500) {
+          errorMessage = 'Server error occurred. The project name might already be in use. Please try a different name.';
+        }
+      }
+      
+      // Create a new error object with our custom message
+      const customError = new Error(errorMessage);
+      customError.response = error.response;
+      customError.customMessage = errorMessage;
+      
+      throw customError; // Re-throw with custom message
     }
   };
 

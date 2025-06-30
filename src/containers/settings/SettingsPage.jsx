@@ -1,9 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card } from 'primereact/card';
 import { useHistory } from 'react-router-dom';
+import { Button } from '../../components/ui/button';
+import OnboardingFlow from '../../components/onboarding/OnboardingFlow';
+import onboardingManager from '../../utils/onboardingManager';
 
 const SettingsPage = () => {
   const history = useHistory();
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const settingsOptions = [
     {
@@ -23,9 +27,32 @@ const SettingsPage = () => {
     }
   ];
 
+  const handleStartOnboarding = () => {
+    setShowOnboarding(true);
+  };
+
+  const handleOnboardingComplete = () => {
+    onboardingManager.markCompleted();
+    setShowOnboarding(false);
+  };
+
+  const handleOnboardingClose = () => {
+    setShowOnboarding(false);
+  };
+
   return (
     <div className="p-4">
-      <h1 className="text-2xl font-bold mb-6">Settings</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Settings</h1>
+        <Button
+          onClick={handleStartOnboarding}
+          variant="outline"
+          className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+        >
+          🚀 Run Setup Guide
+        </Button>
+      </div>
+      
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {settingsOptions.map((option, index) => (
           <Card
@@ -38,6 +65,13 @@ const SettingsPage = () => {
           </Card>
         ))}
       </div>
+
+      {/* Onboarding Flow */}
+      <OnboardingFlow
+        open={showOnboarding}
+        onClose={handleOnboardingClose}
+        onComplete={handleOnboardingComplete}
+      />
     </div>
   );
 };

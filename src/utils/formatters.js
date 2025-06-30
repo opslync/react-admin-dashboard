@@ -111,3 +111,37 @@ export const formatTimeAgo = (dateString) => {
     if (diffInSeconds < 31536000) return `${Math.floor(diffInSeconds / 2592000)}mo ago`;
     return `${Math.floor(diffInSeconds / 31536000)}y ago`;
 };
+
+// Parse CPU string (e.g., '500m', '2') to cores as float
+export function parseCPU(cpu) {
+    if (!cpu) return 0;
+    if (typeof cpu === 'number') return cpu;
+    if (cpu.endsWith('m')) return parseInt(cpu) / 1000;
+    if (cpu.endsWith('n')) return parseInt(cpu) / 1_000_000_000;
+    return parseFloat(cpu);
+}
+
+// Parse memory/storage string (e.g., '256Mi', '1Gi', '1000Ki') to MiB as float
+export function parseMemory(mem) {
+    if (!mem) return 0;
+    if (typeof mem === 'number') return mem;
+    if (mem.endsWith('Gi')) return parseFloat(mem) * 1024;
+    if (mem.endsWith('Mi')) return parseFloat(mem);
+    if (mem.endsWith('Ki')) return parseFloat(mem) / 1024;
+    if (mem.endsWith('Ti')) return parseFloat(mem) * 1024 * 1024;
+    return parseFloat(mem); // fallback
+}
+
+// Format memory/storage for display (returns { value, unit })
+export function formatMemoryDisplay(mem) {
+    const valueMi = parseMemory(mem);
+    if (valueMi >= 1024) {
+        return { value: (valueMi / 1024).toFixed(2), unit: 'GiB' };
+    }
+    return { value: valueMi.toFixed(2), unit: 'MiB' };
+}
+
+// Format CPU for display (returns string in cores)
+export function formatCPUDisplay(cpu) {
+    return parseCPU(cpu).toFixed(2);
+}
