@@ -79,7 +79,7 @@ export const authenticationSlice = createSlice({
     [authenticateUser.fulfilled]: (state, action) => {
       // console.log("Update User Action Payload:", action.payload.isLogged); //debuging
       state.value.isLogged = true;
-      state.value.username = action.payload.user;
+      state.value.username = action.payload.username;
       state.value.token = action.payload.token || null;
       localStorage.setItem("token", action.payload.token); // Store token in localStorage if it exists
       localStorage.setItem("username", action.payload.username);

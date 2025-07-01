@@ -53,6 +53,9 @@ import GitHubAppDetails from "./containers/settings/GitHubAppDetails";
 import UserProfilePage from "./containers/user/UserProfilePage";
 import NotFoundPage from "./containers/user/NotFoundPage";
 
+// Test Pages
+import OnboardingTestPage from "./containers/test/OnboardingTestPage";
+
 const App = () => {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingStatus, setOnboardingStatus] = useState(null);
@@ -150,6 +153,9 @@ const App = () => {
 
                 <Route exact path="/user-profile" component={UserProfilePage} />
                 <Route path="/project/:projectId/apps" component={ProjectDetailPage} />
+                
+                {/* Test Routes */}
+                <Route exact path="/test/onboarding" component={OnboardingTestPage} />
                 
                 {/* Cluster Routes */}
                 <PrivateRoute exact path="/cluster" component={ClusterPage} />

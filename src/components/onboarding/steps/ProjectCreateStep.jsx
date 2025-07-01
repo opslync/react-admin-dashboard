@@ -1,31 +1,58 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '../../ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
+import { Card, CardContent } from '../../ui/card';
 import { Input } from '../../ui/input';
 import { Label } from '../../ui/label';
 import { Switch } from '../../ui/switch';
-import { Alert, AlertDescription } from '../../ui/alert';
-import { FolderPlus, CheckCircle, AlertCircle, Settings } from 'lucide-react';
-import { postMethod } from '../../../library/api';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../ui/select';
+import { FolderPlus, Info, Settings } from 'lucide-react';
+import { getMethod, postMethod } from '../../../library/api';
 
-const ProjectCreateStep = ({ onComplete, stepData, isLoading, setError }) => {
-  const [projectData, setProjectData] = useState({
-    name: '',
-    description: '',
-    resources: {
+const ProjectCreateStep = ({ onComplete, stepData, isLoading, error, setError }) => {
+  const [formData, setFormData] = useState({
+    name: stepData.name || '',
+    description: stepData.description || '',
+    clusterId: stepData.clusterId || '',
+    resources: stepData.resources || {
       enabled: true,
       cpu: '0.5',
       memory: '256Mi',
       storage: '100Mi'
     }
   });
-  const [localLoading, setLocalLoading] = useState(false);
-  const [creationStatus, setCreationStatus] = useState('form'); // form, creating, success, error
+  const [loading, setLoading] = useState(false);
+  const [clusters, setClusters] = useState([]);
+  const [loadingClusters, setLoadingClusters] = useState(true);
+
+  useEffect(() => {
+    fetchClusters();
+  }, []);
+
+  const fetchClusters = async () => {
+    try {
+      setLoadingClusters(true);
+      const response = await getMethod('clusters');
+      setClusters(Array.isArray(response.data) ? response.data : []);
+      
+      // Auto-select first cluster if only one exists
+      if (Array.isArray(response.data) && response.data.length === 1) {
+        setFormData(prev => ({
+          ...prev,
+          clusterId: response.data[0].id
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to fetch clusters:', error);
+      setError('Failed to load clusters. Please refresh and try again.');
+    } finally {
+      setLoadingClusters(false);
+    }
+  };
 
   const handleInputChange = (field, value) => {
     if (field.startsWith('resources.')) {
       const resourceField = field.replace('resources.', '');
-      setProjectData(prev => ({
+      setFormData(prev => ({
         ...prev,
         resources: {
           ...prev.resources,
@@ -33,42 +60,53 @@ const ProjectCreateStep = ({ onComplete, stepData, isLoading, setError }) => {
         }
       }));
     } else {
-      setProjectData(prev => ({ ...prev, [field]: value }));
+      setFormData(prev => ({
+        ...prev,
+        [field]: value
+      }));
+    }
+    // Clear error when user starts typing
+    if (error) {
+      setError('');
     }
   };
 
-  const handleCreateProject = async () => {
-    if (!projectData.name.trim()) {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!formData.name.trim()) {
       setError('Project name is required');
+      return;
+    }
+    
+    if (!formData.clusterId) {
+      setError('Please select a target cluster');
       return;
     }
 
     try {
-      setLocalLoading(true);
-      setCreationStatus('creating');
+      setLoading(true);
       
-      const response = await postMethod('onboarding/project/create', {
-        name: projectData.name.trim(),
-        description: projectData.description.trim(),
-        resources: projectData.resources
+      // Create project
+      const response = await postMethod('projects', {
+        name: formData.name.trim(),
+        description: formData.description.trim() || null,
+        cluster_id: formData.clusterId,
+        resources: formData.resources.enabled ? {
+          cpu: formData.resources.cpu,
+          memory: formData.resources.memory,
+          storage: formData.resources.storage
+        } : null
+      });
+
+      // Complete this step and finish onboarding
+      onComplete('project', {
+        ...formData,
+        projectId: response.data.id
       });
       
-      if (response.data?.success) {
-        setCreationStatus('success');
-        // Auto-complete after a short delay to show success state
-        setTimeout(() => {
-          onComplete('project', {
-            project_id: response.data.project_id,
-            project_name: projectData.name,
-            project_description: projectData.description
-          });
-        }, 1500);
-      } else {
-        throw new Error(response.data?.error || 'Failed to create project');
-      }
     } catch (error) {
-      console.error('Project creation failed:', error);
-      setCreationStatus('error');
+      console.error('Failed to create project:', error);
       
       // Handle specific error cases
       let errorMessage = 'Failed to create project. Please try again.';
@@ -79,13 +117,10 @@ const ProjectCreateStep = ({ onComplete, stepData, isLoading, setError }) => {
         
         if (errorText) {
           const lowerErrorText = errorText.toLowerCase();
-          if ((lowerErrorText.includes('namespace') && lowerErrorText.includes('already exists')) ||
-              lowerErrorText.includes('already exists') ||
+          if ((lowerErrorText.includes('project') && lowerErrorText.includes('already exists')) ||
               lowerErrorText.includes('duplicate') ||
               lowerErrorText.includes('conflict')) {
-            errorMessage = `Project name "${projectData.name}" is already taken. Please choose a different name.`;
-          } else if (lowerErrorText.includes('namespace')) {
-            errorMessage = `Namespace error: ${errorText}`;
+            errorMessage = `Project name "${formData.name}" is already taken. Please choose a different name.`;
           } else {
             errorMessage = errorText;
           }
@@ -94,73 +129,121 @@ const ProjectCreateStep = ({ onComplete, stepData, isLoading, setError }) => {
       
       setError(errorMessage);
     } finally {
-      setLocalLoading(false);
+      setLoading(false);
     }
   };
 
-  const handleSkipProject = () => {
-    onComplete('project', { skipped: true });
-  };
+  return (
+    <div className="w-full">
+      {/* Header */}
+      <div className="text-center mb-8">
+        <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-900 rounded-2xl mb-4">
+          <FolderPlus className="h-8 w-8 text-white" />
+        </div>
+        <h2 className="text-3xl font-bold text-gray-900 mb-2">
+          Create Project
+        </h2>
+        <p className="text-lg text-gray-600">
+          Set up your first project to organize your applications
+        </p>
+      </div>
 
-  const renderContent = () => {
-    switch (creationStatus) {
-      case 'form':
-        return (
-          <div className="space-y-6">
-            <div className="text-center mb-6">
-              <FolderPlus className="h-12 w-12 text-blue-600 mx-auto mb-3" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                Create Your First Project
-              </h3>
-              <p className="text-gray-600">
-                Projects help you organize your applications and manage deployments.
-              </p>
-            </div>
-
-            <div className="space-y-6">
-              <div>
-                <Label htmlFor="projectName" className="text-base font-medium">
-                  Project Name *
+      {/* Form */}
+      <div className="max-w-2xl mx-auto">
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-8">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Project Name */}
+              <div className="space-y-2">
+                <Label htmlFor="projectName" className="text-base font-medium text-gray-700">
+                  Project Name <span className="text-red-500">*</span>
+                  <Info className="inline h-4 w-4 ml-1 text-gray-400" />
                 </Label>
                 <Input
                   id="projectName"
-                  value={projectData.name}
+                  type="text"
+                  placeholder="my-web-app"
+                  value={formData.name}
                   onChange={(e) => handleInputChange('name', e.target.value)}
-                  placeholder="e.g., my-web-app, api-service"
-                  className="mt-2"
-                  maxLength={50}
-                />
-                <p className="text-sm text-gray-500 mt-1">
-                  Choose a descriptive name for your project
-                </p>
-              </div>
-              
-              <div>
-                <Label htmlFor="projectDescription" className="text-base font-medium">
-                  Description (Optional)
-                </Label>
-                <Input
-                  id="projectDescription"
-                  value={projectData.description}
-                  onChange={(e) => handleInputChange('description', e.target.value)}
-                  placeholder="Brief description of your project"
-                  className="mt-2"
-                  maxLength={200}
+                  className="h-12 text-base bg-gray-50 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder:text-gray-400"
+                  disabled={loading || isLoading}
+                  required
                 />
               </div>
 
-              {/* Resource Configuration */}
+              {/* Description */}
+              <div className="space-y-2">
+                <Label htmlFor="projectDescription" className="text-base font-medium text-gray-700">
+                  Description <span className="text-gray-400">(Optional)</span>
+                  <Info className="inline h-4 w-4 ml-1 text-gray-400" />
+                </Label>
+                <textarea
+                  id="projectDescription"
+                  placeholder="Brief description of your project"
+                  value={formData.description}
+                  onChange={(e) => handleInputChange('description', e.target.value)}
+                  className="w-full h-24 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-400"
+                  disabled={loading || isLoading}
+                />
+              </div>
+
+              {/* Target Cluster */}
+              <div className="space-y-2">
+                <Label htmlFor="targetCluster" className="text-base font-medium text-gray-700">
+                  Target Cluster <span className="text-red-500">*</span>
+                  <Info className="inline h-4 w-4 ml-1 text-gray-400" />
+                </Label>
+                <Select
+                  value={formData.clusterId}
+                  onValueChange={(value) => handleInputChange('clusterId', value)}
+                  disabled={loading || isLoading || loadingClusters}
+                >
+                  <SelectTrigger className="h-12 text-base bg-gray-50 border-gray-300 rounded-lg">
+                    <SelectValue placeholder="Select a cluster" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {loadingClusters ? (
+                      <div className="px-4 py-2 text-gray-500 text-sm">Loading clusters...</div>
+                    ) : clusters.length === 0 ? (
+                      <div className="px-4 py-2 text-gray-500 text-sm">No clusters available</div>
+                    ) : (
+                      Array.isArray(clusters) && clusters.map((cluster) => (
+                        <SelectItem key={cluster.id} value={cluster.id}>
+                          {cluster.name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Auto-namespace info */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start">
+                  <Info className="h-5 w-5 text-blue-600 mr-3 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-900 mb-1">
+                      Auto-namespace creation
+                    </h4>
+                    <p className="text-sm text-gray-600">
+                      A dedicated namespace will be automatically created for this project in the selected cluster. 
+                      The namespace will be named after your project.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Resource Quota Section */}
               <div className="border-t pt-4">
                 <div className="flex items-center space-x-3 mb-4">
                   <Settings className="h-5 w-5 text-blue-600" />
                   <Label className="text-base font-medium">Resource Limits</Label>
                   <Switch
-                    checked={projectData.resources.enabled}
+                    checked={formData.resources.enabled}
                     onCheckedChange={(checked) => handleInputChange('resources.enabled', checked)}
                   />
                 </div>
-                
-                {projectData.resources.enabled && (
+                {formData.resources.enabled && (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 ml-8">
                     <div>
                       <Label htmlFor="cpu" className="text-sm font-medium">
@@ -168,190 +251,76 @@ const ProjectCreateStep = ({ onComplete, stepData, isLoading, setError }) => {
                       </Label>
                       <Input
                         id="cpu"
-                        value={projectData.resources.cpu}
+                        value={formData.resources.cpu}
                         onChange={(e) => handleInputChange('resources.cpu', e.target.value)}
                         placeholder="0.5"
-                        className="mt-1"
+                        className="mt-1 bg-gray-50 border-gray-300 rounded-lg placeholder:text-gray-400"
                       />
                       <p className="text-xs text-gray-500 mt-1">Cores (e.g., 0.5, 1, 2)</p>
                     </div>
-                    
                     <div>
                       <Label htmlFor="memory" className="text-sm font-medium">
                         Memory Limit
                       </Label>
                       <Input
                         id="memory"
-                        value={projectData.resources.memory}
+                        value={formData.resources.memory}
                         onChange={(e) => handleInputChange('resources.memory', e.target.value)}
                         placeholder="256Mi"
-                        className="mt-1"
+                        className="mt-1 bg-gray-50 border-gray-300 rounded-lg placeholder:text-gray-400"
                       />
                       <p className="text-xs text-gray-500 mt-1">MB/GB (e.g., 256Mi, 1Gi)</p>
                     </div>
-                    
                     <div>
                       <Label htmlFor="storage" className="text-sm font-medium">
                         Storage Limit
                       </Label>
                       <Input
                         id="storage"
-                        value={projectData.resources.storage}
+                        value={formData.resources.storage}
                         onChange={(e) => handleInputChange('resources.storage', e.target.value)}
                         placeholder="100Mi"
-                        className="mt-1"
+                        className="mt-1 bg-gray-50 border-gray-300 rounded-lg placeholder:text-gray-400"
                       />
                       <p className="text-xs text-gray-500 mt-1">MB/GB (e.g., 100Mi, 1Gi)</p>
                     </div>
                   </div>
                 )}
-                
                 <p className="text-sm text-gray-600 mt-3">
-                  {projectData.resources.enabled 
+                  {formData.resources.enabled 
                     ? 'Set resource limits to control application usage'
                     : 'Resource limits are disabled - applications can use unlimited resources'
                   }
                 </p>
               </div>
-            </div>
 
-            <div className="flex space-x-3">
-              <Button
-                onClick={handleCreateProject}
-                disabled={!projectData.name.trim() || localLoading}
-                className="bg-blue-600 hover:bg-blue-700 text-white flex-1"
-              >
-                {localLoading ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                ) : (
-                  <FolderPlus className="h-4 w-4 mr-2" />
-                )}
-                Create Project
-              </Button>
-              
-              <Button
-                variant="outline"
-                onClick={handleSkipProject}
-                className="flex-1"
-              >
-                Skip for now
-              </Button>
-            </div>
-          </div>
-        );
+              {/* Error Display */}
+              {error && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-red-700 text-sm">{error}</p>
+                </div>
+              )}
 
-      case 'creating':
-        return (
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              Creating Your Project
-            </h3>
-            <p className="text-gray-600">
-              Setting up "{projectData.name}" project...
-            </p>
-          </div>
-        );
-
-      case 'success':
-        return (
-          <div className="text-center py-8">
-            <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              Project Created Successfully!
-            </h3>
-            <p className="text-gray-600 mb-6">
-              Your project "{projectData.name}" is ready for applications.
-            </p>
-            
-            <Alert className="mb-6 bg-green-50 border-green-200">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-700">
-                You can now deploy applications to your "{projectData.name}" project.
-              </AlertDescription>
-            </Alert>
-          </div>
-        );
-
-      case 'error':
-        return (
-          <div className="text-center py-8">
-            <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              Project Creation Failed
-            </h3>
-            <p className="text-gray-600 mb-6">
-              We couldn't create your project. Please try again or skip this step.
-            </p>
-            
-            <div className="space-y-4">
-              <Button
-                onClick={() => setCreationStatus('form')}
-                className="bg-blue-600 hover:bg-blue-700 text-white w-full max-w-sm mx-auto"
-              >
-                Try Again
-              </Button>
-              
-              <Button
-                variant="outline"
-                onClick={handleSkipProject}
-                className="w-full max-w-sm mx-auto"
-              >
-                Skip for now
-              </Button>
-            </div>
-          </div>
-        );
-
-      default:
-        return null;
-    }
-  };
-
-  return (
-    <div className="max-w-2xl mx-auto">
-      <Card className="border-2 border-gray-100">
-        <CardHeader className="text-center pb-4">
-          <CardTitle className="flex items-center justify-center text-2xl">
-            <FolderPlus className="h-6 w-6 mr-2 text-blue-600" />
-            First Project Setup
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0">
-          {renderContent()}
-        </CardContent>
-      </Card>
-
-      {/* Benefits Section */}
-      <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-blue-50 p-4 rounded-lg">
-          <h4 className="font-semibold text-gray-900 mb-2">Organize Applications</h4>
-          <p className="text-sm text-gray-600">
-            Group related applications together for better management and organization.
-          </p>
-        </div>
-        <div className="bg-green-50 p-4 rounded-lg">
-          <h4 className="font-semibold text-gray-900 mb-2">Resource Management</h4>
-          <p className="text-sm text-gray-600">
-            Set resource limits and manage deployments at the project level.
-          </p>
-        </div>
-      </div>
-
-      {/* Project Examples */}
-      <div className="mt-6 bg-gray-50 p-4 rounded-lg">
-        <h4 className="font-semibold text-gray-900 mb-2">Project Examples:</h4>
-        <div className="flex flex-wrap gap-2">
-          {['E-commerce Platform', 'API Gateway', 'Data Pipeline', 'Mobile Backend'].map((example) => (
-            <span
-              key={example}
-              className="bg-white px-3 py-1 rounded-full text-sm text-gray-600 border cursor-pointer hover:bg-blue-50 hover:border-blue-200"
-              onClick={() => handleInputChange('name', example)}
-            >
-              {example}
-            </span>
-          ))}
-        </div>
+              {/* Submit Button */}
+              <div className="pt-4">
+                <Button
+                  type="submit"
+                  className="w-full h-12 bg-gray-900 hover:bg-gray-800 text-white text-base font-medium"
+                  disabled={loading || isLoading || !formData.name.trim() || !formData.clusterId}
+                >
+                  {loading || isLoading ? (
+                    <div className="flex items-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                      Creating Project...
+                    </div>
+                  ) : (
+                    'Create Project'
+                  )}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

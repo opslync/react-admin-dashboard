@@ -1,308 +1,290 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '../../ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../ui/card';
 import { Input } from '../../ui/input';
 import { Label } from '../../ui/label';
-import { Alert, AlertDescription } from '../../ui/alert';
-import { Server, CheckCircle, AlertCircle, Cloud, Settings } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '../../ui/radio-group';
+import { Server, CheckCircle, Info } from 'lucide-react';
 import { postMethod } from '../../../library/api';
 
-const ClusterSetupStep = ({ onComplete, stepData, isLoading, setError }) => {
-  const [setupMethod, setSetupMethod] = useState('existing'); // existing, new
-  const [clusterConfig, setClusterConfig] = useState({
-    name: '',
-    endpoint: '',
-    token: '',
-    provider: 'custom'
+const ClusterSetupStep = ({ onComplete, stepData, isLoading, error, setError }) => {
+  const [formData, setFormData] = useState({
+    name: stepData.name || '',
+    endpoint: stepData.endpoint || '',
+    authMethod: stepData.authMethod || 'kubeconfig',
+    bearerToken: stepData.bearerToken || '',
+    kubeconfig: stepData.kubeconfig || null
   });
-  const [setupStatus, setSetupStatus] = useState('configuring'); // configuring, testing, connected, failed
-  const [localLoading, setLocalLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [validationStatus, setValidationStatus] = useState(null); // null, 'validating', 'success', 'error'
 
-  const handleConfigChange = (field, value) => {
-    setClusterConfig(prev => ({ ...prev, [field]: value }));
+  const handleInputChange = (field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    if (error) setError('');
+    setValidationStatus(null);
   };
 
-  const handleTestConnection = async () => {
+  const handleKubeconfigUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          // Convert the file content to base64
+          const base64Content = btoa(event.target.result);
+          setFormData(prev => ({ ...prev, kubeconfig: base64Content }));
+        } catch (error) {
+          console.error('Error encoding kubeconfig to base64:', error);
+          setError('Failed to process kubeconfig file. Please try again.');
+        }
+      };
+      reader.onerror = () => {
+        setError('Failed to read kubeconfig file. Please try again.');
+      };
+      reader.readAsText(file);
+    }
+    setValidationStatus(null);
+    if (error) setError('');
+  };
+
+  const handleValidateConnection = async () => {
+    if (!formData.endpoint.trim()) {
+      setError('Please fill in all required fields');
+      return;
+    }
+    if (formData.authMethod === 'bearer' && !formData.bearerToken.trim()) {
+      setError('Please provide a bearer token');
+      return;
+    }
+    if (formData.authMethod === 'kubeconfig' && !formData.kubeconfig) {
+      setError('Please upload a kubeconfig file');
+      return;
+    }
     try {
-      setLocalLoading(true);
-      setSetupStatus('testing');
-      
-      const response = await postMethod('onboarding/cluster/setup', {
-        action: 'test',
-        config: clusterConfig
-      });
-      
+      setValidationStatus('validating');
+      setError('');
+      let payload = {
+        name: formData.name.trim(),
+        endpoint: formData.endpoint.trim(),
+        auth_method: formData.authMethod,
+        organization_id: stepData.organizationId
+      };
+      if (formData.authMethod === 'bearer') {
+        payload.bearer_token = formData.bearerToken.trim();
+      } else if (formData.authMethod === 'kubeconfig') {
+        payload.kubeconfig = formData.kubeconfig;
+      }
+      const response = await postMethod('clusters/validate', payload);
       if (response.data?.success) {
-        setSetupStatus('connected');
+        setValidationStatus('success');
       } else {
-        throw new Error(response.data?.error || 'Connection test failed');
+        throw new Error(response.data?.message || 'Connection validation failed');
       }
     } catch (error) {
-      console.error('Cluster test failed:', error);
-      setSetupStatus('failed');
-      setError(error.message || 'Failed to connect to cluster. Please check your configuration.');
-    } finally {
-      setLocalLoading(false);
+      console.error('Cluster validation failed:', error);
+      setValidationStatus('error');
+      setError(error.response?.data?.message || 'Failed to validate cluster connection');
     }
   };
 
-  const handleSetupCluster = async () => {
-    try {
-      setLocalLoading(true);
-      
-      const response = await postMethod('onboarding/cluster/setup', {
-        action: 'setup',
-        config: clusterConfig,
-        method: setupMethod
-      });
-      
-      if (response.data?.success) {
-        onComplete('cluster', {
-          method: setupMethod,
-          config: clusterConfig,
-          cluster_id: response.data.cluster_id
-        });
-      } else {
-        throw new Error(response.data?.error || 'Cluster setup failed');
-      }
-    } catch (error) {
-      console.error('Cluster setup failed:', error);
-      setError(error.message || 'Failed to set up cluster. Please try again.');
-    } finally {
-      setLocalLoading(false);
+  const handleAddCluster = async () => {
+    if (validationStatus !== 'success') {
+      setError('Please validate the connection first');
+      return;
     }
-  };
-
-  const handleSkipCluster = () => {
-    onComplete('cluster', { skipped: true, method: 'manual' });
-  };
-
-  const renderSetupContent = () => {
-    switch (setupStatus) {
-      case 'configuring':
-        return (
-          <div className="space-y-6">
-            {/* Setup Method Selection */}
-            <div>
-              <Label className="text-base font-semibold mb-3 block">
-                How would you like to set up your Kubernetes cluster?
-              </Label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <button
-                  onClick={() => setSetupMethod('existing')}
-                  className={`p-4 border-2 rounded-lg text-left transition-colors ${
-                    setupMethod === 'existing'
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <Server className="h-6 w-6 text-blue-600 mb-2" />
-                  <h4 className="font-semibold text-gray-900">Existing Cluster</h4>
-                  <p className="text-sm text-gray-600">
-                    Connect to your existing Kubernetes cluster
-                  </p>
-                </button>
-                
-                <button
-                  onClick={() => setSetupMethod('new')}
-                  className={`p-4 border-2 rounded-lg text-left transition-colors ${
-                    setupMethod === 'new'
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <Cloud className="h-6 w-6 text-blue-600 mb-2" />
-                  <h4 className="font-semibold text-gray-900">New Cluster</h4>
-                  <p className="text-sm text-gray-600">
-                    Create a new cluster (coming soon)
-                  </p>
-                </button>
-              </div>
-            </div>
-
-            {/* Cluster Configuration Form */}
-            {setupMethod === 'existing' && (
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="clusterName">Cluster Name</Label>
-                  <Input
-                    id="clusterName"
-                    value={clusterConfig.name}
-                    onChange={(e) => handleConfigChange('name', e.target.value)}
-                    placeholder="My Kubernetes Cluster"
-                    className="mt-1"
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="endpoint">Cluster Endpoint</Label>
-                  <Input
-                    id="endpoint"
-                    value={clusterConfig.endpoint}
-                    onChange={(e) => handleConfigChange('endpoint', e.target.value)}
-                    placeholder="https://your-cluster-endpoint.com"
-                    className="mt-1"
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="token">Access Token</Label>
-                  <Input
-                    id="token"
-                    type="password"
-                    value={clusterConfig.token}
-                    onChange={(e) => handleConfigChange('token', e.target.value)}
-                    placeholder="Your cluster access token"
-                    className="mt-1"
-                  />
-                </div>
-                
-                <div className="flex space-x-3">
-                  <Button
-                    onClick={handleTestConnection}
-                    disabled={!clusterConfig.endpoint || !clusterConfig.token || localLoading}
-                    variant="outline"
-                    className="flex-1"
-                  >
-                    {localLoading ? (
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2" />
-                    ) : (
-                      <Settings className="h-4 w-4 mr-2" />
-                    )}
-                    Test Connection
-                  </Button>
-                  
-                  <Button
-                    variant="outline"
-                    onClick={handleSkipCluster}
-                    className="flex-1"
-                  >
-                    Skip for now
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {setupMethod === 'new' && (
-              <div className="text-center py-8">
-                <Cloud className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                <h4 className="text-lg font-semibold text-gray-900 mb-2">
-                  New Cluster Creation
-                </h4>
-                <p className="text-gray-600 mb-4">
-                  Automated cluster creation is coming soon. For now, please use an existing cluster.
-                </p>
-                <Button
-                  variant="outline"
-                  onClick={() => setSetupMethod('existing')}
-                >
-                  Use Existing Cluster
-                </Button>
-              </div>
-            )}
-          </div>
-        );
-
-      case 'testing':
-        return (
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              Testing Cluster Connection
-            </h3>
-            <p className="text-gray-600">
-              Verifying your cluster configuration...
-            </p>
-          </div>
-        );
-
-      case 'connected':
-        return (
-          <div className="text-center py-8">
-            <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              Cluster Connected Successfully!
-            </h3>
-            <p className="text-gray-600 mb-6">
-              Your Kubernetes cluster is ready for deployments.
-            </p>
-            
-            <Alert className="mb-6 bg-green-50 border-green-200">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-700">
-                Cluster "{clusterConfig.name}" is now connected and ready to deploy applications.
-              </AlertDescription>
-            </Alert>
-            
-            <Button
-              onClick={handleSetupCluster}
-              disabled={localLoading}
-              className="bg-green-600 hover:bg-green-700 text-white"
-            >
-              {localLoading ? (
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-              ) : null}
-              Complete Cluster Setup
-            </Button>
-          </div>
-        );
-
-      case 'failed':
-        return (
-          <div className="text-center py-8">
-            <AlertCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              Connection Failed
-            </h3>
-            <p className="text-gray-600 mb-6">
-              We couldn't connect to your cluster. Please check your configuration and try again.
-            </p>
-            
-            <div className="space-y-4">
-              <Button
-                onClick={() => setSetupStatus('configuring')}
-                className="bg-blue-600 hover:bg-blue-700 text-white w-full max-w-sm mx-auto"
-              >
-                Try Again
-              </Button>
-              
-              <Button
-                variant="outline"
-                onClick={handleSkipCluster}
-                className="w-full max-w-sm mx-auto"
-              >
-                Skip for now
-              </Button>
-            </div>
-          </div>
-        );
-
-      default:
-        return null;
+    try {
+      setLoading(true);
+      let payload = {
+        name: formData.name.trim(),
+        endpoint: formData.endpoint.trim(),
+        auth_method: formData.authMethod,
+        organization_id: stepData.organizationId
+      };
+      if (formData.authMethod === 'bearer') {
+        payload.bearer_token = formData.bearerToken.trim();
+      } else if (formData.authMethod === 'kubeconfig') {
+        payload.kubeconfig = formData.kubeconfig;
+      }
+      const response = await postMethod('clusters', payload);
+      onComplete('cluster', {
+        ...formData,
+        clusterId: response.data.id
+      });
+    } catch (error) {
+      console.error('Failed to add cluster:', error);
+      setError(error.response?.data?.message || 'Failed to add cluster');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <Card className="border-2 border-gray-100">
-        <CardHeader className="text-center pb-4">
-          <CardTitle className="flex items-center justify-center text-2xl">
-            <Server className="h-6 w-6 mr-2 text-blue-600" />
-            Kubernetes Cluster Setup
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-0">
-          {renderSetupContent()}
-        </CardContent>
-      </Card>
-
-      {/* Info Section */}
-      <div className="mt-8 bg-blue-50 p-4 rounded-lg">
-        <h4 className="font-semibold text-gray-900 mb-2">Why connect a cluster?</h4>
-        <p className="text-sm text-gray-600">
-          Your Kubernetes cluster is where your applications will be deployed and managed. 
-          You can always add more clusters later from the settings page.
-        </p>
+    <div className="w-full">
+      <div className="max-w-2xl mx-auto">
+        <Card className="rounded-2xl shadow-lg border border-gray-200 bg-white">
+          <CardHeader className="pb-2 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-2xl">
+            <div className="flex flex-col items-center justify-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-2 shadow">
+                <Server className="h-8 w-8 text-white" />
+              </div>
+              <CardTitle className="text-2xl font-bold text-gray-900 mb-1">Add Kubernetes Cluster</CardTitle>
+              <CardDescription className="text-gray-600 text-base">Connect your cluster to deploy applications</CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent className="p-8">
+            <form className="space-y-8">
+              {/* Cluster Name */}
+              <div className="space-y-2">
+                <Label htmlFor="clusterName" className="text-base font-medium text-gray-700">
+                  Cluster Name <span className="text-red-500">*</span>
+                  <Info className="inline h-4 w-4 ml-1 text-gray-400" />
+                </Label>
+                <Input
+                  id="clusterName"
+                  type="text"
+                  placeholder="production-cluster"
+                  value={formData.name}
+                  onChange={(e) => handleInputChange('name', e.target.value)}
+                  className="h-12 text-base rounded-lg border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 placeholder:text-gray-400"
+                  disabled={loading || isLoading}
+                  required
+                />
+              </div>
+              {/* Divider */}
+              <div className="border-t border-gray-100 my-2" />
+              {/* API Endpoint */}
+              <div className="space-y-2">
+                <Label htmlFor="endpoint" className="text-base font-medium text-gray-700">
+                  API Endpoint <span className="text-red-500">*</span>
+                  <Info className="inline h-4 w-4 ml-1 text-gray-400" />
+                </Label>
+                <Input
+                  id="endpoint"
+                  type="url"
+                  placeholder="https://your-cluster-api.example.com"
+                  value={formData.endpoint}
+                  onChange={(e) => handleInputChange('endpoint', e.target.value)}
+                  className="h-12 text-base rounded-lg border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50 placeholder:text-gray-400"
+                  disabled={loading || isLoading}
+                  required
+                />
+              </div>
+              {/* Divider */}
+              <div className="border-t border-gray-100 my-2" />
+              {/* Authentication Method */}
+              <div className="space-y-2">
+                <Label className="text-base font-medium text-gray-700 mb-1">
+                  Authentication Method
+                </Label>
+                <RadioGroup
+                  value={formData.authMethod}
+                  onValueChange={(value) => handleInputChange('authMethod', value)}
+                  className="flex space-x-8"
+                >
+                  <label htmlFor="kubeconfig" className={`flex items-center gap-2 px-4 py-3 rounded-lg border cursor-pointer transition-colors ${formData.authMethod === 'kubeconfig' ? 'border-blue-600 bg-blue-50' : 'border-gray-200 hover:border-blue-300'}`}>
+                    <RadioGroupItem value="kubeconfig" id="kubeconfig" />
+                    <span className="text-base font-normal">Kubeconfig Upload</span>
+                  </label>
+                  <label htmlFor="bearer" className={`flex items-center gap-2 px-4 py-3 rounded-lg border cursor-pointer transition-colors ${formData.authMethod === 'bearer' ? 'border-blue-600 bg-blue-50' : 'border-gray-200 hover:border-blue-300'}`}>
+                    <RadioGroupItem value="bearer" id="bearer" />
+                    <span className="text-base font-normal">Bearer Token</span>
+                  </label>
+                </RadioGroup>
+              </div>
+              {/* Kubeconfig Upload */}
+              {formData.authMethod === 'kubeconfig' && (
+                <div className="space-y-2">
+                  <Label htmlFor="kubeconfigUpload" className="text-base font-medium text-gray-700">
+                    Kubeconfig File <span className="text-red-500">*</span>
+                    <Info className="inline h-4 w-4 ml-1 text-gray-400" />
+                  </Label>
+                  <input
+                    id="kubeconfigUpload"
+                    type="file"
+                    accept=".yaml,.yml,.txt,application/yaml,application/x-yaml,text/yaml,text/x-yaml"
+                    onChange={handleKubeconfigUpload}
+                    className="block w-full text-base text-gray-700 border border-gray-300 rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    disabled={loading || isLoading}
+                  />
+                  {formData.kubeconfig && (
+                    <div className="text-green-700 text-sm mt-1">Kubeconfig file loaded.</div>
+                  )}
+                </div>
+              )}
+              {/* Bearer Token */}
+              {formData.authMethod === 'bearer' && (
+                <div className="space-y-2">
+                  <Label htmlFor="bearerToken" className="text-base font-medium text-gray-700">
+                    Bearer Token <span className="text-red-500">*</span>
+                    <Info className="inline h-4 w-4 ml-1 text-gray-400" />
+                  </Label>
+                  <textarea
+                    id="bearerToken"
+                    placeholder="eyJhbGciOiJSUzI1NiIsImtpZCI6IlNJbIstmpZCI6Il..."
+                    value={formData.bearerToken}
+                    onChange={(e) => handleInputChange('bearerToken', e.target.value)}
+                    className="w-full h-24 px-3 py-2 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-mono bg-gray-50 placeholder:text-gray-400"
+                    disabled={loading || isLoading}
+                    required
+                  />
+                </div>
+              )}
+              {/* Error Display */}
+              {error && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-red-700 text-sm">{error}</p>
+                </div>
+              )}
+              {/* Success Display */}
+              {validationStatus === 'success' && (
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg flex items-center">
+                  <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
+                  <p className="text-green-700 text-sm">Connection validated successfully!</p>
+                </div>
+              )}
+              {/* Action Buttons */}
+              <div className="flex space-x-3 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleValidateConnection}
+                  disabled={loading || isLoading || validationStatus === 'validating' || !formData.endpoint.trim() || (formData.authMethod === 'bearer' ? !formData.bearerToken.trim() : formData.authMethod === 'kubeconfig' ? !formData.kubeconfig : false)}
+                  className="flex-1 h-12 text-base rounded-lg border-blue-600 focus:ring-2 focus:ring-blue-500 transition-colors"
+                >
+                  {validationStatus === 'validating' ? (
+                    <div className="flex items-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2" />
+                      Validating...
+                    </div>
+                  ) : (
+                    <>
+                      <CheckCircle className="h-4 w-4 mr-2" />
+                      Validate Connection
+                    </>
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  onClick={handleAddCluster}
+                  disabled={loading || isLoading || validationStatus !== 'success'}
+                  className="flex-1 h-12 bg-blue-600 hover:bg-blue-700 text-white text-base font-medium rounded-lg shadow-md transition-colors"
+                >
+                  {loading || isLoading ? (
+                    <div className="flex items-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                      Adding Cluster...
+                    </div>
+                  ) : (
+                    'Add Cluster'
+                  )}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

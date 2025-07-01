@@ -6,6 +6,7 @@ import { classNames } from "primereact/utils";
 import "../../assets/css/login.css";
 import { useDispatch } from "react-redux";
 import { registerUser } from "../../library/store/registration";
+import { authenticateUser } from "../../library/store/authentication";
 import { useHistory } from "react-router-dom";
 import * as Yup from "yup";
 import { useFormik, Form, FormikProvider } from "formik";
@@ -57,6 +58,25 @@ export default function RegisterPage() {
       try {
         const response = await dispatch(registerUser(data)).unwrap();
         
+        // Auto-login the user after successful registration
+        try {
+          const loginCredentials = {
+            username: data.username,
+            password: data.password
+          };
+          await dispatch(authenticateUser(loginCredentials)).unwrap();
+          console.log('User automatically logged in after registration');
+        } catch (loginError) {
+          console.log('Auto-login failed after registration:', loginError);
+          // If auto-login fails, still proceed with registration success but redirect to login
+          setDialogMessage('Account created successfully! Please log in to continue.');
+          setIsError(false);
+          setRegistrationComplete(false);
+          setOpenDialog(true);
+          formik.setSubmitting(false);
+          return;
+        }
+        
         // Initialize onboarding for the new user
         try {
           await postMethod('onboarding/start');
@@ -104,20 +124,21 @@ export default function RegisterPage() {
 
   const handleOnboardingComplete = () => {
     setShowOnboarding(false);
-    // After onboarding completion, redirect to login with a message
+    // After onboarding completion, redirect to dashboard
     localStorage.setItem('registration-onboarding-completed', 'true');
-    history.push('/login');
+    history.push('/dashboard');
   };
 
   const handleOnboardingClose = () => {
     setShowOnboarding(false);
-    // If user closes onboarding, still redirect to login
-    history.push('/login');
+    // If user closes onboarding, still redirect to dashboard since they're registered
+    history.push('/dashboard');
   };
 
   const handleSkipOnboarding = () => {
     setShowOnboarding(false);
-    history.push('/login');
+    // If user skips onboarding, redirect to dashboard
+    history.push('/dashboard');
   };
 
   return (
@@ -285,7 +306,7 @@ export default function RegisterPage() {
                 py: 1
               }}
             >
-              {isError ? 'Try Again' : 'Start Setup Guide'}
+              {isError ? 'Try Again' : (registrationComplete ? 'Start Setup Guide' : 'Continue to Login')}
             </Button>
           </DialogActions>
         )}

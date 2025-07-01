@@ -5,18 +5,14 @@ import { Button } from '../ui/button';
 import { Progress } from '../ui/progress';
 import { CheckCircle, Circle, ArrowRight, ArrowLeft, X } from 'lucide-react';
 import { getMethod, postMethod } from '../../library/api';
-import WelcomeStep from './steps/WelcomeStep';
-import GitHubSetupStep from './steps/GitHubSetupStep';
+import OrganizationSetupStep from './steps/OrganizationSetupStep';
 import ClusterSetupStep from './steps/ClusterSetupStep';
 import ProjectCreateStep from './steps/ProjectCreateStep';
-import CompletionStep from './steps/CompletionStep';
 
 const ONBOARDING_STEPS = [
-  { id: 'welcome', title: 'Welcome', component: WelcomeStep },
-  { id: 'github', title: 'GitHub Setup', component: GitHubSetupStep },
-  { id: 'cluster', title: 'Cluster Setup', component: ClusterSetupStep },
-  { id: 'project', title: 'First Project', component: ProjectCreateStep },
-  { id: 'complete', title: 'Complete', component: CompletionStep }
+  { id: 'organization', title: 'Organization Setup', component: OrganizationSetupStep },
+  { id: 'cluster', title: 'Add Kubernetes Cluster', component: ClusterSetupStep },
+  { id: 'project', title: 'Create Project', component: ProjectCreateStep }
 ];
 
 const OnboardingFlow = ({ open, onClose, onComplete }) => {
@@ -29,6 +25,7 @@ const OnboardingFlow = ({ open, onClose, onComplete }) => {
 
   useEffect(() => {
     if (open) {
+      setCurrentStep(0);
       fetchOnboardingStatus();
     }
   }, [open]);
@@ -88,6 +85,9 @@ const OnboardingFlow = ({ open, onClose, onComplete }) => {
   const handleNext = () => {
     if (currentStep < ONBOARDING_STEPS.length - 1) {
       setCurrentStep(prev => prev + 1);
+    } else {
+      // Complete onboarding
+      handleComplete();
     }
   };
 
@@ -100,75 +100,79 @@ const OnboardingFlow = ({ open, onClose, onComplete }) => {
   const handleComplete = () => {
     onComplete?.();
     onClose();
-    history.push('/overview');
+    history.push('/dashboard');
   };
 
   const CurrentStepComponent = ONBOARDING_STEPS[currentStep]?.component;
-  const progress = ((completedSteps.size) / ONBOARDING_STEPS.length) * 100;
+  const progress = ((currentStep + 1) / ONBOARDING_STEPS.length) * 100;
 
   return (
-    <Dialog open={open} onOpenChange={onClose} maxWidth="lg" fullWidth>
-      <DialogContent className="max-w-4xl p-0 bg-gradient-to-br from-blue-50 to-indigo-100">
-        {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b bg-white">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Welcome to Opslync</h2>
-            <p className="text-gray-600">Let's get you set up in just a few steps</p>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-500"
-          >
-            <X className="h-5 w-5" />
-          </Button>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="px-6 py-4 bg-white border-b">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-700">
-              Step {currentStep + 1} of {ONBOARDING_STEPS.length}
-            </span>
-            <span className="text-sm text-gray-500">
-              {Math.round(progress)}% Complete
-            </span>
-          </div>
-          <Progress value={progress} className="h-2" />
-        </div>
-
-        {/* Step Navigation */}
-        <div className="px-6 py-4 bg-white border-b">
-          <div className="flex items-center justify-between">
-            {ONBOARDING_STEPS.map((step, index) => (
-              <div key={step.id} className="flex items-center">
-                <button
-                  onClick={() => goToStep(index)}
-                  className={`flex items-center justify-center w-8 h-8 rounded-full border-2 transition-colors ${
-                    completedSteps.has(step.id)
-                      ? 'bg-green-500 border-green-500 text-white'
-                      : index === currentStep
-                      ? 'border-blue-500 text-blue-500 bg-blue-50'
-                      : 'border-gray-300 text-gray-400'
-                  }`}
-                >
-                  {completedSteps.has(step.id) ? (
-                    <CheckCircle className="h-5 w-5" />
-                  ) : (
-                    <span className="text-sm font-medium">{index + 1}</span>
-                  )}
-                </button>
-                <span className={`ml-2 text-sm font-medium ${
-                  index === currentStep ? 'text-blue-600' : 'text-gray-500'
-                }`}>
-                  {step.title}
-                </span>
-                {index < ONBOARDING_STEPS.length - 1 && (
-                  <ArrowRight className="h-4 w-4 text-gray-300 mx-4" />
-                )}
+    <Dialog open={open} onOpenChange={onClose} maxWidth="full" fullWidth>
+      <DialogContent className="max-w-none w-full h-full p-0 bg-gradient-to-br from-blue-50 to-indigo-100">
+        {/* Header with integrated steps */}
+        <div className="flex justify-between items-center p-6 border-b bg-gradient-to-br from-blue-50 to-indigo-100">
+          <div className="flex-1">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Organization Setup</h2>
+                <p className="text-gray-600">Let's get you set up in just a few steps</p>
               </div>
-            ))}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onClose}
+                className="text-gray-400 hover:text-gray-500"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            
+            {/* Integrated Step Navigation */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-6">
+                {ONBOARDING_STEPS.map((step, index) => (
+                  <div key={step.id} className="flex items-center">
+                    <button
+                      onClick={() => goToStep(index)}
+                      className={`flex items-center justify-center w-8 h-8 rounded-full border-2 transition-colors ${
+                        completedSteps.has(step.id)
+                          ? 'bg-green-500 border-green-500 text-white'
+                          : index === currentStep
+                          ? 'border-blue-500 text-blue-500 bg-blue-50'
+                          : 'border-gray-300 text-gray-400'
+                      }`}
+                    >
+                      {completedSteps.has(step.id) ? (
+                        <CheckCircle className="h-5 w-5" />
+                      ) : (
+                        <span className="text-sm font-medium">{index + 1}</span>
+                      )}
+                    </button>
+                    <span className={`ml-2 text-sm font-medium ${
+                      index === currentStep ? 'text-blue-600' : 'text-gray-500'
+                    }`}>
+                      {step.title}
+                    </span>
+                    {index < ONBOARDING_STEPS.length - 1 && (
+                      <ArrowRight className="h-4 w-4 text-gray-300 mx-4" />
+                    )}
+                  </div>
+                ))}
+              </div>
+              
+              {/* Progress indicator */}
+              <div className="flex items-center space-x-4">
+                <span className="text-sm font-medium text-gray-700">
+                  Step {currentStep + 1} of {ONBOARDING_STEPS.length}
+                </span>
+                <div className="w-32">
+                  <Progress value={progress} className="h-2" />
+                </div>
+                <span className="text-sm text-gray-500">
+                  {Math.round(progress)}%
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -182,8 +186,8 @@ const OnboardingFlow = ({ open, onClose, onComplete }) => {
           </div>
         )}
 
-        {/* Step Content */}
-        <div className="flex-1 p-6">
+        {/* Step Content with padding */}
+        <div className="flex-1 px-8 py-12 max-h-[calc(100vh-200px)] overflow-y-auto">
           {CurrentStepComponent && (
             <CurrentStepComponent
               onNext={handleNext}
@@ -219,27 +223,18 @@ const OnboardingFlow = ({ open, onClose, onComplete }) => {
               Skip for now
             </Button>
             
-            {currentStep === ONBOARDING_STEPS.length - 1 ? (
-              <Button
-                onClick={handleComplete}
-                className="bg-green-600 hover:bg-green-700 text-white"
-              >
-                Get Started
-              </Button>
-            ) : (
-              <Button
-                onClick={handleNext}
-                disabled={loading}
-                className="bg-blue-600 hover:bg-blue-700 text-white flex items-center"
-              >
-                {loading ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                ) : (
-                  <>Next</>
-                )}
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
-            )}
+            <Button
+              onClick={handleNext}
+              disabled={loading}
+              className="bg-blue-600 hover:bg-blue-700 text-white flex items-center"
+            >
+              {loading ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+              ) : (
+                currentStep === ONBOARDING_STEPS.length - 1 ? 'Complete Setup' : 'Next'
+              )}
+              <ArrowRight className="h-4 w-4 ml-2" />
+            </Button>
           </div>
         </div>
       </DialogContent>
