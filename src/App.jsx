@@ -5,12 +5,12 @@ import Layout from "./components/layout/Layout";
 import ToastManager from "./components/common/ToastManager";
 import { APP_ROUTES } from "./constants/routes";
 import WorkflowCanvas from "./components/workflow/WorkflowCanvas";
-import SessionTimeout from './components/session/SessionTimeout';
-import { ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-import githubTokenManager from './utils/githubTokenManager';
-import onboardingManager from './utils/onboardingManager';
-import OnboardingFlow from './components/onboarding/OnboardingFlow';
+import SessionTimeout from "./components/session/SessionTimeout";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import githubTokenManager from "./utils/githubTokenManager";
+import onboardingManager from "./utils/onboardingManager";
+import OnboardingFlow from "./components/onboarding/OnboardingFlow";
 
 // Auth Pages
 import LoginPage from "./containers/auth/LoginPage";
@@ -56,6 +56,9 @@ import NotFoundPage from "./containers/user/NotFoundPage";
 // Test Pages
 import OnboardingTestPage from "./containers/test/OnboardingTestPage";
 
+// Development/Testing Components
+import OnboardingDevPage from "./components/onboarding/OnboardingDevPage";
+
 const App = () => {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingStatus, setOnboardingStatus] = useState(null);
@@ -64,15 +67,17 @@ const App = () => {
   useEffect(() => {
     const initializeApp = async () => {
       // Only initialize if user is logged in
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       if (token) {
         // Initialize GitHub token manager
         if (!githubTokenManager.isInitialized) {
-          console.log('🚀 User already logged in, initializing GitHub Token Manager...');
+          console.log(
+            "🚀 User already logged in, initializing GitHub Token Manager..."
+          );
           try {
             await githubTokenManager.initialize();
           } catch (error) {
-            console.log('GitHub Token Manager initialization failed:', error);
+            console.log("GitHub Token Manager initialization failed:", error);
           }
         }
 
@@ -84,7 +89,7 @@ const App = () => {
           // Don't automatically show onboarding - only during registration
           setShowOnboarding(false);
         } catch (error) {
-          console.log('Onboarding status check failed:', error);
+          console.log("Onboarding status check failed:", error);
         }
       }
     };
@@ -119,44 +124,112 @@ const App = () => {
       <Router>
         <Switch>
           {/* Public Routes */}
-          <Route exact path={["/", APP_ROUTES.AUTH.LOGIN]} component={LoginPage} />
+          <Route
+            exact
+            path={["/", APP_ROUTES.AUTH.LOGIN]}
+            component={LoginPage}
+          />
           <Route path={APP_ROUTES.AUTH.REGISTER} component={RegisterPage} />
-          <Route path={APP_ROUTES.AUTH.FORGOT_PASSWORD} component={ForgotPasswordPage} />
-          <Route path={APP_ROUTES.AUTH.CHANGE_PASSWORD} component={ChangePasswordPage} />
+          <Route
+            path={APP_ROUTES.AUTH.FORGOT_PASSWORD}
+            component={ForgotPasswordPage}
+          />
+          <Route
+            path={APP_ROUTES.AUTH.CHANGE_PASSWORD}
+            component={ChangePasswordPage}
+          />
+
+          {/* Development Routes - Remove these in production */}
+          <Route path="/dev/onboarding" component={OnboardingDevPage} />
 
           {/* Private Routes */}
           <PrivateRoute path="/">
             <Layout>
               <Switch>
-                <Route exact path={APP_ROUTES.APP.DASHBOARD} component={DashboardPage} />
-                <Route exact path={APP_ROUTES.APP.OVERVIEW} component={OverviewPage} />
-                <Route exact path={APP_ROUTES.APP.PROJECTS} component={ProjectListPage} />
-                <Route exact path={APP_ROUTES.APP.APPS} component={AppListPage} />
-                
+                <Route
+                  exact
+                  path={APP_ROUTES.APP.DASHBOARD}
+                  component={DashboardPage}
+                />
+                <Route
+                  exact
+                  path={APP_ROUTES.APP.OVERVIEW}
+                  component={OverviewPage}
+                />
+                <Route
+                  exact
+                  path={APP_ROUTES.APP.PROJECTS}
+                  component={ProjectListPage}
+                />
+                <Route
+                  exact
+                  path={APP_ROUTES.APP.APPS}
+                  component={AppListPage}
+                />
+
                 {/* App Routes */}
                 <Route path="/app/:appId/details" component={AppDetailPage} />
-                <Route path="/app/:appId/build-deploy" component={BuildDeployPage} />
-                <Route path="/app/:appId/build-history" component={BuildHistoryPage} />
-                <Route path="/app/:appId/deployment-history" component={DeploymentHistoryPage} />
+                <Route
+                  path="/app/:appId/build-deploy"
+                  component={BuildDeployPage}
+                />
+                <Route
+                  path="/app/:appId/build-history"
+                  component={BuildHistoryPage}
+                />
+                <Route
+                  path="/app/:appId/deployment-history"
+                  component={DeploymentHistoryPage}
+                />
                 <Route path="/app/:appId/metrics" component={AppMetricsPage} />
-                <Route path="/app/:appId/app-settings" component={AppConfigurationPage} />
+                <Route
+                  path="/app/:appId/app-settings"
+                  component={AppConfigurationPage}
+                />
                 <Route path="/app/:appId/pod-shell" component={PodShellPage} />
                 <Route path="/app/:appId/workflow" component={WorkflowCanvas} />
 
                 {/* Settings Routes */}
-                <Route exact path={APP_ROUTES.SETTINGS.ROOT} component={SettingsPage} />
-                <Route exact path={APP_ROUTES.SETTINGS.GIT_ACCOUNT} component={GitUserPage} />
-                <Route exact path={APP_ROUTES.SETTINGS.CONTAINER_REGISTRY} component={ContainerRegistryPage} />
+                <Route
+                  exact
+                  path={APP_ROUTES.SETTINGS.ROOT}
+                  component={SettingsPage}
+                />
+                <Route
+                  exact
+                  path={APP_ROUTES.SETTINGS.GIT_ACCOUNT}
+                  component={GitUserPage}
+                />
+                <Route
+                  exact
+                  path={APP_ROUTES.SETTINGS.CONTAINER_REGISTRY}
+                  component={ContainerRegistryPage}
+                />
                 <Route exact path="/github-source" component={GitHubCallBack} />
-                <Route exact path="/github-callback" component={GitHubCallBack} />
-                <Route exact path="/settings/github-app/:appId" component={GitHubAppDetails} />
+                <Route
+                  exact
+                  path="/github-callback"
+                  component={GitHubCallBack}
+                />
+                <Route
+                  exact
+                  path="/settings/github-app/:appId"
+                  component={GitHubAppDetails}
+                />
 
                 <Route exact path="/user-profile" component={UserProfilePage} />
-                <Route path="/project/:projectId/apps" component={ProjectDetailPage} />
-                
+                <Route
+                  path="/project/:projectId/apps"
+                  component={ProjectDetailPage}
+                />
+
                 {/* Test Routes */}
-                <Route exact path="/test/onboarding" component={OnboardingTestPage} />
-                
+                <Route
+                  exact
+                  path="/test/onboarding"
+                  component={OnboardingTestPage}
+                />
+
                 {/* Cluster Routes */}
                 <PrivateRoute exact path="/cluster" component={ClusterPage} />
                 <PrivateRoute exact path="/services" component={ServicesPage} />
@@ -176,7 +249,7 @@ const App = () => {
         onComplete={handleOnboardingComplete}
       />
 
-      <ToastContainer 
+      <ToastContainer
         position="top-right"
         autoClose={3000}
         hideProgressBar={false}
