@@ -8,6 +8,9 @@ import {
   DialogTitle,
   DialogClose,
 } from '../ui/dialog';
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+dayjs.extend(relativeTime);
 
 const getStatusIcon = (status) => {
   switch (status) {
@@ -72,7 +75,7 @@ export const RecentDeployments = ({ deployments = [] }) => {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-500">{deployment.timestamp}</span>
+              <span className="text-sm text-gray-500">{dayjs(deployment.timestamp).fromNow()}</span>
               <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
             </div>
           </div>

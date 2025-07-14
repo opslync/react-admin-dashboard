@@ -611,6 +611,20 @@ const AppDetailPage = () => {
     setMetricsWsConnection(ws);
   };
 
+  // Add debug logging before rendering
+  useEffect(() => {
+    if (appDetails) {
+      const url = appDetails.name && appDetails.projectName && appDetails.organizationName
+        ? `https://${appDetails.name}-${appDetails.projectName}-${appDetails.organizationName}.opslync.io`
+        : '#';
+      console.log('DEBUG appDetails:', appDetails);
+      console.log('DEBUG appDetails.name:', appDetails.name);
+      console.log('DEBUG appDetails.projectName:', appDetails.projectName);
+      console.log('DEBUG appDetails.organizationName:', appDetails.organizationName);
+      console.log('DEBUG computed URL:', url);
+    }
+  }, [appDetails]);
+
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen">
       <CircularProgress />
@@ -976,17 +990,23 @@ const AppDetailPage = () => {
           <Card>
             <CardContent>
               <Typography variant="h6" className="mb-4">Quick Actions</Typography>
-              <div className="space-y-3">
-                {pods[0]?.status === 'Running' && (
-                  <Button
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                    onClick={handleOpenShell}
-                  >
-                    <Terminal className="w-4 h-4 mr-2" />
-                    Open Shell
-                  </Button>
-                )}
+              <div className="space-y-2">
+                {/* 1. URL Button (native anchor, styled like button) */}
+                <a
+                  href={
+                    appDetails?.name && appDetails?.projectName && appDetails?.organizationName
+                      ? `https://${appDetails.name}-${appDetails.projectName}-${appDetails.organizationName}.opslync.io`
+                      : '#'
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full border border-blue-200 text-blue-700 hover:bg-blue-50 mb-2 flex items-center justify-center py-1 rounded font-small transition-colors bg-blue-50"
+                  style={{ textDecoration: 'none' }}
+                >
+                  🌐 Open App URL
+                </a>
 
+                {/* 2. View Pod Events */}
                 <Button
                   variant="outline"
                   className="w-full border border-blue-200 text-blue-700 hover:bg-blue-50"
@@ -995,14 +1015,17 @@ const AppDetailPage = () => {
                   View Pod Events
                 </Button>
 
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={handleRebuildDeploy}
-                >
-                  <RotateCw className="w-4 h-4 mr-2" />
-                  Rebuild & Deploy
-                </Button>
+                {/* 3. Open Shell (only if running) */}
+                {pods[0]?.status === 'Running' && (
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={handleOpenShell}
+                  >
+                    <Terminal className="w-4 h-4 mr-2" />
+                    Open Shell
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>

@@ -62,10 +62,13 @@ export default function BuildModal({ open, onClose, onStartBuild, appId: propApp
 
     setIsStartingBuild(true);
     try {
+      // Get the GitHub token from the token manager
+      const githubToken = githubTokenManager.getCurrentToken();
       const buildPayload = {
         pipeline_id: "456", // This should come from your pipeline configuration
         commit_id: selectedCommit.hash,
         commit_message: selectedCommit.message,
+        github_token: githubToken, // <-- Include the GitHub token in the payload
         params: {
           "repo-url": appDetails.repoUrl,
           "branch": appDetails.branch || 'main',
@@ -78,8 +81,8 @@ export default function BuildModal({ open, onClose, onStartBuild, appId: propApp
 
       const response = await postMethod(`app/${appId}/workflows/build/start`, buildPayload);
       onClose();
-      if (onStartBuild && response.data?.workflowID) {
-        onStartBuild(selectedCommit, response.data.workflowID);
+      if (onStartBuild) {
+        onStartBuild(selectedCommit, response.data?.workflowID);
       }
     } catch (err) {
       setError('Failed to start build. Please try again.');

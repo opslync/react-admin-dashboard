@@ -18,7 +18,8 @@ import {
   Divider,
   IconButton,
   Alert,
-  Snackbar
+  Snackbar,
+  Tooltip
 } from '@mui/material';
 import GitHubIcon from '@mui/icons-material/GitHub';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
@@ -210,6 +211,9 @@ const GitUserPage = () => {
 
   if (loading) return <Typography>Loading...</Typography>;
 
+  // Check if user has already created and installed a GitHub App
+  const hasInstalledApp = apps.some(app => !!app.installation_id);
+
   return (
     <div className="flex flex-col p-4 bg-gray-100 min-h-screen">
       <Typography variant="h4" className="mb-6">Git Integration</Typography>
@@ -233,14 +237,19 @@ const GitUserPage = () => {
                   </Typography>
                 </div>
                 <div className="space-x-2">
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={handleCreateGitHubApp}
-                    startIcon={<GitHubIcon />}
-                  >
-                    Create GitHub App
-                  </Button>
+                  <Tooltip title={hasInstalledApp ? "You have already created and installed a GitHub App." : ""}>
+                    <span>
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={handleCreateGitHubApp}
+                        startIcon={<GitHubIcon />}
+                        disabled={hasInstalledApp}
+                      >
+                        Create GitHub App
+                      </Button>
+                    </span>
+                  </Tooltip>
                 </div>
               </div>
 

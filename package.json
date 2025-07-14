@@ -34,6 +34,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cookie-parser": "^1.4.6",
+    "dayjs": "^1.11.13",
     "express-session": "^1.18.0",
     "formik": "^2.2.9",
     "install": "^0.13.0",

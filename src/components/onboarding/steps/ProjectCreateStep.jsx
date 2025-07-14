@@ -68,6 +68,21 @@ const ProjectCreateStep = forwardRef(({
     return match ? match.join(' ') : '';
   };
 
+  // Helper to convert memory/storage to 'Gi' format (no space)
+  const toGiFormat = (value) => {
+    if (!value) return '1Gi';
+    if (typeof value === 'number') return `${value}Gi`;
+    if (typeof value === 'string') {
+      let num = extractNumber(value);
+      let unit = extractUnit(value).toLowerCase();
+      if (unit === 'gi') return `${num}Gi`;
+      if (unit === 'gb') return `${num}Gi`;
+      if (unit === 'mi') return `${(num / 1024).toFixed(2).replace(/\.00$/, '')}Gi`;
+      return `${num}Gi`;
+    }
+    return '1Gi';
+  };
+
   const minCPU = 0.1;
   const cpuStep = 0.1;
   const minMemory = 0.1; // GB
@@ -257,7 +272,7 @@ const ProjectCreateStep = forwardRef(({
     try {
       setLoading(true);
 
-      // Create project payload
+      // Create project payload in required format
       const projectPayload = {
         name: formData.name.trim(),
         description: formData.description.trim() || null,
@@ -265,10 +280,10 @@ const ProjectCreateStep = forwardRef(({
         clusterId: formData.clusterId,
         resources: formData.resources.enabled
           ? {
-              enabled: formData.resources.enabled,
+              enabled: true,
               cpu: formData.resources.cpu,
-              memory: formData.resources.memory,
-              storage: formData.resources.storage,
+              memory: toGiFormat(formData.resources.memory),
+              storage: toGiFormat(formData.resources.storage),
             }
           : null,
       };
@@ -283,6 +298,9 @@ const ProjectCreateStep = forwardRef(({
         ...formData,
         projectId: response.data.project?.id || response.data.id,
       });
+      
+      // Redirect and refresh the page after project creation
+      window.location.href = "/dashboard";
       
       console.log("ProjectCreateStep - onComplete called successfully");
       

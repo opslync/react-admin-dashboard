@@ -108,19 +108,35 @@ export const DeploymentModal = ({ isOpen, onClose }) => {
 
   const handleDeploy = async () => {
     setIsDeploying(true);
-    // Simulate deployment
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    setIsDeploying(false);
-    onClose();
-    // Show deployment feedback using toast.success
-    toast.success('Deployment started successfully!', {
-      position: 'top-right',
-      autoClose: 3000,
-      hideProgressBar: false,
-      closeOnClick: true,
-      pauseOnHover: true,
-      draggable: true,
-    });
+    try {
+      if (!selectedApp || !selectedVersion) throw new Error('Missing app or version');
+      const url = `app/${selectedApp.id}/deploy`;
+      const payload = {
+        tag: selectedVersion.commitId,
+        'ingress.enabled': 'true',
+      };
+      await postMethod(url, payload);
+      setIsDeploying(false);
+      onClose();
+      toast.success('Deployment started successfully!', {
+        position: 'top-right',
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+    } catch (err) {
+      setIsDeploying(false);
+      toast.error('Failed to start deployment.', {
+        position: 'top-right',
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+    }
   };
 
   const handleBack = () => {

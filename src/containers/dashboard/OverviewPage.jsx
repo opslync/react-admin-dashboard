@@ -167,11 +167,17 @@ const Overview = () => {
                 <p className="text-sm text-gray-500">Welcome back!</p>
                 <p className="font-medium text-gray-900">{summary.organizationName}</p>
               </div>
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+              <button
+                className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center focus:outline-none hover:ring-2 hover:ring-blue-400 transition"
+                aria-label="Open user profile"
+                onClick={() => { window.location.href = '/user-profile'; }}
+                title="Open profile"
+                type="button"
+              >
                 <span className="text-white font-semibold text-sm">
                   {summary.organizationName.charAt(0)}
                 </span>
-              </div>
+              </button>
             </div>
           </div>
         </div>

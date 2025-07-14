@@ -44,7 +44,8 @@ export const MetricsGrid = ({
       />
       <MetricCard
         title="Active Developers"
-        value={activeUsers}
+        // value={activeUsers}
+        value="1"
         unit="users"
         icon={<Users className="w-6 h-6 text-green-500" />}
         trend={trends.users}

@@ -14,16 +14,6 @@ import {
 } from "../../components/ui/dropdown-menu";
 import { parseCPU, parseMemory, formatCPUDisplay, formatMemoryDisplay } from '../../utils/formatters';
 
-class CustomWebSocket extends WebSocket {
-  constructor(url, token) {
-    // Create a URL object to modify the query parameters
-    const wsUrl = new URL(url);
-    // Add the token as a query parameter
-    wsUrl.searchParams.append('token', token);
-    super(wsUrl.toString());
-  }
-}
-
 const ProjectDetailPage = () => {
   const { projectId } = useParams();
   const [project, setProject] = useState(null);
@@ -36,7 +26,6 @@ const ProjectDetailPage = () => {
     ram: { used: 0, total: 1, percentage: 0 },
     storage: { used: 0, total: 1, percentage: 0 }
   });
-  const wsRef = useRef(null);
   const appsRef = useRef(apps);
 
   // Keep appsRef.current in sync with apps state
@@ -44,134 +33,79 @@ const ProjectDetailPage = () => {
     appsRef.current = apps;
   }, [apps]);
 
+  // Fetch project metrics using new endpoint
   useEffect(() => {
-    const connectWebSocket = () => {
-      const token = localStorage.getItem('token');
-      const ws = new CustomWebSocket(`ws://localhost:8080/api/projects/${projectId}/metrics`, token);
+    let metricsInterval;
+    const fetchProjectMetrics = async () => {
+      try {
+        const metricsResponse = await getMethod(`project/${projectId}/detailed-metrics`);
+        const data = metricsResponse.data;
+        // Defensive: fallback if missing fields
+        const resourceQuota = data.resourceQuota || { cpu: '1', memory: '1Gi', ephemeralStorage: '1Gi' };
+        const allocated = data.allocatedResources || { cpu: '0', memory: '0', ephemeralStorage: '0' };
 
-      ws.onopen = () => {
-        console.log('WebSocket connected');
-      };
+        // Use new formatters for CPU, memory, and storage (ephemeralStorage)
+        const cpuTotal = parseCPU(resourceQuota.cpu);
+        const cpuUsed = parseCPU(allocated.cpu);
 
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          
-          console.log('ProjectDetailPage - Received WebSocket data:', data);
-          
-          // Check if we have the required data structure
-          if (!data.resourceQuota) {
-            console.error('Invalid data format received: missing resourceQuota', data);
-            return;
+        const memTotalMi = parseMemory(resourceQuota.memory);
+        const memUsedMi = parseMemory(allocated.memory);
+        const memTotalDisplay = formatMemoryDisplay(resourceQuota.memory);
+        const memUsedDisplay = formatMemoryDisplay(allocated.memory);
+
+        // Use ephemeralStorage for storage metrics
+        const storageTotalMi = parseMemory(resourceQuota.ephemeralStorage);
+        const storageUsedMi = parseMemory(allocated.ephemeralStorage);
+        const storageTotalDisplay = formatMemoryDisplay(resourceQuota.ephemeralStorage);
+        const storageUsedDisplay = formatMemoryDisplay(allocated.ephemeralStorage);
+
+        setMetrics({
+          cpu: {
+            used: cpuUsed,
+            total: cpuTotal || 1,
+            percentage: Math.round((cpuUsed / (cpuTotal || 1)) * 100) || 0,
+            allocated: `${formatCPUDisplay(cpuUsed)}/${formatCPUDisplay(cpuTotal)} Cores`
+          },
+          ram: {
+            used: memUsedMi,
+            total: memTotalMi || 1,
+            percentage: Math.round((memUsedMi / (memTotalMi || 1)) * 100) || 0,
+            allocated: `${memUsedDisplay.value}/${memTotalDisplay.value} ${memTotalDisplay.unit}`
+          },
+          storage: {
+            used: storageUsedMi,
+            total: storageTotalMi || 1,
+            percentage: Math.round((storageUsedMi / (storageTotalMi || 1)) * 100) || 0,
+            allocated: `${storageUsedDisplay.value}/${storageTotalDisplay.value} ${storageTotalDisplay.unit}`
           }
-          
-          // If usage data is not available, use default values or calculate from resourceQuota
-          const usage = data.usage || {
-            cpu: '0',
-            memory: '0',
-            storage: '0'
-          };
-          
-          // Validate resourceQuota structure
-          if (!data.resourceQuota.cpu || !data.resourceQuota.memory || !data.resourceQuota.storage) {
-            console.warn('ProjectDetailPage - Incomplete resourceQuota data:', data.resourceQuota);
-            // Use default values for missing quota data
-            const defaultQuota = {
-              cpu: data.resourceQuota.cpu || '1',
-              memory: data.resourceQuota.memory || '1Gi',
-              storage: data.resourceQuota.storage || '1Gi'
-            };
-            data.resourceQuota = { ...data.resourceQuota, ...defaultQuota };
+        });
+      } catch (error) {
+        console.error('Failed to fetch project metrics:', error);
+        setMetrics({
+          cpu: {
+            used: 0,
+            total: 1,
+            percentage: 0,
+            allocated: '0.00/1.00 Cores'
+          },
+          ram: {
+            used: 0,
+            total: 1,
+            percentage: 0,
+            allocated: '0.00/1.00 MiB'
+          },
+          storage: {
+            used: 0,
+            total: 1,
+            percentage: 0,
+            allocated: '0.00/1.00 MiB'
           }
-
-          // Use new formatters for CPU, memory, and storage
-          const cpuTotal = parseCPU(data.resourceQuota.cpu);
-          const cpuUsed = parseCPU(usage.cpu);
-
-          const memTotalMi = parseMemory(data.resourceQuota.memory);
-          const memUsedMi = parseMemory(usage.memory);
-          const memTotalDisplay = formatMemoryDisplay(data.resourceQuota.memory);
-          const memUsedDisplay = formatMemoryDisplay(usage.memory);
-
-          const storageTotalMi = parseMemory(data.resourceQuota.storage);
-          const storageUsedMi = parseMemory(usage.storage);
-          const storageTotalDisplay = formatMemoryDisplay(data.resourceQuota.storage);
-          const storageUsedDisplay = formatMemoryDisplay(usage.storage);
-          
-          console.log('ProjectDetailPage - Parsed metrics:', {
-            cpu: { total: cpuTotal, used: cpuUsed },
-            memory: { total: memTotalMi, used: memUsedMi },
-            storage: { total: storageTotalMi, used: storageUsedMi }
-          });
-
-          setMetrics({
-            cpu: {
-              used: cpuUsed,
-              total: cpuTotal || 1,
-              percentage: Math.round((cpuUsed / (cpuTotal || 1)) * 100) || 0,
-              allocated: `${formatCPUDisplay(cpuUsed)}/${formatCPUDisplay(cpuTotal)} Cores`
-            },
-            ram: {
-              used: memUsedMi,
-              total: memTotalMi || 1,
-              percentage: Math.round((memUsedMi / (memTotalMi || 1)) * 100) || 0,
-              allocated: `${memUsedDisplay.value}/${memTotalDisplay.value} ${memTotalDisplay.unit}`
-            },
-            storage: {
-              used: storageUsedMi,
-              total: storageTotalMi || 1,
-              percentage: Math.round((storageUsedMi / (storageTotalMi || 1)) * 100) || 0,
-              allocated: `${storageUsedDisplay.value}/${storageTotalDisplay.value} ${storageTotalDisplay.unit}`
-            }
-          });
-        } catch (error) {
-          console.error('Error parsing WebSocket message:', error);
-          console.log('Raw message:', event.data);
-          
-          // Set default metrics if parsing fails
-          setMetrics({
-            cpu: {
-              used: 0,
-              total: 1,
-              percentage: 0,
-              allocated: '0.00/1.00 Cores'
-            },
-            ram: {
-              used: 0,
-              total: 1,
-              percentage: 0,
-              allocated: '0.00/1.00 MiB'
-            },
-            storage: {
-              used: 0,
-              total: 1,
-              percentage: 0,
-              allocated: '0.00/1.00 MiB'
-            }
-          });
-        }
-      };
-
-      ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-      };
-
-      ws.onclose = (event) => {
-        console.log('WebSocket disconnected:', event.code, event.reason);
-        // Attempt to reconnect after 5 seconds
-        setTimeout(connectWebSocket, 5000);
-      };
-
-      wsRef.current = ws;
-    };
-
-    connectWebSocket();
-
-    return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
+        });
       }
     };
+    fetchProjectMetrics();
+    metricsInterval = setInterval(fetchProjectMetrics, 60000); // Changed from 10000 to 60000 (60 seconds)
+    return () => clearInterval(metricsInterval);
   }, [projectId]);
 
   useEffect(() => {

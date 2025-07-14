@@ -49,7 +49,7 @@ const ProjectListPage = () => {
   }, []);
 
   const getProjectAppCount = (projectId) => {
-    return apps.filter(app => app.projectId === projectId).length;
+    return Array.isArray(apps) ? apps.filter(app => app.projectId === projectId).length : 0;
   };
 
   const handleDeleteClick = (project) => {

@@ -136,9 +136,9 @@ export function parseMemory(mem) {
 export function formatMemoryDisplay(mem) {
     const valueMi = parseMemory(mem);
     if (valueMi >= 1024) {
-        return { value: (valueMi / 1024).toFixed(2), unit: 'GiB' };
+        return { value: (valueMi / 1024).toFixed(2), unit: 'GB' };
     }
-    return { value: valueMi.toFixed(2), unit: 'MiB' };
+    return { value: valueMi.toFixed(2), unit: 'MB' };
 }
 
 // Format CPU for display (returns string in cores)

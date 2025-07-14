@@ -1,234 +1,407 @@
 import React, { useState, useEffect } from 'react';
-import { useFormik } from 'formik';
-import * as Yup from 'yup';
-import { getMethod, putMethod } from '../../library/api';
 import { Card, CardContent } from '../../components/ui/card';
-import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
-import { Label } from '../../components/ui/label';
-import { Avatar, AvatarImage, AvatarFallback } from '../../components/ui/avatar';
-import { Mail, Phone, MapPin, Globe, Pencil } from 'lucide-react';
+import { 
+  User, 
+  Mail, 
+  Edit3, 
+  Shield, 
+  Calendar, 
+  MapPin, 
+  Phone, 
+  Building2,
+  Settings,
+  Key,
+  Bell,
+  Globe
+} from 'lucide-react';
+import { getMethod, postMethod } from '../../library/api';
 
 const UserProfilePage = () => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [profileStats, setProfileStats] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
-  const [profilePic, setProfilePic] = useState(null);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    location: ''
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [changePasswordForm, setChangePasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [changePasswordLoading, setChangePasswordLoading] = useState(false);
+  const [changePasswordError, setChangePasswordError] = useState(null);
+  const [changePasswordSuccess, setChangePasswordSuccess] = useState(null);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
+      setLoading(true);
       try {
         const response = await getMethod('userprofile');
-        if (response.data.status === 'success') {
-          setUser(response.data.user);
-        }
-        setLoading(false);
+        const data = response.data.data;
+        setUser(data.user);
+        setProfileStats(data.profileStats || []);
+        setEditForm({
+          name: data.user.name,
+          email: data.user.email,
+          phone: data.user.phone,
+          location: data.user.location
+        });
+        setError(null);
       } catch (err) {
-        setError('Failed to fetch user profile. Please try again.');
+        setError('Failed to load user profile.');
+      } finally {
         setLoading(false);
       }
     };
-
     fetchUserProfile();
   }, []);
 
-  const UserProfileSchema = Yup.object().shape({
-    username: Yup.string().required('Username is required'),
-    email: Yup.string().email('Invalid email address').required('Email is required'),
-    newPassword: Yup.string().min(6, 'Password must be at least 6 characters'),
-    confirmPassword: Yup.string()
-      .oneOf([Yup.ref('newPassword'), null], 'Passwords must match')
-      .when('newPassword', {
-        is: (val) => val && val.length > 0,
-        then: Yup.string().required('Confirm password is required'),
-      }),
-  });
+  const handleEditToggle = () => {
+    if (isEditing) {
+      // Save changes
+      setUser(prev => ({
+        ...prev,
+        ...editForm
+      }));
+    } else {
+      // Start editing
+      setEditForm({
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        location: user.location
+      });
+    }
+    setIsEditing(!isEditing);
+  };
 
-  const formik = useFormik({
-    initialValues: {
-      username: user ? user.username : '',
-      email: user ? user.email : '',
-      newPassword: '',
-      confirmPassword: '',
-    },
-    enableReinitialize: true,
-    validationSchema: UserProfileSchema,
-    onSubmit: async (data) => {
-      try {
-        const response = await putMethod('userprofile', data);
-        if (response.data.status === 'success') {
-          setUser(response.data.user);
-          setIsEditing(false);
-        }
-      } catch (err) {
-        setError('Failed to update user profile. Please try again.');
+  const handleInputChange = (field, value) => {
+    setEditForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleChangePasswordInput = (field, value) => {
+    setChangePasswordForm(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setChangePasswordLoading(true);
+    setChangePasswordError(null);
+    setChangePasswordSuccess(null);
+    if (changePasswordForm.newPassword !== changePasswordForm.confirmPassword) {
+      setChangePasswordError('New password and confirm password do not match.');
+      setChangePasswordLoading(false);
+      return;
+    }
+    try {
+      const token = localStorage.getItem('token');
+      const response = await postMethod('auth/change-password', {
+        currentPassword: changePasswordForm.currentPassword,
+        newPassword: changePasswordForm.newPassword,
+      });
+      if (response.data.success) {
+        setChangePasswordSuccess('Password changed successfully!');
+        setChangePasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        setShowChangePassword(false);
+      } else {
+        throw new Error(response.data.message || 'Failed to change password');
       }
-    },
-  });
-
-  const handleProfilePicChange = (event) => {
-    const file = event.target.files[0];
-    if (file) {
-      setProfilePic(URL.createObjectURL(file));
+    } catch (err) {
+      let errorMsg = 'Unable to change password. Please check your current password and try again.';
+      if (err.response && err.response.data && err.response.data.message) {
+        errorMsg = err.response.data.message;
+      } else if (err.message && !err.message.startsWith('Request failed with status code')) {
+        errorMsg = err.message;
+      }
+      setChangePasswordError(errorMsg);
+    } finally {
+      setChangePasswordLoading(false);
     }
   };
 
+  const statIconMap = {
+    Projects: Building2,
+    Deployments: Settings,
+    "Active Apps": Globe,
+  };
+
   if (loading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      </div>
-    );
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
+  if (error) {
+    return <div className="min-h-screen flex items-center justify-center text-red-500">{error}</div>;
+  }
+  if (!user) {
+    return null;
   }
 
-  const UserInfoCard = () => (
-    <Card className="w-full max-w-3xl mx-auto">
-      <CardContent className="p-6">
-        <div className="flex flex-col items-center">
-          <Avatar className="h-24 w-24 mb-4">
-            <AvatarImage src={profilePic || user?.avatar || 'https://github.com/shadcn.png'} />
-            <AvatarFallback>{user?.username?.charAt(0)?.toUpperCase() || 'U'}</AvatarFallback>
-          </Avatar>
-          <h2 className="text-2xl font-bold">{user?.username}</h2>
-          <p className="text-gray-500 mb-6">User ID: {user?.id}</p>
-
-          <div className="space-y-4 w-full max-w-lg">
-            <div className="flex items-center gap-3">
-              <Mail className="h-5 w-5 text-gray-500" />
-              <span>{user?.email}</span>
-            </div>
-          </div>
-
-          <Button 
-            onClick={() => setIsEditing(true)}
-            className="mt-8 flex items-center gap-2"
-          >
-            <Pencil className="h-4 w-4" />
-            Edit Profile
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-
-  const EditProfileForm = () => (
-    <Card className="w-full max-w-3xl mx-auto">
-      <CardContent className="p-6">
-        <form onSubmit={formik.handleSubmit} className="space-y-6">
-          <div className="flex justify-center mb-8">
-            <div className="relative">
-              <Avatar className="h-24 w-24">
-                <AvatarImage src={profilePic || user?.avatar || 'https://github.com/shadcn.png'} />
-                <AvatarFallback>{user?.username?.charAt(0)?.toUpperCase() || 'U'}</AvatarFallback>
-              </Avatar>
-              <label 
-                htmlFor="avatar-upload" 
-                className="absolute bottom-0 right-0 p-1 bg-white rounded-full shadow-lg cursor-pointer hover:bg-gray-50"
-              >
-                <Pencil className="h-4 w-4 text-gray-600" />
-                <input
-                  id="avatar-upload"
-                  type="file"
-                  className="hidden"
-                  accept="image/*"
-                  onChange={handleProfilePicChange}
-                />
-              </label>
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              <Input
-                id="username"
-                name="username"
-                value={formik.values.username}
-                onChange={formik.handleChange}
-                className={formik.errors.username && formik.touched.username ? 'border-red-500' : ''}
-              />
-              {formik.errors.username && formik.touched.username && (
-                <p className="text-sm text-red-500">{formik.errors.username}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                value={formik.values.email}
-                onChange={formik.handleChange}
-                className={formik.errors.email && formik.touched.email ? 'border-red-500' : ''}
-              />
-              {formik.errors.email && formik.touched.email && (
-                <p className="text-sm text-red-500">{formik.errors.email}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="newPassword">New Password</Label>
-              <Input
-                id="newPassword"
-                name="newPassword"
-                type="password"
-                value={formik.values.newPassword}
-                onChange={formik.handleChange}
-                className={formik.errors.newPassword && formik.touched.newPassword ? 'border-red-500' : ''}
-              />
-              {formik.errors.newPassword && formik.touched.newPassword && (
-                <p className="text-sm text-red-500">{formik.errors.newPassword}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <Input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                value={formik.values.confirmPassword}
-                onChange={formik.handleChange}
-                className={formik.errors.confirmPassword && formik.touched.confirmPassword ? 'border-red-500' : ''}
-              />
-              {formik.errors.confirmPassword && formik.touched.confirmPassword && (
-                <p className="text-sm text-red-500">{formik.errors.confirmPassword}</p>
-              )}
-            </div>
-          </div>
-
-          {error && (
-            <div className="bg-red-50 text-red-500 p-3 rounded-md text-sm">
-              {error}
-            </div>
-          )}
-
-          <div className="flex justify-end gap-4">
-            <Button 
-              type="button" 
-              variant="outline"
-              onClick={() => setIsEditing(false)}
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="submit" 
-              className="bg-blue-600 hover:bg-blue-700"
-              disabled={formik.isSubmitting}
-            >
-              {formik.isSubmitting ? 'Saving...' : 'Save Changes'}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
-  );
-
   return (
-    <div className="flex flex-col lg:ml-64 p-6 bg-gray-50 min-h-screen">
-      {isEditing ? <EditProfileForm /> : <UserInfoCard />}
+    <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">User Profile</h1>
+          <p className="text-gray-600">Manage your account settings and preferences</p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Profile Card */}
+          <div className="lg:col-span-2">
+            <Card className="mb-6">
+              <CardContent className="p-8">
+                {/* Profile Header */}
+                <div className="flex flex-col items-center text-center mb-8">
+                  <div className="relative mb-6">
+                    <img
+                      src={user.avatar}
+                      alt={user.name}
+                      className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-lg"
+                    />
+                    <div className="absolute bottom-2 right-2 w-6 h-6 bg-green-500 border-2 border-white rounded-full"></div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    {isEditing ? (
+                      <input
+                        type="text"
+                        value={editForm.name}
+                        onChange={(e) => handleInputChange('name', e.target.value)}
+                        className="text-2xl font-bold text-gray-900 bg-transparent border-b-2 border-blue-500 text-center focus:outline-none"
+                      />
+                    ) : (
+                      <h2 className="text-2xl font-bold text-gray-900">{user.name}</h2>
+                    )}
+                    
+                    <p className="text-gray-600">User ID: {user.id}</p>
+                    
+                    <div className="flex items-center justify-center gap-2 text-gray-600">
+                      <Mail className="w-4 h-4" />
+                      {isEditing ? (
+                        <input
+                          type="email"
+                          value={editForm.email}
+                          onChange={(e) => handleInputChange('email', e.target.value)}
+                          className="bg-transparent border-b border-gray-300 focus:border-blue-500 focus:outline-none"
+                        />
+                      ) : (
+                        <span>{user.email}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* <Button
+                    onClick={handleEditToggle}
+                    className={`mt-6 ${isEditing ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+                  >
+                    <Edit3 className="w-4 h-4 mr-2" />
+                    {isEditing ? 'Save Profile' : 'Edit Profile'}
+                  </Button> */}
+                </div>
+
+                {/* Profile Details */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <Shield className="w-5 h-5 text-blue-500" />
+                      <div>
+                        <p className="text-sm text-gray-600">Role</p>
+                        <p className="font-medium text-gray-900">{user.role}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <Building2 className="w-5 h-5 text-purple-500" />
+                      <div>
+                        <p className="text-sm text-gray-600">Organization</p>
+                        <p className="font-medium text-gray-900">{user.organization}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <Calendar className="w-5 h-5 text-green-500" />
+                      <div>
+                        <p className="text-sm text-gray-600">Member Since</p>
+                        <p className="font-medium text-gray-900">{user.joinDate}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <MapPin className="w-5 h-5 text-red-500" />
+                      <div>
+                        <p className="text-sm text-gray-600">Location</p>
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editForm.location}
+                            onChange={(e) => handleInputChange('location', e.target.value)}
+                            className="font-medium text-gray-900 bg-transparent border-b border-gray-300 focus:border-blue-500 focus:outline-none"
+                          />
+                        ) : (
+                          <p className="font-medium text-gray-900">{user.location}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <Phone className="w-5 h-5 text-orange-500" />
+                      <div>
+                        <p className="text-sm text-gray-600">Phone</p>
+                        {isEditing ? (
+                          <input
+                            type="tel"
+                            value={editForm.phone}
+                            onChange={(e) => handleInputChange('phone', e.target.value)}
+                            className="font-medium text-gray-900 bg-transparent border-b border-gray-300 focus:border-blue-500 focus:outline-none"
+                          />
+                        ) : (
+                          <p className="font-medium text-gray-900">{user.phone}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <Globe className="w-5 h-5 text-indigo-500" />
+                      <div>
+                        <p className="text-sm text-gray-600">Timezone</p>
+                        <p className="font-medium text-gray-900">{user.timezone}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Stats Card */}
+            <Card>
+              <CardContent className="p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Activity Stats</h3>
+                <div className="space-y-4">
+                  {profileStats.map((stat, index) => {
+                    const Icon = statIconMap[stat.label];
+                    return (
+                      <div key={index} className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          {Icon && <Icon className="w-5 h-5 text-blue-500" />}
+                          <span className="text-gray-600">{stat.label}</span>
+                        </div>
+                        <span className="font-bold text-gray-900">{stat.value}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Quick Actions */}
+            <Card>
+              <CardContent className="p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+                <div className="space-y-3">
+                  <Button variant="ghost" className="w-full justify-start" onClick={() => setShowChangePassword(true)}>
+                    <Key className="w-4 h-4 mr-3" />
+                    Change Password
+                  </Button>
+                  <Button variant="ghost" className="w-full justify-start" disabled title="Coming soon">
+                    <Bell className="w-4 h-4 mr-3" />
+                    Notification Settings
+                  </Button>
+                  <Button variant="ghost" className="w-full justify-start" disabled title="Coming soon">
+                    <Settings className="w-4 h-4 mr-3" />
+                    Account Settings
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Status Card */}
+            <Card>
+              <CardContent className="p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Status</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Status</span>
+                    <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+                      Active
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Last Active</span>
+                    <span className="text-sm text-gray-900">{user.lastActive}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Verification</span>
+                    <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+                      Verified
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+      {/* Change Password Modal */}
+      {showChangePassword && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-40 z-50">
+          <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md relative">
+            <button className="absolute top-2 right-2 text-gray-400 hover:text-gray-600" onClick={() => setShowChangePassword(false)}>&times;</button>
+            <h2 className="text-xl font-bold mb-4">Change Password</h2>
+            <form onSubmit={handleChangePassword} className="space-y-4">
+              <div>
+                <label className="block text-gray-700 mb-1">Current Password</label>
+                <input
+                  type="password"
+                  className="w-full border rounded px-3 py-2"
+                  value={changePasswordForm.currentPassword}
+                  onChange={e => handleChangePasswordInput('currentPassword', e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-gray-700 mb-1">New Password</label>
+                <input
+                  type="password"
+                  className="w-full border rounded px-3 py-2"
+                  value={changePasswordForm.newPassword}
+                  onChange={e => handleChangePasswordInput('newPassword', e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-gray-700 mb-1">Confirm New Password</label>
+                <input
+                  type="password"
+                  className="w-full border rounded px-3 py-2"
+                  value={changePasswordForm.confirmPassword}
+                  onChange={e => handleChangePasswordInput('confirmPassword', e.target.value)}
+                  required
+                />
+              </div>
+              {changePasswordError && <div className="text-red-500 text-sm">{changePasswordError}</div>}
+              {changePasswordSuccess && <div className="text-green-600 text-sm">{changePasswordSuccess}</div>}
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setShowChangePassword(false)}>Cancel</Button>
+                <Button type="submit" disabled={changePasswordLoading}>{changePasswordLoading ? 'Changing...' : 'Change Password'}</Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

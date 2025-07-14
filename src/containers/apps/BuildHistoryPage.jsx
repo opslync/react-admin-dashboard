@@ -420,15 +420,16 @@ const BuildHistoryPage = () => {
 
   const handleBuildStart = (commit, workflowId) => {
     setShowBuildModal(false);
-    // Instead of reloading, just refetch build history
-    fetchBuildHistory().then(() => {
-      // Try to select the new build and show logs
+    // Wait 2 seconds before refreshing build history
+    setTimeout(() => {
+      fetchBuildHistory();
+      // If workflowId is present, select and show logs for the new build
       if (workflowId) {
         setSelectedWorkflowId(workflowId);
         setShowLogs(true);
         connectWebSocket(workflowId);
       }
-    });
+    }, 2000);
   };
 
   const handleDeploy = async () => {
