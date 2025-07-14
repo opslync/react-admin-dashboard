@@ -1,26 +1,26 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useImperativeHandle, forwardRef } from "react";
 import { Button } from "../../ui/button";
 import { Card, CardContent } from "../../ui/card";
 import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
 import { Switch } from "../../ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../../ui/select";
 import { FolderPlus, Info, Settings } from "lucide-react";
 import { getMethod, postMethod } from "../../../library/api";
+import onboardingManager from "../../../utils/onboardingManager";
+import { toast } from "react-toastify";
 
-const ProjectCreateStep = ({
+const ProjectCreateStep = forwardRef(({
   onComplete,
   stepData,
   isLoading,
   error,
   setError,
-}) => {
+}, ref) => {
+  // Debug log to verify cluster data is being passed
+  console.log("ProjectCreateStep - Received stepData:", stepData);
+  console.log("ProjectCreateStep - Organization ID:", stepData.organizationId);
+  console.log("ProjectCreateStep - Cluster ID:", stepData.clusterId);
+  console.log("ProjectCreateStep - Cluster Name:", stepData.clusterName);
   const [formData, setFormData] = useState({
     name: stepData.name || "",
     description: stepData.description || "",
@@ -35,17 +35,71 @@ const ProjectCreateStep = ({
   const [loading, setLoading] = useState(false);
   const [clusters, setClusters] = useState([]);
   const [loadingClusters, setLoadingClusters] = useState(true);
+  const [selectOpen, setSelectOpen] = useState(false);
+  const [clusterResources, setClusterResources] = useState(null);
 
+  // Helpers for resource parsing/formatting
+  const parseResource = (value) => {
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+      if (value.toLowerCase().endsWith('gi')) {
+        return parseFloat(value) * 1024;
+      } else if (value.toLowerCase().endsWith('gb')) {
+        return parseFloat(value) * 1024;
+      } else if (value.toLowerCase().endsWith('mi')) {
+        return parseFloat(value);
+      } else {
+        return parseFloat(value);
+      }
+    }
+    return 0;
+  };
+  // Helper to extract numeric value from a string like '5.78 GB' or '2'
+  const extractNumber = (value) => {
+    if (typeof value === 'number') return value;
+    if (!value) return 0;
+    const match = value.match(/([\d.]+)/);
+    return match ? parseFloat(match[1]) : 0;
+  };
+  // Helper to extract unit (e.g., 'GB') from a string like '5.78 GB'
+  const extractUnit = (value) => {
+    if (!value) return '';
+    const match = value.match(/[a-zA-Z]+/g);
+    return match ? match.join(' ') : '';
+  };
+
+  const minCPU = 0.1;
+  const cpuStep = 0.1;
+  const minMemory = 0.1; // GB
+  const memoryStep = 0.1; // GB
+  const minStorage = 1; // GB
+  const storageStep = 1; // GB
+
+  const currentCPU = extractNumber(formData.resources.cpu);
+  const currentMemory = extractNumber(formData.resources.memory);
+  const currentStorage = extractNumber(formData.resources.storage);
+  const maxCPU = clusterResources?.total?.total_cpu ? extractNumber(clusterResources.total.total_cpu) : 100;
+  const maxMemory = clusterResources?.total?.total_memory ? extractNumber(clusterResources.total.total_memory) : 1000;
+  const maxStorage = clusterResources?.total?.total_storage ? extractNumber(clusterResources.total.total_storage) : 1000;
+  const memoryUnit = clusterResources?.total?.total_memory ? extractUnit(clusterResources.total.total_memory) : 'GB';
+  const storageUnit = clusterResources?.total?.total_storage ? extractUnit(clusterResources.total.total_storage) : 'GB';
+
+  // Expose closeSelect to parent via ref
+  useImperativeHandle(ref, () => ({
+    closeSelect: () => setSelectOpen(false),
+  }));
+
+  // Ensure dropdown is closed before unmounting
   useEffect(() => {
-    // fetchClusters();
+    return () => setSelectOpen(false);
   }, []);
 
+  // Restore fetchClusters for loading clusters if not present in stepData
   const fetchClusters = async () => {
     try {
       setLoadingClusters(true);
       const response = await getMethod("clusters");
       setClusters(Array.isArray(response.data) ? response.data : []);
-
       // Auto-select first cluster if only one exists
       if (Array.isArray(response.data) && response.data.length === 1) {
         setFormData((prev) => ({
@@ -60,6 +114,81 @@ const ProjectCreateStep = ({
       setLoadingClusters(false);
     }
   };
+
+  useEffect(() => {
+    console.log("ProjectCreateStep - useEffect triggered with stepData:", stepData);
+    // Prefer clusters array from stepData if available
+    if (Array.isArray(stepData.clusters) && stepData.clusters.length > 0) {
+      setClusters(stepData.clusters);
+      setLoadingClusters(false);
+      // Auto-select if only one cluster
+      if (stepData.clusters.length === 1) {
+        setFormData(prev => ({
+          ...prev,
+          clusterId: stepData.clusters[0].id || stepData.clusters[0].clusterId
+        }));
+      }
+    } else if (stepData.clusterId && stepData.clusterName) {
+      setFormData(prev => ({
+        ...prev,
+        clusterId: stepData.clusterId
+      }));
+      setClusters([{
+        id: stepData.clusterId,
+        name: stepData.clusterName,
+        endpoint: stepData.clusterEndpoint
+      }]);
+      setLoadingClusters(false);
+    } else {
+      fetchClusters();
+    }
+  }, [stepData]);
+
+  useEffect(() => {
+    if (
+      formData.clusterId &&
+      clusters.length > 0 &&
+      !clusters.some(c => (c.id || c.clusterId) === formData.clusterId)
+    ) {
+      setFormData(prev => ({ ...prev, clusterId: "" }));
+    }
+    // Close the dropdown if clusters change
+    if (selectOpen) setSelectOpen(false);
+  }, [clusters, formData.clusterId]);
+
+  // Fetch cluster resources when clusterId changes
+  useEffect(() => {
+    const fetchClusterResources = async () => {
+      if (!formData.clusterId) {
+        setClusterResources(null);
+        return;
+      }
+      try {
+        const response = await getMethod(`cluster/resources?clusterId=${formData.clusterId}`);
+        setClusterResources(response.data);
+      } catch (err) {
+        setClusterResources(null);
+      }
+    };
+    fetchClusterResources();
+  }, [formData.clusterId]);
+
+  // When cluster resources are loaded, ensure memory/storage are in 'GB' format and default to '1 GB' if not
+  useEffect(() => {
+    if (!clusterResources?.total) return;
+    setFormData(prev => {
+      let newResources = { ...prev.resources };
+      // If memory is not in GB, set to '1 GB'
+      if (!/GB$/.test(newResources.memory)) {
+        newResources.memory = '1 GB';
+      }
+      // If storage is not in GB, set to '1 GB'
+      if (!/GB$/.test(newResources.storage)) {
+        newResources.storage = '1 GB';
+      }
+      return { ...prev, resources: newResources };
+    });
+  }, [clusterResources?.total]);
 
   const handleInputChange = (field, value) => {
     if (field.startsWith("resources.")) {
@@ -83,6 +212,30 @@ const ProjectCreateStep = ({
     }
   };
 
+  const handleResourceChange = (type, direction) => {
+    setFormData((prev) => {
+      let value, unit, newValue;
+      if (type === 'cpu') {
+        value = extractNumber(prev.resources.cpu);
+        newValue = direction === 'inc' ? Math.min(value + cpuStep, maxCPU) : Math.max(value - cpuStep, minCPU);
+        return { ...prev, resources: { ...prev.resources, cpu: newValue.toFixed(2).replace(/\.00$/, '') } };
+      } else if (type === 'memory') {
+        value = extractNumber(prev.resources.memory);
+        unit = memoryUnit;
+        newValue = direction === 'inc' ? Math.min(value + memoryStep, maxMemory) : Math.max(value - memoryStep, minMemory);
+        return { ...prev, resources: { ...prev.resources, memory: `${newValue.toFixed(2).replace(/\.00$/, '')} ${unit}` } };
+      } else if (type === 'storage') {
+        value = extractNumber(prev.resources.storage);
+        unit = storageUnit;
+        newValue = direction === 'inc' ? Math.min(value + storageStep, maxStorage) : Math.max(value - storageStep, minStorage);
+        newValue = Math.round(newValue); // Always integer for storage
+        return { ...prev, resources: { ...prev.resources, storage: `${newValue} ${unit}` } };
+      }
+      return prev;
+    });
+    if (error) setError("");
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -92,32 +245,73 @@ const ProjectCreateStep = ({
     }
 
     if (!formData.clusterId) {
-      setError("Please select a target cluster");
+      setError("Please select a target cluster. You need to complete the cluster setup first.");
+      return;
+    }
+
+    if (!stepData.organizationId) {
+      setError("Organization ID is missing. Please complete the organization setup first.");
       return;
     }
 
     try {
       setLoading(true);
 
-      // Create project
-      const response = await postMethod("projects", {
+      // Create project payload
+      const projectPayload = {
         name: formData.name.trim(),
         description: formData.description.trim() || null,
-        cluster_id: formData.clusterId,
+        organizationId: stepData.organizationId,
+        clusterId: formData.clusterId,
         resources: formData.resources.enabled
           ? {
+              enabled: formData.resources.enabled,
               cpu: formData.resources.cpu,
               memory: formData.resources.memory,
               storage: formData.resources.storage,
             }
           : null,
-      });
-
+      };
+      
+      console.log("ProjectCreateStep - Project creation payload:", projectPayload);
+      const response = await postMethod("projects", projectPayload);
+      console.log("ProjectCreateStep - Project creation response:", response.data);
+      console.log("ProjectCreateStep - Calling onComplete with project data");
+      
       // Complete this step and finish onboarding
       onComplete("project", {
         ...formData,
-        projectId: response.data.id,
+        projectId: response.data.project?.id || response.data.id,
       });
+      
+      console.log("ProjectCreateStep - onComplete called successfully");
+      
+      // Check onboarding status after project creation to confirm completion
+      try {
+        const onboardingStatus = await onboardingManager.checkOnboardingStatus();
+        console.log("ProjectCreateStep - Onboarding status after project creation:", onboardingStatus);
+        
+        if (!onboardingStatus.needsOnboarding) {
+          // All steps completed, show success message and redirect
+          console.log("ProjectCreateStep - All onboarding steps completed!");
+          
+          // Show success toast for project creation
+          toast.success("✅ Project created successfully! Completing your setup...", {
+            position: "top-right",
+            autoClose: 3000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+          });
+          
+          // The redirect will be handled by the OnboardingFlow handleComplete
+        } else {
+          console.log("ProjectCreateStep - Onboarding still incomplete:", onboardingStatus);
+        }
+      } catch (error) {
+        console.error("ProjectCreateStep - Failed to check onboarding status:", error);
+      }
     } catch (error) {
       console.error("Failed to create project:", error);
 
@@ -229,111 +423,98 @@ const ProjectCreateStep = ({
                 </Label>
                 <Info className="h-4 w-4 text-gray-400" />
               </div>
-              <Select
+              <select
+                id="targetCluster"
                 value={formData.clusterId}
-                onValueChange={(value) => handleInputChange("clusterId", value)}
+                onChange={e => handleInputChange("clusterId", e.target.value)}
+                className="h-11 text-sm border border-gray-300 focus:border-gray-400 focus:ring-0 rounded-md w-full"
                 disabled={loading || isLoading || loadingClusters}
+                required
               >
-                <SelectTrigger className="h-11 text-sm border-gray-300 focus:border-gray-400 focus:ring-0">
-                  <SelectValue placeholder="Select a cluster" />
-                </SelectTrigger>
-                <SelectContent>
-                  {loadingClusters ? (
-                    <div className="px-4 py-2 text-gray-500 text-sm">
-                      Loading clusters...
-                    </div>
-                  ) : clusters.length === 0 ? (
-                    <div className="px-4 py-2 text-gray-500 text-sm">
-                      No clusters available
-                    </div>
-                  ) : (
-                    Array.isArray(clusters) &&
-                    clusters.map((cluster) => (
-                      <SelectItem key={cluster.id} value={cluster.id}>
-                        {cluster.name}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
+                <option value="" disabled>
+                  {loadingClusters ? "Loading clusters..." : "Select a cluster"}
+                </option>
+                {clusters.length === 0 && !loadingClusters ? (
+                  <option value="" disabled>No clusters available</option>
+                ) : (
+                  clusters.map(cluster => (
+                    <option key={cluster.id || cluster.clusterId} value={cluster.id || cluster.clusterId}>
+                      {cluster.name}
+                    </option>
+                  ))
+                )}
+              </select>
+            </div>
+
+            {/* Resource Limits Enable Switch */}
+            <div className="flex items-center gap-3 mb-2">
+              <Switch
+                id="enableResourceLimits"
+                checked={formData.resources.enabled}
+                onCheckedChange={(checked) => handleInputChange("resources.enabled", checked)}
+                disabled={loading || isLoading}
+              />
+              <Label htmlFor="enableResourceLimits" className="text-sm font-medium text-gray-700">
+                Enable Resource Limits
+              </Label>
             </div>
 
             {/* Resource Limits Section */}
-            <div className="space-y-4">
-              <Label className="text-sm font-medium text-gray-700">
-                Resource Limits
-              </Label>
-
-              <div className="border border-gray-200 rounded-md p-4 space-y-4">
-                {/* CPU Limit */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-1">
-                      <Label
-                        htmlFor="cpu"
-                        className="text-sm font-medium text-gray-700"
-                      >
-                        CPU Limit
-                      </Label>
-                      <Info className="h-4 w-4 text-gray-400" />
+            {formData.resources.enabled && (
+              <div className="space-y-4">
+                <Label className="text-sm font-medium text-gray-700">
+                  Resource Limits
+                </Label>
+                {clusterResources?.total && (
+                  <div className="mb-2 text-xs text-gray-500">
+                    Available: CPU: {clusterResources.total.total_cpu}, Memory: {clusterResources.total.total_memory}, Storage: {clusterResources.total.total_storage}
+                  </div>
+                )}
+                <div className="border border-gray-200 rounded-md p-4 space-y-4">
+                  <div className="grid grid-cols-3 gap-4">
+                    {/* CPU Limit */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-1">
+                        <Label htmlFor="cpu" className="text-sm font-medium text-gray-700">CPU Limit</Label>
+                        <Info className="h-4 w-4 text-gray-400" />
+                      </div>
+                      <div className="flex items-center mt-1">
+                        <button type="button" className="px-2 py-1 border rounded-l bg-gray-100" onClick={() => handleResourceChange('cpu', 'dec')} disabled={currentCPU <= minCPU}>-</button>
+                        <div className="px-3 py-1 border-t border-b w-16 text-sm text-center">{formData.resources.cpu}</div>
+                        <button type="button" className="px-2 py-1 border rounded-r bg-gray-100" onClick={() => handleResourceChange('cpu', 'inc')} disabled={currentCPU >= maxCPU}>+</button>
+                      </div>
+                      <p className="text-center text-xs text-gray-500 mt-1">Cores</p>
                     </div>
-                    <Input
-                      id="cpu"
-                      value={formData.resources.cpu}
-                      onChange={(e) =>
-                        handleInputChange("resources.cpu", e.target.value)
-                      }
-                      placeholder="1"
-                      className="h-11 text-sm border-gray-300 focus:border-gray-400 focus:ring-0"
-                    />
-                  </div>
-
-                  {/* Memory Limit */}
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-1">
-                      <Label
-                        htmlFor="memory"
-                        className="text-sm font-medium text-gray-700"
-                      >
-                        Memory Limit
-                      </Label>
-                      <Info className="h-4 w-4 text-gray-400" />
+                    {/* Memory Limit */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-1">
+                        <Label htmlFor="memory" className="text-sm font-medium text-gray-700">Memory Limit</Label>
+                        <Info className="h-4 w-4 text-gray-400" />
+                      </div>
+                      <div className="flex items-center mt-1">
+                        <button type="button" className="px-2 py-1 border rounded-l bg-gray-100" onClick={() => handleResourceChange('memory', 'dec')} disabled={currentMemory <= minMemory}>-</button>
+                        <div className="py-1 border-t border-b w-16 text-sm text-center">{formData.resources.memory}</div>
+                        <button type="button" className="px-2 py-1 border rounded-r bg-gray-100" onClick={() => handleResourceChange('memory', 'inc')} disabled={currentMemory >= maxMemory}>+</button>
+                      </div>
+                      <p className="text-center text-xs text-gray-500 mt-1">{memoryUnit}</p>
                     </div>
-                    <Input
-                      id="memory"
-                      value={formData.resources.memory}
-                      onChange={(e) =>
-                        handleInputChange("resources.memory", e.target.value)
-                      }
-                      placeholder="512Mi"
-                      className="h-11 text-sm border-gray-300 focus:border-gray-400 focus:ring-0"
-                    />
+                    {/* Storage Limit */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-1">
+                        <Label htmlFor="storage" className="text-sm font-medium text-gray-700">Storage Limit</Label>
+                        <Info className="h-4 w-4 text-gray-400" />
+                      </div>
+                      <div className="flex items-center mt-1">
+                        <button type="button" className="px-2 py-1 border rounded-l bg-gray-100" onClick={() => handleResourceChange('storage', 'dec')} disabled={currentStorage <= minStorage}>-</button>
+                        <div className="py-1 border-t border-b w-16 text-sm text-center">{formData.resources.storage}</div>
+                        <button type="button" className="px-2 py-1 border rounded-r bg-gray-100" onClick={() => handleResourceChange('storage', 'inc')} disabled={currentStorage >= maxStorage}>+</button>
+                      </div>
+                      <p className="text-center text-xs text-gray-500 mt-1">{storageUnit}</p>
+                    </div>
                   </div>
-                </div>
-
-                {/* Storage Limit */}
-                <div className="space-y-2">
-                  <div className="flex items-center gap-1">
-                    <Label
-                      htmlFor="storage"
-                      className="text-sm font-medium text-gray-700"
-                    >
-                      Storage Limit
-                    </Label>
-                    <Info className="h-4 w-4 text-gray-400" />
-                  </div>
-                  <Input
-                    id="storage"
-                    value={formData.resources.storage}
-                    onChange={(e) =>
-                      handleInputChange("resources.storage", e.target.value)
-                    }
-                    placeholder="1Gi"
-                    className="h-11 text-sm border-gray-300 focus:border-gray-400 focus:ring-0"
-                  />
                 </div>
               </div>
-            </div>
+            )}
 
             {/* Auto-namespace info */}
             <div className="bg-gray-50 border border-gray-200 rounded-md p-4">
@@ -386,6 +567,6 @@ const ProjectCreateStep = ({
       </Card>
     </div>
   );
-};
+});
 
 export default ProjectCreateStep;

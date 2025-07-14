@@ -7,218 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../..
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "../../components/ui/dialog";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Plus, Trash2, ArrowRight, AlertCircle, X } from 'lucide-react';
-import { Input } from "../../components/ui/input";
-import { Label } from "../../components/ui/label";
-import { Switch } from "../../components/ui/switch";
-
-const CreateProjectForm = ({ onSubmit, onClose }) => {
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [resources, setResources] = useState({
-    enabled: true,
-    cpu: '0.5',
-    memory: '256Mi',
-    storage: '100Mi'
-  });
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!name.trim()) {
-      setError('Project name is required');
-      return;
-    }
-
-    setLoading(true);
-    setError('');
-
-    const projectData = {
-      name: name.trim(),
-      description: description.trim(),
-      resources: resources
-    };
-
-    try {
-      await onSubmit(projectData);
-      // If successful, the parent will close the modal
-    } catch (err) {
-      // Handle errors from the parent component
-      console.error('Project creation failed:', err);
-      
-      // Use custom error message if available, otherwise use generic message
-      let errorMessage = 'Failed to create project. Please try again.';
-      
-      if (err.customMessage) {
-        errorMessage = err.customMessage;
-      } else if (err.message && err.message !== 'Failed to create project. Please try again.') {
-        errorMessage = err.message;
-      } else if (err.response?.data?.message) {
-        const responseMessage = err.response.data.message;
-        if (responseMessage.toLowerCase().includes('namespace') && 
-            responseMessage.toLowerCase().includes('already exists')) {
-          errorMessage = `Project name "${name}" is already taken. Please choose a different name.`;
-        } else {
-          errorMessage = responseMessage;
-        }
-      } else if (err.response?.data?.error) {
-        const responseError = err.response.data.error;
-        if (responseError.toLowerCase().includes('namespace') && 
-            responseError.toLowerCase().includes('already exists')) {
-          errorMessage = `Project name "${name}" is already taken. Please choose a different name.`;
-        } else {
-          errorMessage = responseError;
-        }
-      }
-      
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px] bg-white p-0">
-        <div className="flex justify-between items-start p-6 pb-4">
-          <DialogTitle className="text-xl font-semibold">Create New Project</DialogTitle>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-500"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-        <form onSubmit={handleSubmit}>
-          <div className="p-6 space-y-6">
-            <div>
-              <Label>Project Name</Label>
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Enter project name"
-                className="mt-1.5"
-              />
-            </div>
-
-            <div>
-              <Label>Description</Label>
-              <Input
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Enter project description"
-                className="mt-1.5"
-              />
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label>Resource limits</Label>
-                  <p className="text-sm text-gray-500">
-                    With resource limits, you define the maximum cluster resources available to this project
-                  </p>
-                </div>
-                <Switch
-                  checked={resources.enabled}
-                  onCheckedChange={(checked) => setResources(prev => ({...prev, enabled: checked}))}
-                />
-              </div>
-
-              {resources.enabled && (
-                <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <Label>CPU</Label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="text"
-                          value={resources.cpu}
-                          onChange={(e) => setResources(prev => ({...prev, cpu: e.target.value}))}
-                          placeholder="0.5"
-                          className="w-24 text-center"
-                        />
-                        <span className="text-sm text-gray-500">Cores</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <Label>Memory</Label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="text"
-                          value={resources.memory}
-                          onChange={(e) => setResources(prev => ({...prev, memory: e.target.value}))}
-                          placeholder="256Mi"
-                          className="w-24 text-center"
-                        />
-                        <span className="text-sm text-gray-500">MB/GB</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between">
-                      <Label>Storage</Label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="text"
-                          value={resources.storage}
-                          onChange={(e) => setResources(prev => ({...prev, storage: e.target.value}))}
-                          placeholder="100Mi"
-                          className="w-24 text-center"
-                        />
-                        <span className="text-sm text-gray-500">MB/GB</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {error && (
-            <div className="px-6 pb-4">
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            </div>
-          )}
-
-          <div className="flex justify-end gap-3 p-4 border-t border-gray-100">
-            <Button
-              variant="outline"
-              onClick={onClose}
-              disabled={loading}
-              className="border-gray-300"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              {loading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                  Creating...
-                </>
-              ) : (
-                'Create Project'
-              )}
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-};
+import CreateProjectForm from '../../components/CreateProjectForm';
 
 const ProjectListPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -229,6 +18,10 @@ const ProjectListPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [projectToDelete, setProjectToDelete] = useState(null);
+  const [availableResources, setAvailableResources] = useState(null);
+  const [organizationId, setOrganizationId] = useState(null);
+  const [clusters, setClusters] = useState([]);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const fetchProjects = async () => {
     try {
@@ -270,6 +63,7 @@ const ProjectListPage = () => {
   };
 
   const handleDeleteConfirm = async () => {
+    setDeleteLoading(true);
     try {
       await deleteMethod(`project/${projectToDelete.id}`);
       setProjects(projects.filter(p => p.id !== projectToDelete.id));
@@ -284,6 +78,8 @@ const ProjectListPage = () => {
       }
       setIsDeleteDialogOpen(false);
       setProjectToDelete(null);
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -335,6 +131,43 @@ const ProjectListPage = () => {
     }
   };
 
+  // Fetch onboarding status and available resources when opening the modal
+  const handleOpenModal = async () => {
+    setIsModalOpen(true);
+    try {
+      // Fetch onboarding status
+      const onboardingRes = await getMethod('onboarding/status');
+      const onboardingData = onboardingRes.data?.data || {};
+      // Extract organizationId
+      let orgId = null;
+      if (onboardingData.organization && onboardingData.organization.id) {
+        orgId = onboardingData.organization.id;
+      } else if (onboardingData.cluster && onboardingData.cluster.organizationId) {
+        orgId = onboardingData.cluster.organizationId;
+      }
+      setOrganizationId(orgId);
+      // Extract clusters (support single or array)
+      let clustersArr = [];
+      if (Array.isArray(onboardingData.clusters)) {
+        clustersArr = onboardingData.clusters;
+      } else if (onboardingData.cluster && onboardingData.cluster.id) {
+        clustersArr = [onboardingData.cluster];
+      }
+      setClusters(clustersArr);
+      // Fetch available resources for the first cluster (if any)
+      if (clustersArr.length > 0) {
+        const res = await getMethod('cluster/available-resources');
+        setAvailableResources(res.data.availableResources);
+      } else {
+        setAvailableResources(null);
+      }
+    } catch (err) {
+      setAvailableResources(null);
+      setOrganizationId(null);
+      setClusters([]);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -344,14 +177,14 @@ const ProjectListPage = () => {
   }
 
   return (
-    <div className="flex flex-col lg:ml-64 p-6 bg-gray-50 min-h-screen">
+    <div className="flex flex-col p-6 bg-gray-50 min-h-screen">
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Projects</h1>
           <p className="text-gray-500 mt-1">Manage your projects and applications</p>
         </div>
         <Button
-          onClick={() => setIsModalOpen(true)}
+          onClick={handleOpenModal}
           disabled={projects.length >= 2}
           className="bg-blue-600 hover:bg-blue-700"
         >
@@ -405,7 +238,13 @@ const ProjectListPage = () => {
 
       {/* Create Project Modal */}
       {isModalOpen && (
-        <CreateProjectForm onSubmit={handleCreateProject} onClose={() => setIsModalOpen(false)} />
+        <CreateProjectForm
+          onSubmit={handleCreateProject}
+          onClose={() => setIsModalOpen(false)}
+          availableResources={availableResources}
+          organizationId={organizationId}
+          clusters={clusters}
+        />
       )}
 
       {/* Delete Confirmation Dialog */}
@@ -413,14 +252,6 @@ const ProjectListPage = () => {
         <DialogContent className="sm:max-w-[425px] bg-white p-0">
           <div className="flex justify-between items-start p-6 pb-4">
             <DialogTitle className="text-xl font-semibold">Delete Project</DialogTitle>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsDeleteDialogOpen(false)}
-              className="text-gray-400 hover:text-gray-500"
-            >
-              <X className="h-4 w-4" />
-            </Button>
           </div>
           <DialogDescription className="px-6 pb-6 text-base text-gray-600">
             Are you sure you want to delete this project?
@@ -437,8 +268,19 @@ const ProjectListPage = () => {
             <Button
               onClick={handleDeleteConfirm}
               className="bg-red-600 hover:bg-red-700 text-white min-w-[100px]"
+              disabled={deleteLoading}
             >
-              Delete Project
+              {deleteLoading ? (
+                <>
+                  <svg className="animate-spin h-5 w-5 mr-2 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                  </svg>
+                  Deleting...
+                </>
+              ) : (
+                'Delete Project'
+              )}
             </Button>
           </div>
         </DialogContent>
@@ -449,14 +291,6 @@ const ProjectListPage = () => {
         <DialogContent className="sm:max-w-[425px] bg-white p-0">
           <div className="flex justify-between items-start p-6 pb-4">
             <DialogTitle className="text-xl font-semibold">Cannot Delete Project</DialogTitle>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setIsWarningDialogOpen(false)}
-              className="text-gray-400 hover:text-gray-500"
-            >
-              <X className="h-4 w-4" />
-            </Button>
           </div>
           <DialogDescription className="px-6 pb-6 text-base text-gray-600">
             Please delete all applications associated with this project before deleting the project.

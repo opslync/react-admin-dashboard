@@ -22,6 +22,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { getMethod, putMethod } from '../../library/api';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
+import { useDispatch } from 'react-redux';
+import { toastMessage } from '../../library/store/toast';
+import { Dialog, DialogTrigger, DialogContent, DialogTitle } from "../../components/ui/dialog";
 
 const validateKeyValuePairs = (value) => {
     if (!value) return false;
@@ -32,6 +35,13 @@ const validateKeyValuePairs = (value) => {
     });
 };
 
+const getTabIndexFromPath = (pathname, appId) => {
+    if (pathname === `/app/${appId}/details`) return 0;
+    if (pathname === `/app/${appId}/build-history`) return 1;
+    if (pathname === `/app/${appId}/app-settings`) return 2;
+    return 0;
+};
+
 const AppConfigurationPage = () => {
     const { appId } = useParams();
     const history = useHistory();
@@ -39,16 +49,34 @@ const AppConfigurationPage = () => {
     const [appDetails, setAppDetails] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [tabValue, setTabValue] = useState(5);
+    const [tabValue, setTabValue] = useState(getTabIndexFromPath(location.pathname, appId));
     const [configMap, setConfigMap] = useState('');
     const [expanded, setExpanded] = useState(false);
     const [activeSection, setActiveSection] = useState('general');
     const [pods, setPods] = useState([]);
     const [resources, setResources] = useState({
-        cpu: 0.3,
-        memory: 64,
-        storage: 25
+        cpuRequest: '',
+        cpuLimit: '',
+        memoryRequest: '',
+        memoryLimit: ''
     });
+    const [resourceStats, setResourceStats] = useState({
+        totalCpu: '',
+        totalMemory: '',
+        usedCpu: '',
+        usedMemory: '',
+        availableCpu: '',
+        availableMemory: ''
+    });
+    const [configMapEntries, setConfigMapEntries] = useState([{ key: '', value: '' }]);
+    const [resourceError, setResourceError] = useState({ cpu: '', memory: '' });
+    const [resourceLoading, setResourceLoading] = useState(false);
+    const [resourceSuccess, setResourceSuccess] = useState('');
+    const [resourceUpdateError, setResourceUpdateError] = useState('');
+    const [isSaving, setIsSaving] = useState(false);
+    const dispatch = useDispatch();
+    const [pendingDomain, setPendingDomain] = useState("");
+    const [dialogOpen, setDialogOpen] = useState(false);
 
     const getStatusColor = (status) => {
         switch (status?.toLowerCase()) {
@@ -74,17 +102,38 @@ const AppConfigurationPage = () => {
         fetchAppDetails();
         fetchConfigMap();
         fetchPodStatus();
+        fetchResources();
         const statusInterval = setInterval(fetchPodStatus, 10000);
+
+        // Update tabValue when location changes
+        setTabValue(getTabIndexFromPath(location.pathname, appId));
 
         return () => {
             clearInterval(statusInterval);
         };
-    }, [appId]);
+    }, [appId, location.pathname]);
 
     const fetchAppDetails = async () => {
         try {
             const response = await getMethod(`app/${appId}`);
             setAppDetails(response.data);
+            // Set resources from backend if available
+            // setResources(prev => ({
+            //     ...prev,
+            //     cpuRequest: response.data.cpuRequest || '',
+            //     cpuLimit: response.data.cpuLimit || '',
+            //     memoryRequest: response.data.memoryRequest || '',
+            //     memoryLimit: response.data.memoryLimit || ''
+            // }));
+            // Set resource stats
+            setResourceStats({
+                totalCpu: response.data.totalCpu || '',
+                totalMemory: response.data.totalMemory || '',
+                usedCpu: response.data.usedCpu || '',
+                usedMemory: response.data.usedMemory || '',
+                availableCpu: response.data.availableCpu || '',
+                availableMemory: response.data.availableMemory || ''
+            });
             setLoading(false);
         } catch (err) {
             setError('Failed to fetch app details. Please try again.');
@@ -95,16 +144,10 @@ const AppConfigurationPage = () => {
     const fetchConfigMap = async () => {
         try {
             const response = await getMethod(`app/${appId}/configmap`);
-            const formattedData = Object.entries(response.data)
-                .map(([key, value]) => `${key}: ${value}`)
-                .join('\n');
-            setConfigMap(formattedData || '');
+            const entries = Object.entries(response.data).map(([key, value]) => ({ key, value }));
+            setConfigMapEntries(entries.length ? entries : [{ key: '', value: '' }]);
         } catch (err) {
-            if (err.response && err.response.data.includes("configmaps") && err.response.data.includes("not found")) {
-                setConfigMap('');
-            } else {
-                setError('Failed to fetch ConfigMap data. Please try again.');
-            }
+            setConfigMapEntries([{ key: '', value: '' }]);
         }
     };
 
@@ -114,6 +157,50 @@ const AppConfigurationPage = () => {
             setPods(response.data);
         } catch (err) {
             console.error('Failed to fetch pod status:', err);
+        }
+    };
+
+    const fetchResources = async () => {
+        setResourceLoading(true);
+        setResourceUpdateError('');
+        setResourceSuccess('');
+        try {
+            const response = await getMethod(`app/${appId}/resources`);
+            if (response.data && response.data.data) {
+                setResources({
+                    cpuRequest: response.data.data.cpuRequest || '',
+                    cpuLimit: response.data.data.cpuLimit || '',
+                    memoryRequest: response.data.data.memoryRequest || '',
+                    memoryLimit: response.data.data.memoryLimit || ''
+                });
+            }
+        } catch (err) {
+            setResourceUpdateError('Failed to fetch resources.');
+        } finally {
+            setResourceLoading(false);
+        }
+    };
+
+    const handleResourceSave = async () => {
+        setResourceLoading(true);
+        setResourceUpdateError('');
+        setResourceSuccess('');
+        try {
+            const response = await putMethod(`app/${appId}/resources`, resources);
+            setResourceSuccess('Resources updated successfully.');
+            // Optionally update local state with returned data
+            if (response.data && response.data.data) {
+                setResources({
+                    cpuRequest: response.data.data.cpuRequest || '',
+                    cpuLimit: response.data.data.cpuLimit || '',
+                    memoryRequest: response.data.data.memoryRequest || '',
+                    memoryLimit: response.data.data.memoryLimit || ''
+                });
+            }
+        } catch (err) {
+            setResourceUpdateError('Failed to update resources.');
+        } finally {
+            setResourceLoading(false);
         }
     };
 
@@ -135,16 +222,21 @@ const AppConfigurationPage = () => {
             repoUrl: appDetails?.repoUrl || '',
             port: appDetails?.port || '3000',
             branch: appDetails?.branch || '',
-            configMapData: configMap,
-            domains: appDetails?.domains || [],
+            customDomain: appDetails?.domains && appDetails.domains.length > 0 ? appDetails.domains[0] : '',
         },
         enableReinitialize: true,
         validationSchema: Yup.object({
             name: Yup.string().required('Name is required'),
             port: Yup.number().required('Port is required').min(1).max(65535),
-            configMapData: Yup.string().test('is-valid', 'Invalid key-value pairs', validateKeyValuePairs),
+            customDomain: Yup.string()
+                .matches(
+                    /^(?!-)[A-Za-z0-9-]{1,63}(?<!-)\.(?:[A-Za-z]{2,}|[A-Za-z0-9-]{2,}\.[A-Za-z]{2,})$/,
+                    'Enter a valid domain (e.g. app.example.com)'
+                )
+                .nullable(),
         }),
         onSubmit: async (values) => {
+            setIsSaving(true);
             try {
                 // Update app details
                 await putMethod(`app/${appId}`, {
@@ -154,290 +246,393 @@ const AppConfigurationPage = () => {
                     repoUrl: values.repoUrl,
                     port: values.port,
                     branch: values.branch,
-                    resources: resources
+                    // Only send customDomain if set
+                    domains: values.customDomain ? [values.customDomain] : [],
                 });
 
                 // Update ConfigMap
-                const configMapData = values.configMapData.split('\n').reduce((acc, line) => {
-                    const [key, value] = line.split(':').map(part => part.trim());
-                    acc[key] = value;
+                const configMapData = configMapEntries.reduce((acc, { key, value }) => {
+                    if (key) acc[key] = value;
                     return acc;
                 }, {});
                 await putMethod(`app/${appId}/configmap`, configMapData);
 
-                alert('Settings updated successfully');
+                dispatch(toastMessage({
+                    severity: 'success',
+                    summary: 'Settings Updated',
+                    detail: 'Settings updated successfully',
+                }));
             } catch (err) {
                 setError('Failed to update settings. Please try again.');
+            } finally {
+                setIsSaving(false);
             }
         },
     });
 
+    // Validation for resource requests
+    const validateResource = (type, value) => {
+        let error = '';
+        if (type === 'cpu') {
+            if (resources.cpuLimit && value && parseCpu(value) > parseCpu(resources.cpuLimit)) {
+                error = 'CPU request cannot exceed limit';
+            }
+        } else if (type === 'memory') {
+            if (resources.memoryLimit && value && parseMemory(value) > parseMemory(resources.memoryLimit)) {
+                error = 'Memory request cannot exceed limit';
+            }
+        }
+        setResourceError(prev => ({ ...prev, [type]: error }));
+    };
+
+    // Parse CPU (e.g. 100m -> 0.1, 1 -> 1)
+    function parseCpu(val) {
+        if (!val) return 0;
+        if (val.endsWith('m')) return parseFloat(val.replace('m', '')) / 1000;
+        return parseFloat(val);
+    }
+
+    // Parse Memory (e.g. 128Mi -> 128, 1Gi -> 1024)
+    function parseMemory(val) {
+        if (!val) return 0;
+        if (val.endsWith('Gi')) return parseFloat(val.replace('Gi', '')) * 1024;
+        if (val.endsWith('Mi')) return parseFloat(val.replace('Mi', ''));
+        return parseFloat(val);
+    }
+
     if (loading) return <CircularProgress />;
 
     return (
-        <div className="flex flex-col lg:ml-64 p-4 bg-gray-100 min-h-screen">
-            {/* App Name Header with Status */}
-            <div className="flex items-center gap-2 mb-6">
-                <h1 className="text-2xl font-semibold">{appDetails?.name || 'App Configuration'}</h1>
-                <div className="flex items-center gap-2 px-2 py-1 rounded-full bg-gray-100">
-                    <div className={`w-2 h-2 rounded-full ${getStatusColor(pods[0]?.status)} ${
-                        pods[0]?.status === 'Running' ? 'animate-pulse' : ''
-                    }`} />
-                    <span className="text-sm font-medium">{pods[0]?.status || 'Unknown'}</span>
-                </div>
-            </div>
+        <>
+            {/* DNS Configuration Dialog (rendered outside blurred content) */}
+            {formik.values.customDomain && (
+                <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                    <DialogContent className="border border-gray-200 bg-white z-9999">
+                        <DialogTitle>DNS configuration for {formik.values.customDomain}</DialogTitle>
+                        <div className="mb-2 text-sm text-gray-700">
+                            <strong>DNS configuration</strong>
+                            <div className="mt-2">
+                                <span className="font-semibold">Recommended:</span> Point <span className="font-mono">ALIAS</span>, <span className="font-mono">ANAME</span>, or flattened <span className="font-mono">CNAME</span> record to <span className="font-mono">apex-loadbalancer.netlify.com</span>.<br/>
+                                <span className="block mt-1 bg-gray-100 rounded px-2 py-1 font-mono text-xs">{formik.values.customDomain} ALIAS apex-loadbalancer.netlify.com</span>
+                            </div>
+                            <div className="mt-3">
+                                <span className="font-semibold">Fallback:</span> Point <span className="font-mono">A</span> record to <span className="font-mono">75.2.60.5</span>.<br/>
+                                <span className="block mt-1 bg-gray-100 rounded px-2 py-1 font-mono text-xs">{formik.values.customDomain} A 75.2.60.5</span>
+                            </div>
+                            <div className="mt-4 text-yellow-700 bg-yellow-50 border-l-4 border-yellow-400 p-2 rounded text-xs">
+                                <strong>Warning!</strong> With your current configuration, you may not benefit from the full advantages of a CDN. We recommend setting <span className="font-mono">www.{formik.values.customDomain}</span> as your primary custom domain.
+                            </div>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            )}
 
-            {/* Back Button */}
-            <div className="flex items-center mb-6">
-                <IconButton onClick={() => history.push('/apps')} className="mr-2">
-                    <ArrowBackIcon />
-                </IconButton>
-            </div>
-
-            {/* Navigation */}
-            <div className="border-b border-gray-200 mb-6">
-                <Tabs 
-                    value={tabValue} 
-                    onChange={handleTabChange} 
-                    aria-label="app settings tabs" 
-                    variant="scrollable" 
-                    scrollButtons="auto"
-                    className="bg-white"
-                >
-                    <Tab 
-                        icon={<div className="mr-2">📄</div>} 
-                        label="App Details" 
-                        iconPosition="start"
-                    />
-                    <Tab 
-                        icon={<div className="mr-2">📜</div>} 
-                        label="Build History" 
-                        iconPosition="start"
-                    />
-                    <Tab 
-                        icon={<div className="mr-2">⚡</div>} 
-                        label="Configuration" 
-                        iconPosition="start"
-                    />
-                </Tabs>
-            </div>
-
-            <div className="flex gap-6">
-                {/* Left Sidebar */}
-                <div className="w-64 bg-white rounded-lg shadow-sm p-4 h-fit">
-                    <nav>
-                        {sections.map((section) => (
-                            <button
-                                key={section.id}
-                                onClick={() => setActiveSection(section.id)}
-                                className={`w-full text-left px-4 py-2 rounded-lg mb-2 ${
-                                    activeSection === section.id
-                                        ? 'bg-blue-50 text-blue-600'
-                                        : 'hover:bg-gray-50'
-                                }`}
-                            >
-                                {section.label}
-                            </button>
-                        ))}
-                    </nav>
+            {/* Main Content (blurred when dialogOpen) */}
+            <div className={`flex flex-col p-4 bg-gray-100 min-h-screen transition-all duration-300 ${dialogOpen ? 'blur-sm pointer-events-none select-none' : ''}`}>
+                {/* App Name Header with Status */}
+                <div className="flex items-center gap-2 mb-6">
+                    <h1 className="text-2xl font-semibold">{appDetails?.name || 'App Configuration'}</h1>
+                    <div className="flex items-center gap-2 px-2 py-1 rounded-full bg-gray-100">
+                        <div className={`w-2 h-2 rounded-full ${getStatusColor(pods[0]?.status)} ${
+                            pods[0]?.status === 'Running' ? 'animate-pulse' : ''
+                        }`} />
+                        <span className="text-sm font-medium">{pods[0]?.status || 'Unknown'}</span>
+                    </div>
                 </div>
 
-                {/* Main Content */}
-                <div className="flex-1">
-                    <form onSubmit={formik.handleSubmit} className="space-y-6">
-                        {/* General Settings Section */}
-                        {activeSection === 'general' && (
-                            <Card>
-                                <CardContent>
-                                    <Typography variant="h6" className="mb-4">General Settings</Typography>
-                                    <Grid container spacing={3}>
-                                        <Grid item xs={12} md={6}>
-                                            <Label>Name</Label>
-                                            <Input
-                                                {...formik.getFieldProps('name')}
-                                                error={formik.touched.name && formik.errors.name}
-                                            />
+                {/* Back Button */}
+                <div className="flex items-center mb-6">
+                    <IconButton onClick={() => history.push('/apps')} className="mr-2">
+                        <ArrowBackIcon />
+                    </IconButton>
+                </div>
+
+                {/* Navigation */}
+                <div className="border-b border-gray-200 mb-6">
+                    <Tabs 
+                        value={tabValue} 
+                        onChange={handleTabChange} 
+                        aria-label="app settings tabs" 
+                        variant="scrollable" 
+                        scrollButtons="auto"
+                        className="bg-white"
+                    >
+                        <Tab 
+                            icon={<div className="mr-2">📄</div>} 
+                            label="App Details" 
+                            iconPosition="start"
+                        />
+                        <Tab 
+                            icon={<div className="mr-2">📜</div>} 
+                            label="Build History" 
+                            iconPosition="start"
+                        />
+                        <Tab 
+                            icon={<div className="mr-2">⚡</div>} 
+                            label="Configuration" 
+                            iconPosition="start"
+                        />
+                    </Tabs>
+                </div>
+
+                <div className="flex gap-6">
+                    {/* Left Sidebar */}
+                    <div className="w-64 bg-white rounded-lg shadow-sm p-4 h-fit">
+                        <nav>
+                            {sections.map((section) => (
+                                <button
+                                    key={section.id}
+                                    onClick={() => setActiveSection(section.id)}
+                                    className={`w-full text-left px-4 py-2 rounded-lg mb-2 ${
+                                        activeSection === section.id
+                                            ? 'bg-blue-50 text-blue-600'
+                                            : 'hover:bg-gray-50'
+                                    }`}
+                                >
+                                    {section.label}
+                                </button>
+                            ))}
+                        </nav>
+                    </div>
+
+                    {/* Main Content */}
+                    <div className="flex-1">
+                        <form onSubmit={formik.handleSubmit} className="space-y-6">
+                            {/* General Settings Section */}
+                            {activeSection === 'general' && (
+                                <Card>
+                                    <CardContent>
+                                        <Typography variant="h6" className="mb-4">General Settings</Typography>
+                                        <Grid container spacing={3}>
+                                            <Grid item xs={12} md={6}>
+                                                <Label>Name</Label>
+                                                <Input
+                                                    {...formik.getFieldProps('name')}
+                                                    error={formik.touched.name && formik.errors.name}
+                                                />
+                                            </Grid>
+                                            <Grid item xs={12} md={6}>
+                                                <Label>Description</Label>
+                                                <Input
+                                                    {...formik.getFieldProps('description')}
+                                                />
+                                            </Grid>
+                                            <Grid item xs={12} md={6}>
+                                                <Label>Build Pack</Label>
+                                                <Select
+                                                    value={formik.values.buildPack}
+                                                    onValueChange={(value) => formik.setFieldValue('buildPack', value)}
+                                                >
+                                                    <SelectTrigger>
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="dockerfile">Dockerfile</SelectItem>
+                                                        <SelectItem value="buildpacks">Buildpacks</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </Grid>
+                                            <Grid item xs={12} md={6}>
+                                                <Label>Port</Label>
+                                                <Input
+                                                    type="number"
+                                                    {...formik.getFieldProps('port')}
+                                                    error={formik.touched.port && formik.errors.port}
+                                                />
+                                            </Grid>
                                         </Grid>
-                                        <Grid item xs={12} md={6}>
-                                            <Label>Description</Label>
-                                            <Input
-                                                {...formik.getFieldProps('description')}
-                                            />
+                                    </CardContent>
+                                </Card>
+                            )}
+
+                            {/* Resources Section */}
+                            {activeSection === 'resources' && (
+                                <Card>
+                                    <CardContent>
+                                        <Typography variant="h6" className="mb-4">Resources</Typography>
+                                        <Grid container spacing={3}>
+                                            <Grid item xs={12}>
+                                                <div className="space-y-4">
+                                                    {/* CPU Row */}
+                                                    <div>
+                                                        <Label>CPU (cores)</Label>
+                                                        <div className="flex items-center gap-8">
+                                                            <div className="flex flex-col">
+                                                                <span className="text-xs text-gray-500">Request</span>
+                                                                <Input
+                                                                    type="text"
+                                                                    value={resources.cpuRequest}
+                                                                    onChange={e => {
+                                                                        setResources(prev => ({ ...prev, cpuRequest: e.target.value }));
+                                                                        validateResource('cpu', e.target.value);
+                                                                    }}
+                                                                    className={resourceError.cpu ? 'border-red-500' : ''}
+                                                                />
+                                                                {resourceError.cpu && <span className="text-xs text-red-600">{resourceError.cpu}</span>}
+                                                            </div>
+                                                            <div className="flex flex-col">
+                                                                <span className="text-xs text-gray-500">Limit</span>
+                                                                <Input
+                                                                    type="text"
+                                                                    value={resources.cpuLimit}
+                                                                    onChange={e => setResources(prev => ({ ...prev, cpuLimit: e.target.value }))}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    {/* Memory Row */}
+                                                    <div>
+                                                        <Label>Memory</Label>
+                                                        <div className="flex items-center gap-8">
+                                                            <div className="flex flex-col">
+                                                                <span className="text-xs text-gray-500">Request</span>
+                                                                <Input
+                                                                    type="text"
+                                                                    value={resources.memoryRequest}
+                                                                    onChange={e => {
+                                                                        setResources(prev => ({ ...prev, memoryRequest: e.target.value }));
+                                                                        validateResource('memory', e.target.value);
+                                                                    }}
+                                                                    className={resourceError.memory ? 'border-red-500' : ''}
+                                                                />
+                                                                {resourceError.memory && <span className="text-xs text-red-600">{resourceError.memory}</span>}
+                                                            </div>
+                                                            <div className="flex flex-col">
+                                                                <span className="text-xs text-gray-500">Limit</span>
+                                                                <Input
+                                                                    type="text"
+                                                                    value={resources.memoryLimit}
+                                                                    onChange={e => setResources(prev => ({ ...prev, memoryLimit: e.target.value }))}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </Grid>
                                         </Grid>
-                                        <Grid item xs={12} md={6}>
-                                            <Label>Build Pack</Label>
-                                            <Select
-                                                value={formik.values.buildPack}
-                                                onValueChange={(value) => formik.setFieldValue('buildPack', value)}
+                                    </CardContent>
+                                </Card>
+                            )}
+
+                            {/* Environment Variables Section */}
+                            {activeSection === 'env' && (
+                                <Card>
+                                    <CardContent>
+                                        <Typography variant="h6" className="mb-4">Environment Variables</Typography>
+                                        <div className="space-y-4">
+                                            <Label>ConfigMap Data (Key: Value format)</Label>
+                                            {configMapEntries.map((entry, idx) => (
+                                                <div key={idx} className="flex gap-2 mb-2">
+                                                    <Input
+                                                        placeholder="KEY"
+                                                        value={entry.key}
+                                                        onChange={e => {
+                                                            const newEntries = [...configMapEntries];
+                                                            newEntries[idx].key = e.target.value;
+                                                            setConfigMapEntries(newEntries);
+                                                        }}
+                                                    />
+                                                    <Input
+                                                        placeholder="Value"
+                                                        value={entry.value}
+                                                        onChange={e => {
+                                                            const newEntries = [...configMapEntries];
+                                                            newEntries[idx].value = e.target.value;
+                                                            setConfigMapEntries(newEntries);
+                                                        }}
+                                                    />
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        onClick={() => setConfigMapEntries(configMapEntries.filter((_, i) => i !== idx))}
+                                                        disabled={configMapEntries.length === 1}
+                                                    >
+                                                        Remove
+                                                    </Button>
+                                                </div>
+                                            ))}
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                onClick={() => setConfigMapEntries([...configMapEntries, { key: '', value: '' }])}
                                             >
-                                                <SelectTrigger>
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="dockerfile">Dockerfile</SelectItem>
-                                                    <SelectItem value="buildpacks">Buildpacks</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </Grid>
-                                        <Grid item xs={12} md={6}>
-                                            <Label>Port</Label>
-                                            <Input
-                                                type="number"
-                                                {...formik.getFieldProps('port')}
-                                                error={formik.touched.port && formik.errors.port}
-                                            />
-                                        </Grid>
-                                    </Grid>
-                                </CardContent>
-                            </Card>
-                        )}
-
-                        {/* Resources Section */}
-                        {activeSection === 'resources' && (
-                            <Card>
-                                <CardContent>
-                                    <Typography variant="h6" className="mb-4">Resources</Typography>
-                                    <Grid container spacing={3}>
-                                        <Grid item xs={12}>
-                                            <div className="space-y-4">
-                                                <div>
-                                                    <Label>CPU (cores)</Label>
-                                                    <div className="flex items-center gap-4">
-                                                        <Input
-                                                            type="number"
-                                                            value={resources.cpu}
-                                                            onChange={(e) => setResources(prev => ({...prev, cpu: parseFloat(e.target.value)}))}
-                                                            step="0.1"
-                                                            min="0.1"
-                                                        />
-                                                        <Typography variant="body2" color="textSecondary">
-                                                            Available: 1.7 cores
-                                                        </Typography>
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <Label>Memory (MB)</Label>
-                                                    <div className="flex items-center gap-4">
-                                                        <Input
-                                                            type="number"
-                                                            value={resources.memory}
-                                                            onChange={(e) => setResources(prev => ({...prev, memory: parseInt(e.target.value)}))}
-                                                            step="32"
-                                                            min="32"
-                                                        />
-                                                        <Typography variant="body2" color="textSecondary">
-                                                            Available: 960 MB
-                                                        </Typography>
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <Label>Storage (MB)</Label>
-                                                    <div className="flex items-center gap-4">
-                                                        <Input
-                                                            type="number"
-                                                            value={resources.storage}
-                                                            onChange={(e) => setResources(prev => ({...prev, storage: parseInt(e.target.value)}))}
-                                                            step="5"
-                                                            min="5"
-                                                        />
-                                                        <Typography variant="body2" color="textSecondary">
-                                                            Available: 999 MB
-                                                        </Typography>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </Grid>
-                                    </Grid>
-                                </CardContent>
-                            </Card>
-                        )}
-
-                        {/* Environment Variables Section */}
-                        {activeSection === 'env' && (
-                            <Card>
-                                <CardContent>
-                                    <Typography variant="h6" className="mb-4">Environment Variables</Typography>
-                                    <div className="space-y-4">
-                                        <Label>ConfigMap Data (Key: Value format)</Label>
-                                        <Input
-                                            as="textarea"
-                                            rows={8}
-                                            {...formik.getFieldProps('configMapData')}
-                                            error={formik.touched.configMapData && formik.errors.configMapData}
-                                            className="font-mono"
-                                            placeholder="KEY: value&#10;ANOTHER_KEY: another_value"
-                                        />
-                                        <Typography variant="body2" color="textSecondary">
-                                            Enter one key-value pair per line in the format "KEY: value"
-                                        </Typography>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        )}
-
-                        {/* Domain Mapping Section */}
-                        {activeSection === 'domain' && (
-                            <Card>
-                                <CardContent>
-                                    <Typography variant="h6" className="mb-4">Domain Mapping</Typography>
-                                    <div className="space-y-4">
-                                        <div className="flex items-center justify-between">
-                                            <Label>Default Domain</Label>
+                                                + Add Variable
+                                            </Button>
                                             <Typography variant="body2" color="textSecondary">
-                                                {`${appDetails?.name}.example.com`}
+                                                Enter one key-value pair per line in the format "KEY: value"
                                             </Typography>
                                         </div>
-                                        <div>
-                                            <Label>Custom Domains</Label>
-                                            <div className="space-y-2">
-                                                {formik.values.domains.map((domain, index) => (
-                                                    <div key={index} className="flex items-center gap-2">
+                                    </CardContent>
+                                </Card>
+                            )}
+
+                            {/* Domain Mapping Section */}
+                            {activeSection === 'domain' && (
+                                <Card>
+                                    <CardContent>
+                                        <Typography variant="h6" className="mb-4">Domain Mapping</Typography>
+                                        <div className="space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <Label>Default Domain</Label>
+                                                <Typography variant="body2" color="textSecondary">
+                                                    {`${appDetails?.name}-${appDetails?.projectName}-${appDetails?.organizationName}.opslync.io`}
+                                                </Typography>
+                                            </div>
+                                            <div>
+                                                <Label>Custom Domain</Label>
+                                                {formik.values.customDomain ? (
+                                                    <div className="mt-2">
+                                                        <button
+                                                            type="button"
+                                                            className="inline-flex items-center px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold border border-yellow-300 hover:bg-yellow-200 transition"
+                                                            onClick={() => setDialogOpen(true)}
+                                                        >
+                                                            <span className="mr-2">{formik.values.customDomain}</span>
+                                                            <span className="bg-yellow-300 text-yellow-900 px-2 py-0.5 rounded-full text-xxs font-bold">Pending</span>
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex gap-2 items-center mt-2">
                                                         <Input
-                                                            value={domain}
-                                                            onChange={(e) => {
-                                                                const newDomains = [...formik.values.domains];
-                                                                newDomains[index] = e.target.value;
-                                                                formik.setFieldValue('domains', newDomains);
-                                                            }}
+                                                            placeholder="Enter custom domain (e.g. app.example.com)"
+                                                            value={pendingDomain}
+                                                            onChange={e => setPendingDomain(e.target.value)}
+                                                            error={formik.touched.customDomain && formik.errors.customDomain}
                                                         />
                                                         <Button
                                                             type="button"
                                                             variant="outline"
                                                             onClick={() => {
-                                                                const newDomains = formik.values.domains.filter((_, i) => i !== index);
-                                                                formik.setFieldValue('domains', newDomains);
+                                                                if (!pendingDomain) return;
+                                                                formik.setFieldValue('customDomain', pendingDomain);
+                                                                setPendingDomain("");
                                                             }}
+                                                            disabled={!pendingDomain || !!formik.errors.customDomain}
                                                         >
-                                                            Remove
+                                                            Add Domain
                                                         </Button>
                                                     </div>
-                                                ))}
-                                                <Button
-                                                    type="button"
-                                                    variant="outline"
-                                                    onClick={() => {
-                                                        formik.setFieldValue('domains', [...formik.values.domains, '']);
-                                                    }}
-                                                >
-                                                    Add Domain
-                                                </Button>
+                                                )}
+                                                {formik.touched.customDomain && formik.errors.customDomain && (
+                                                    <div className="text-red-500 text-sm mt-1">{formik.errors.customDomain}</div>
+                                                )}
                                             </div>
                                         </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        )}
-
-                        {/* Save Button */}
-                        <div className="flex justify-end">
-                            <Button type="submit" className="bg-blue-500 text-white">
-                                Save Changes
-                            </Button>
-                        </div>
-                    </form>
+                                    </CardContent>
+                                </Card>
+                            )}
+                            {/* Save Button */}
+                            <div className="flex justify-end mt-4">
+                                <Button type="submit" className="bg-blue-500 text-white hover:bg-blue-400" disabled={isSaving}>
+                                    {isSaving ? <CircularProgress size={20} color="inherit" className="mr-2" /> : null}
+                                    Save Changes
+                                </Button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
-        </div>
+        </>
     );
 };
 

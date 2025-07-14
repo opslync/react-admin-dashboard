@@ -1,7 +1,16 @@
 import { APP_BASE_URL, API_ENDPOINTS } from '../config/github.config';
 
+function generateRandomName() {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let suffix = '';
+  for (let i = 0; i < 6; i++) {
+    suffix += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return `Opslync-${suffix}`;
+}
+
 export const createGitHubManifest = () => ({
-  name: "amitoo73",
+  name: generateRandomName(),
   url: APP_BASE_URL,
   hook_attributes: {
     url: API_ENDPOINTS.WEBHOOK,

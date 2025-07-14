@@ -48,10 +48,13 @@ const OrganizationSetupStep = ({
         description: formData.description.trim() || null,
       });
 
+      console.log("OrganizationSetupStep - API Response:", response.data);
+      console.log("OrganizationSetupStep - Organization ID:", response.data.organization.id);
+
       // Complete this step and move to next
       onComplete("organization", {
         ...formData,
-        organizationId: response.data.id,
+        organizationId: response.data.organization.id,
       });
     } catch (error) {
       console.error("Failed to create organization:", error);

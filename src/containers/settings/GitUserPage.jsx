@@ -16,7 +16,9 @@ import {
   Tab,
   Modal,
   Divider,
-  IconButton
+  IconButton,
+  Alert,
+  Snackbar
 } from '@mui/material';
 import GitHubIcon from '@mui/icons-material/GitHub';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
@@ -31,8 +33,29 @@ const GitUserPage = () => {
   const [loading, setLoading] = useState(true);
   const [isAppDetailsOpen, setIsAppDetailsOpen] = useState(false);
   const [isCreateAppOpen, setIsCreateAppOpen] = useState(false);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const history = useHistory();
   const location = useLocation();
+
+  // Check for success parameter on component mount
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    if (searchParams.get('app_created') === 'true') {
+      setShowSuccessMessage(true);
+      // Remove the query parameter from URL
+      history.replace('/settings/git-account');
+    } else if (searchParams.get('installation_success') === 'true') {
+      setShowSuccessMessage(true);
+      // Remove the query parameter from URL
+      history.replace('/settings/git-account');
+    } else if (searchParams.get('error')) {
+      const errorMessage = searchParams.get('error');
+      console.error('GitHub setup error:', errorMessage);
+      // You can add error state handling here if needed
+      // Remove the query parameter from URL
+      history.replace('/settings/git-account');
+    }
+  }, [location.search, history]);
 
   // Fetch GitHub apps
   const fetchApps = async () => {
@@ -188,7 +211,7 @@ const GitUserPage = () => {
   if (loading) return <Typography>Loading...</Typography>;
 
   return (
-    <div className="flex flex-col lg:ml-64 p-4 bg-gray-100 min-h-screen">
+    <div className="flex flex-col p-4 bg-gray-100 min-h-screen">
       <Typography variant="h4" className="mb-6">Git Integration</Typography>
       
       <Box sx={{ width: '100%', mb: 4 }}>
@@ -287,6 +310,22 @@ const GitUserPage = () => {
           <GitHubAppRegistration onSuccess={handleCloseCreateApp} />
         </Box>
       </Modal>
+
+      {/* Success Message Snackbar */}
+      <Snackbar
+        open={showSuccessMessage}
+        autoHideDuration={6000}
+        onClose={() => setShowSuccessMessage(false)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={() => setShowSuccessMessage(false)} 
+          severity="success" 
+          sx={{ width: '100%' }}
+        >
+          GitHub App created successfully! You can now view and manage your app.
+        </Alert>
+      </Snackbar>
     </div>
   );
 };

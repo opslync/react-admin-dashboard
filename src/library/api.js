@@ -30,6 +30,7 @@ export const getMethod = async (url) => {
 };
 
 export const postMethod = async (url, data) => {
+  console.log("postMethod trriggered", url, data);
   const token = getToken() || "";
   try {
     const response = await axios.post(baseUrl + url, data, {

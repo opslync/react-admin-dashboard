@@ -12,12 +12,15 @@ import { useFormik, Form, FormikProvider } from "formik";
 import { Link } from "react-router-dom";
 import { getMethod } from "../../library/api";
 import githubTokenManager from '../../utils/githubTokenManager';
+import OnboardingFlow from "../../components/onboarding/OnboardingFlow";
+import onboardingManager from "../../utils/onboardingManager";
 
 export default function LoginPage() {
   const dispatch = useDispatch();
   const history = useHistory();
   const [loginError, setLoginError] = useState('');
   const [showWelcomeMessage, setShowWelcomeMessage] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -61,7 +64,23 @@ export default function LoginPage() {
             console.log('GitHub Token Manager initialization failed (normal for users without GitHub apps):', error);
           }
           
-          history.push("/overview");
+          // Check if user needs to complete onboarding
+          try {
+            const onboardingStatus = await onboardingManager.checkOnboardingStatus();
+            console.log('Onboarding status after login:', onboardingStatus);
+            
+            if (onboardingStatus.needsOnboarding) {
+              // Show onboarding flow instead of redirecting to overview
+              setShowOnboarding(true);
+            } else {
+              // User has completed onboarding, redirect to overview
+              history.push("/overview");
+            }
+          } catch (onboardingError) {
+            console.log('Failed to check onboarding status:', onboardingError);
+            // If we can't check onboarding status, redirect to overview
+            history.push("/overview");
+          }
         }
       } catch (err) {
         setLoginError('Username or password is incorrect.');
@@ -72,6 +91,18 @@ export default function LoginPage() {
   });
 
   const { errors, touched, isSubmitting, handleSubmit } = formik;
+
+  const handleOnboardingComplete = () => {
+    setShowOnboarding(false);
+    // After onboarding completion, redirect to overview
+    history.push('/overview');
+  };
+
+  const handleOnboardingClose = () => {
+    setShowOnboarding(false);
+    // If user closes onboarding, still redirect to overview since they're logged in
+    history.push('/overview');
+  };
 
   return (
     <div className="form-box">
@@ -149,6 +180,13 @@ export default function LoginPage() {
           </FormikProvider>
         </div>
       </div>
+
+      {/* Onboarding Flow for Users Who Need to Complete Setup */}
+      <OnboardingFlow
+        open={showOnboarding}
+        onClose={handleOnboardingClose}
+        onComplete={handleOnboardingComplete}
+      />
     </div>
   );
 }

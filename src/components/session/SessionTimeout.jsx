@@ -84,7 +84,7 @@ const SessionTimeout = () => {
 
   return (
     <Dialog open={showWarning} onOpenChange={setShowWarning}>
-      <DialogContent>
+      <DialogContent className="z-9999 bg-white">
         <DialogHeader>
           <DialogTitle>Session Timeout Warning</DialogTitle>
         </DialogHeader>

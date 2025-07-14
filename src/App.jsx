@@ -81,15 +81,22 @@ const App = () => {
           }
         }
 
-        // Check onboarding status but don't auto-show onboarding
-        // Onboarding is only shown during registration process
+        // Check onboarding status and show onboarding if user hasn't completed it
         try {
           const status = await onboardingManager.checkOnboardingStatus();
           setOnboardingStatus(status);
-          // Don't automatically show onboarding - only during registration
-          setShowOnboarding(false);
+          console.log("App.jsx - Onboarding status:", status);
+          
+          // Show onboarding if user needs to complete it
+          if (status.needsOnboarding) {
+            console.log("App.jsx - Showing onboarding for incomplete user");
+            setShowOnboarding(true);
+          } else {
+            setShowOnboarding(false);
+          }
         } catch (error) {
           console.log("Onboarding status check failed:", error);
+          setShowOnboarding(false);
         }
       }
     };
@@ -99,7 +106,10 @@ const App = () => {
     // Listen for onboarding status changes
     const unsubscribe = onboardingManager.addListener((status) => {
       setOnboardingStatus(status);
-      // Don't automatically show onboarding based on status changes
+      // Show onboarding if status changes to needs onboarding
+      if (status.needsOnboarding) {
+        setShowOnboarding(true);
+      }
     });
 
     // Cleanup on app unmount
@@ -112,10 +122,14 @@ const App = () => {
   const handleOnboardingComplete = () => {
     onboardingManager.markCompleted();
     setShowOnboarding(false);
+    // Redirect to overview after onboarding completion
+    window.location.href = '/overview';
   };
 
   const handleOnboardingClose = () => {
     setShowOnboarding(false);
+    // If user closes onboarding, redirect to overview
+    window.location.href = '/overview';
   };
 
   return (

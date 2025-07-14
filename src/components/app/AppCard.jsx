@@ -19,10 +19,7 @@ export function AppCard({ app, onViewDetails, LinkComponent, onDeleteClick }) {
     <div className="bg-white rounded-lg shadow-sm border p-6">
       <div className="flex justify-between items-start">
         <div className="flex-1">
-          <div className="flex items-center justify-between mb-3">
-            <Badge className={getStatusColor(app.status)}>
-              {app.status}
-            </Badge>
+          <div className="flex items-center justify-end mb-3">
             <Button
               onClick={() => onDeleteClick(app)}
               variant="ghost"
@@ -34,6 +31,9 @@ export function AppCard({ app, onViewDetails, LinkComponent, onDeleteClick }) {
           </div>
 
           <h3 className="text-lg font-semibold text-gray-900 mb-2">{app.name}</h3>
+          {app.branch && (
+            <div className="text-xs text-gray-500 mb-2">Branch: <span className="font-mono">{app.branch}</span></div>
+          )}
           <div className="flex items-center gap-2 mb-4">
             <a 
               href={app.repository} 

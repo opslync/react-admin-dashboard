@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 
-const CreateProjectForm = ({ onSubmit, onClose }) => {
+const CreateProjectForm = ({ onSubmit, onClose, availableResources, organizationId, clusters }) => {
   const [name, setProjectName] = useState('');
   const [description, setDescription] = useState('');
+  const [nameError, setNameError] = useState('');
+  const [descriptionError, setDescriptionError] = useState('');
   const [resources, setResources] = useState({
     enabled: true,
     cpu: '0.5',
@@ -11,7 +13,14 @@ const CreateProjectForm = ({ onSubmit, onClose }) => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [clusterId, setClusterId] = useState(clusters && clusters.length > 0 ? clusters[0].id : '');
   let isMounted = true;
+
+  useEffect(() => {
+    if (clusters && clusters.length > 0) {
+      setClusterId(clusters[0].id);
+    }
+  }, [clusters]);
 
   useEffect(() => {
     return () => {
@@ -19,13 +28,112 @@ const CreateProjectForm = ({ onSubmit, onClose }) => {
     };
   }, []);
 
+  // Helper to parse resource values (CPU as float, memory/storage as Mi/Gi/GB)
+  function parseResource(value) {
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') {
+      if (value.toLowerCase().endsWith('gi')) {
+        return parseFloat(value) * 1024;
+      } else if (value.toLowerCase().endsWith('gb')) {
+        return parseFloat(value) * 1024;
+      } else if (value.toLowerCase().endsWith('mi')) {
+        return parseFloat(value);
+      } else {
+        return parseFloat(value);
+      }
+    }
+    return 0;
+  }
+
+  function parseCPU(value) {
+    return parseFloat(value);
+  }
+
+  // Resource step and min values
+  const minCPU = 0.1;
+  const cpuStep = 0.1;
+  const minMemory = 128; // Mi
+  const memoryStep = 128; // Mi
+  const minStorage = 128; // Mi
+  const storageStep = 128; // Mi
+
+  // Helpers to get numeric values for comparison
+  const currentCPU = parseCPU(resources.cpu);
+  const currentMemory = parseResource(resources.memory);
+  const currentStorage = parseResource(resources.storage);
+  const maxCPU = availableResources ? parseCPU(availableResources.cpu) : 100;
+  const maxMemory = availableResources ? parseResource(availableResources.memory) : 102400;
+  const maxStorage = availableResources ? parseResource(availableResources.storage) : 102400;
+
+  // Handlers for increment/decrement
+  const handleResourceChange = (type, direction) => {
+    setResources(prev => {
+      let value;
+      if (type === 'cpu') {
+        value = parseFloat(prev.cpu);
+        value = direction === 'inc' ? Math.min(value + cpuStep, maxCPU) : Math.max(value - cpuStep, minCPU);
+        return { ...prev, cpu: value.toFixed(2).replace(/\.00$/, '') };
+      } else if (type === 'memory') {
+        value = parseResource(prev.memory);
+        value = direction === 'inc' ? Math.min(value + memoryStep, maxMemory) : Math.max(value - memoryStep, minMemory);
+        return { ...prev, memory: value + 'Mi' };
+      } else if (type === 'storage') {
+        value = parseResource(prev.storage);
+        value = direction === 'inc' ? Math.min(value + storageStep, maxStorage) : Math.max(value - storageStep, minStorage);
+        return { ...prev, storage: value + 'Mi' };
+      }
+      return prev;
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    setNameError('');
+    setDescriptionError('');
     setError(null);
-    
+    let hasError = false;
+    if (!name.trim()) {
+      setNameError('Project Name is required');
+      hasError = true;
+    }
+    if (!description.trim()) {
+      setDescriptionError('Description is required');
+      hasError = true;
+    }
+    if (hasError) return;
+    setLoading(true);
+    // Resource validation
+    if (resources.enabled && availableResources) {
+      const reqCPU = parseCPU(resources.cpu);
+      const reqMem = parseResource(resources.memory);
+      const reqStorage = parseResource(resources.storage);
+      const availCPU = parseCPU(availableResources.cpu);
+      const availMem = parseResource(availableResources.memory);
+      const availStorage = parseResource(availableResources.storage);
+      if (reqCPU > availCPU) {
+        setError(`Requested CPU (${reqCPU}) exceeds available (${availCPU})`);
+        setLoading(false);
+        return;
+      }
+      if (reqMem > availMem) {
+        setError(`Requested Memory (${resources.memory}) exceeds available (${availableResources.memory})`);
+        setLoading(false);
+        return;
+      }
+      if (reqStorage > availStorage) {
+        setError(`Requested Storage (${resources.storage}) exceeds available (${availableResources.storage})`);
+        setLoading(false);
+        return;
+      }
+    }
     try {
-      await onSubmit({ name, description, resources });
+      await onSubmit({
+        name,
+        description,
+        organizationId,
+        clusterId,
+        resources
+      });
       if (isMounted) {
         onClose();
       }
@@ -62,6 +170,35 @@ const CreateProjectForm = ({ onSubmit, onClose }) => {
     }
   };
 
+  // Show available resources if provided
+  const renderAvailableResources = () => {
+    if (!availableResources) return null;
+    return (
+      <div className="mb-2 text-xs text-gray-500">
+        <div>Available: CPU: {availableResources.cpu}, Memory: {availableResources.memory}, Storage: {availableResources.storage}</div>
+      </div>
+    );
+  };
+
+  // Cluster selection dropdown
+  const renderClusterSelect = () => {
+    if (!clusters || clusters.length === 0) return null;
+    return (
+      <div className="mb-4">
+        <label className="block text-gray-700 mb-1">Select Cluster</label>
+        <select
+          value={clusterId}
+          onChange={e => setClusterId(e.target.value)}
+          className="mt-1 p-2 border border-gray-300 rounded w-full"
+        >
+          {clusters.map(cluster => (
+            <option key={cluster.id} value={cluster.id}>{cluster.name || `Cluster ${cluster.id}`}</option>
+          ))}
+        </select>
+      </div>
+    );
+  };
+
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-gray-900 bg-opacity-50">
       <div className="bg-white p-8 rounded shadow-lg">
@@ -73,8 +210,9 @@ const CreateProjectForm = ({ onSubmit, onClose }) => {
               type="text"
               value={name}
               onChange={(e) => setProjectName(e.target.value)}
-              className="mt-1 p-2 border border-gray-300 rounded w-full"
+              className={`mt-1 p-2 border rounded w-full ${nameError ? 'border-red-500' : 'border-gray-300'}`}
             />
+            {nameError && <div className="text-xs text-red-500 mt-1">{nameError}</div>}
           </div>
           <div className="mb-4">
             <label className="block text-gray-700">Description</label>
@@ -82,12 +220,15 @@ const CreateProjectForm = ({ onSubmit, onClose }) => {
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="mt-1 p-2 border border-gray-300 rounded w-full"
+              className={`mt-1 p-2 border rounded w-full ${descriptionError ? 'border-red-500' : 'border-gray-300'}`}
             />
+            {descriptionError && <div className="text-xs text-red-500 mt-1">{descriptionError}</div>}
           </div>
+          {renderClusterSelect()}
           
           {/* Resource Configuration */}
           <div className="mb-4 border-t pt-4">
+            {renderAvailableResources()}
             <div className="flex items-center mb-3">
               <label className="block text-gray-700 mr-3">Enable Resource Limits</label>
               <input
@@ -100,45 +241,40 @@ const CreateProjectForm = ({ onSubmit, onClose }) => {
             
             {resources.enabled && (
               <div className="grid grid-cols-3 gap-3 ml-4">
+                {/* CPU Limit */}
                 <div>
                   <label className="block text-sm text-gray-600">CPU Limit</label>
-                  <input
-                    type="text"
-                    value={resources.cpu}
-                    onChange={(e) => setResources(prev => ({ ...prev, cpu: e.target.value }))}
-                    placeholder="0.5"
-                    className="mt-1 p-2 border border-gray-300 rounded w-full text-sm"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">Cores (e.g., 0.5, 1, 2)</p>
+                  <div className="flex items-center mt-1">
+                    <button type="button" className="px-2 py-1 border rounded-l bg-gray-100" onClick={() => handleResourceChange('cpu', 'dec')} disabled={currentCPU <= minCPU}>-</button>
+                    <div className="px-3 py-1 border-t border-b w-16 text-sm text-center">{resources.cpu}</div>
+                    <button type="button" className="px-2 py-1 border rounded-r bg-gray-100" onClick={() => handleResourceChange('cpu', 'inc')} disabled={currentCPU >= maxCPU}>+</button>
+                  </div>
+                  <p className="text-center text-xs text-gray-500 mt-1">Cores</p>
                 </div>
-                
+                {/* Memory Limit */}
                 <div>
                   <label className="block text-sm text-gray-600">Memory Limit</label>
-                  <input
-                    type="text"
-                    value={resources.memory}
-                    onChange={(e) => setResources(prev => ({ ...prev, memory: e.target.value }))}
-                    placeholder="256Mi"
-                    className="mt-1 p-2 border border-gray-300 rounded w-full text-sm"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">MB/GB (e.g., 256Mi, 1Gi)</p>
+                  <div className="flex items-center mt-1">
+                    <button type="button" className="px-2 py-1 border rounded-l bg-gray-100" onClick={() => handleResourceChange('memory', 'dec')} disabled={currentMemory <= minMemory}>-</button>
+                    <div className=" py-1 border-t border-b w-16 text-sm text-center">{resources.memory}</div>
+                    <button type="button" className="px-2 py-1 border rounded-r bg-gray-100" onClick={() => handleResourceChange('memory', 'inc')} disabled={currentMemory >= maxMemory}>+</button>
+                  </div>
+                  <p className="text-center text-xs text-gray-500 mt-1">MB</p>
                 </div>
-                
+                {/* Storage Limit */}
                 <div>
                   <label className="block text-sm text-gray-600">Storage Limit</label>
-                  <input
-                    type="text"
-                    value={resources.storage}
-                    onChange={(e) => setResources(prev => ({ ...prev, storage: e.target.value }))}
-                    placeholder="100Mi"
-                    className="mt-1 p-2 border border-gray-300 rounded w-full text-sm"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">MB/GB (e.g., 100Mi, 1Gi)</p>
+                  <div className="flex items-center mt-1">
+                    <button type="button" className="px-2 py-1 border rounded-l bg-gray-100" onClick={() => handleResourceChange('storage', 'dec')} disabled={currentStorage <= minStorage}>-</button>
+                    <div className=" py-1 border-t border-b w-16 text-sm text-center">{resources.storage}</div>
+                    <button type="button" className="px-2 py-1 border rounded-r bg-gray-100" onClick={() => handleResourceChange('storage', 'inc')} disabled={currentStorage >= maxStorage}>+</button>
+                  </div>
+                  <p className="text-center text-xs text-gray-500 mt-1">MB</p>
                 </div>
               </div>
             )}
             
-            <p className="text-sm text-gray-600 mt-2">
+            <p className="text-xs pt-2 pb-4 text-yellow-500 text-gray-600 mt-2">
               {resources.enabled 
                 ? 'Resource limits help control application usage'
                 : 'Resource limits are disabled - applications can use unlimited resources'

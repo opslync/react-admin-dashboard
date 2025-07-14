@@ -4,7 +4,7 @@ import GitHubIcon from '@mui/icons-material/GitHub';
 import { GITHUB_APP_CREATION_URL, GITHUB_STATE_PARAM } from '../../config/github.config';
 import { createGitHubManifest } from '../../utils/github.utils';
 
-const GitHubAppRegistration = () => {
+const GitHubAppRegistration = ({ onSuccess }) => {
   const history = useHistory();
 
   const handleFormSubmit = (e) => {

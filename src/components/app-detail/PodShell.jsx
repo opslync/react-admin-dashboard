@@ -122,25 +122,31 @@ export const PodShell = ({ podDetails, appId }) => {
         term.loadAddon(fitAddon);
         term.loadAddon(new WebLinksAddon());
 
-        // Wait for the container to be available in the DOM
-        if (containerRef.current) {
-            console.log('Terminal container mounted');
-            term.open(containerRef.current);
-            
-            // Fit the terminal to container
-            setTimeout(() => {
+        // Helper to fit terminal only when container is visible and sized
+        const fitTerminal = () => {
+            if (containerRef.current && containerRef.current.offsetWidth > 0 && containerRef.current.offsetHeight > 0) {
                 try {
                     fitAddon.fit();
                     console.log('Terminal fitted successfully');
                 } catch (error) {
                     console.error('Error fitting terminal:', error);
                 }
-            }, 100);
+            } else {
+                // Retry after a short delay if container is not ready
+                setTimeout(fitTerminal, 100);
+            }
+        };
+
+        // Wait for the container to be available in the DOM
+        if (containerRef.current) {
+            console.log('Terminal container mounted');
+            term.open(containerRef.current);
+            fitTerminal();
 
             // Handle window resize
             const handleResize = () => {
                 try {
-                    fitAddon.fit();
+                    fitTerminal();
                 } catch (error) {
                     console.error('Error during resize:', error);
                 }
@@ -148,9 +154,9 @@ export const PodShell = ({ podDetails, appId }) => {
             window.addEventListener('resize', handleResize);
 
             // Connect to WebSocket
-            const wsBaseUrl = API_BASE_URL.replace(/^http/, 'ws');
+            const wsBaseUrl = API_BASE_URL.replace(/^http/, 'ws').replace(/\/?$/, '/');
             const token = localStorage.getItem('token');
-            const wsUrl = `${wsBaseUrl}app/${appId}/pods/shell?pod_name=${podDetails.podName}&container=${podDetails.container}&token=${token}`;
+            const wsUrl = `${wsBaseUrl}api/app/${appId}/pods/shell?pod_name=${podDetails.podName}&container=${podDetails.container}&token=${token}`;
             console.log('Attempting WebSocket connection to:', wsUrl);
 
             setConnectionStatus('connecting');
@@ -231,6 +237,24 @@ export const PodShell = ({ podDetails, appId }) => {
             console.error('Terminal container not found in DOM');
         }
     }, [appId, podDetails]);
+
+    // Refit terminal on fullscreen toggle
+    useEffect(() => {
+        if (terminal && containerRef.current) {
+            if (containerRef.current.offsetWidth > 0 && containerRef.current.offsetHeight > 0) {
+                try {
+                    terminal?.resize && terminal?.element && terminal?.element.offsetWidth > 0 && terminal?.element.offsetHeight > 0 && terminal?.fit && terminal.fit();
+                } catch (error) {
+                    // fallback: use fitAddon if available
+                    try {
+                        if (terminal._core && terminal._core._renderService) {
+                            terminal._core._renderService._onResize();
+                        }
+                    } catch (e) {}
+                }
+            }
+        }
+    }, [isFullscreen]);
 
     return (
         <div className={`bg-gray-900 rounded-lg border border-gray-700 overflow-hidden shadow-2xl ${

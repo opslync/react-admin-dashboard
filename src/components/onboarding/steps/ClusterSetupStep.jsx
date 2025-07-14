@@ -14,6 +14,9 @@ const ClusterSetupStep = ({
   error,
   setError,
 }) => {
+  // Debug log to verify organization ID is being passed
+  console.log("ClusterSetupStep - Received stepData:", stepData);
+  console.log("ClusterSetupStep - Organization ID:", stepData.organizationId);
   const [formData, setFormData] = useState({
     name: stepData.name || "",
     endpoint: stepData.endpoint || "",
@@ -68,6 +71,10 @@ const ClusterSetupStep = ({
       setError("Please upload a kubeconfig file");
       return;
     }
+    if (!stepData.organizationId) {
+      setError("Organization ID is missing. Please complete the organization setup first.");
+      return;
+    }
     try {
       setValidationStatus("validating");
       setError("");
@@ -82,6 +89,7 @@ const ClusterSetupStep = ({
       } else if (formData.authMethod === "kubeconfig") {
         payload.kubeconfig = formData.kubeconfig;
       }
+      console.log("ClusterSetupStep - Validation payload:", payload);
       const response = await postMethod("clusters/validate", payload);
       if (response.data?.success) {
         setValidationStatus("success");
@@ -104,6 +112,10 @@ const ClusterSetupStep = ({
       setError("Please validate the connection first");
       return;
     }
+    if (!stepData.organizationId) {
+      setError("Organization ID is missing. Please complete the organization setup first.");
+      return;
+    }
     try {
       setLoading(true);
       let payload = {
@@ -117,10 +129,16 @@ const ClusterSetupStep = ({
       } else if (formData.authMethod === "kubeconfig") {
         payload.kubeconfig = formData.kubeconfig;
       }
+      console.log("ClusterSetupStep - Add cluster payload:", payload);
       const response = await postMethod("clusters", payload);
+      console.log("ClusterSetupStep - Cluster creation response:", response.data);
+      console.log("ClusterSetupStep - Cluster ID:", response.data.cluster.id);
+      
       onComplete("cluster", {
         ...formData,
-        clusterId: response.data.id,
+        clusterId: response.data.cluster.id,
+        clusterName: response.data.cluster.name,
+        clusterEndpoint: response.data.cluster.endpoint,
       });
     } catch (error) {
       console.error("Failed to add cluster:", error);

@@ -54,25 +54,52 @@ export default function BuildDetailsPage({ onBack, workflowId: initialWorkflowId
       }]);
     };
 
+    const detectLogLevel = (message) => {
+      if (!message || typeof message !== 'string') return 'info';
+      const msg = message.toLowerCase();
+      if (msg.includes('error') || msg.includes('failed') || msg.includes('exception')) return 'error';
+      if (msg.includes('warn') || msg.includes('warning')) return 'warning';
+      if (msg.includes('success') || msg.includes('completed') || msg.includes('done')) return 'success';
+      if (msg.includes('info') || msg.includes('starting') || msg.includes('connected')) return 'info';
+      return 'info';
+    };
+
     ws.onmessage = (event) => {
       console.log('WebSocket message received:', event.data);
+      let content;
+      let logFormat = 'unknown';
       try {
-        let logData = JSON.parse(event.data);
-        
-        // Extract content from the result object
-        if (logData.result && logData.result.content) {
-          const newLog = {
-            id: Date.now(),
-            timestamp: new Date().toLocaleTimeString(),
-            message: logData.result.content,
-            level: 'info'
-          };
-          console.log('Parsed log:', newLog);
-          setLogs(prev => [...prev, newLog]);
+        const trimmedData = event.data.trim();
+        if (trimmedData.startsWith('{') && trimmedData.endsWith('}')) {
+          // Looks like JSON, try to parse it
+          let logData = JSON.parse(event.data);
+          // Extract content from the result object or common fields
+          content = (logData.result && logData.result.content) || logData.content || logData.message || logData.log || logData.text || String(event.data || '');
+          logFormat = 'JSON';
+        } else {
+          // Doesn't look like JSON, treat as plain text
+          content = String(event.data || '');
+          logFormat = 'Plain Text';
         }
       } catch (error) {
-        console.log('Error parsing message:', error);
+        // JSON parse failed, fallback to plain text
+        content = String(event.data || '');
+        logFormat = 'Plain Text (fallback)';
       }
+      // Skip empty content
+      if (!content || content.trim() === '') return;
+      // Filter out unwanted log lines
+      if (content.includes('level=info msg="sub-process exited" argo=true error="<nil>"')) return;
+      // Detect log level
+      const detectedLevel = detectLogLevel(content);
+      const newLog = {
+        id: Date.now() + Math.random(),
+        timestamp: new Date().toLocaleTimeString(),
+        message: content,
+        level: detectedLevel,
+        format: logFormat
+      };
+      setLogs(prev => [...prev, newLog]);
     };
 
     ws.onerror = (error) => {

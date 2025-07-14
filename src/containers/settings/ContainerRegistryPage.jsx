@@ -120,7 +120,7 @@ const ContainerRegistryPage = () => {
     if (error) return <Typography color="error">{error}</Typography>;
 
     return (
-        <div className="flex flex-col lg:ml-64 p-4 bg-gray-100 min-h-screen">
+        <div className="flex flex-col p-4 bg-gray-100 min-h-screen">
             <Typography variant="h4" className="mb-6">Container Registry</Typography>
 
             <Box sx={{ width: '100%', mb: 4 }}>

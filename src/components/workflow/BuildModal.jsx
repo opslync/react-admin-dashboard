@@ -4,13 +4,14 @@ import { postMethod, getMethod } from '../../library/api';
 import { useParams } from 'react-router-dom';
 import githubTokenManager from '../../utils/githubTokenManager';
 
-export default function BuildModal({ onClose, onStartBuild }) {
-  const { appId } = useParams();
+export default function BuildModal({ open, onClose, onStartBuild, appId: propAppId, appDetails: propAppDetails }) {
+  const { appId: routeAppId } = useParams();
+  const appId = propAppId || routeAppId;
   const [commits, setCommits] = useState([]);
   const [selectedCommit, setSelectedCommit] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [appDetails, setAppDetails] = useState(null);
+  const [appDetails, setAppDetails] = useState(propAppDetails);
   const [isStartingBuild, setIsStartingBuild] = useState(false);
 
   useEffect(() => {
@@ -46,7 +47,7 @@ export default function BuildModal({ onClose, onStartBuild }) {
         branch: appData.branch || 'main'
       };
 
-      const response = await postMethod('api/user/github/commits', payload);
+      const response = await postMethod('user/github/commits', payload);
       setCommits(response.data);
       setSelectedCommit(response.data[0]);
       setLoading(false);
@@ -86,6 +87,8 @@ export default function BuildModal({ onClose, onStartBuild }) {
       setIsStartingBuild(false);
     }
   };
+
+  if (!open) return null;
 
   if (loading) {
     return (
@@ -132,7 +135,7 @@ export default function BuildModal({ onClose, onStartBuild }) {
   const displayRepoUrl = appDetails.repoUrl.replace(/\.git$/, '');
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+    <div className="z-[9999] fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg w-full max-w-[600px]">
         {/* Header */}
         <div className="p-4 border-b flex justify-between items-center">

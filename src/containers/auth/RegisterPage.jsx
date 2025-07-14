@@ -124,21 +124,21 @@ export default function RegisterPage() {
 
   const handleOnboardingComplete = () => {
     setShowOnboarding(false);
-    // After onboarding completion, redirect to dashboard
+    // After onboarding completion, redirect to overview
     localStorage.setItem('registration-onboarding-completed', 'true');
-    history.push('/dashboard');
+    history.push('/overview');
   };
 
   const handleOnboardingClose = () => {
     setShowOnboarding(false);
-    // If user closes onboarding, still redirect to dashboard since they're registered
-    history.push('/dashboard');
+    // If user closes onboarding, still redirect to overview since they're registered
+    history.push('/overview');
   };
 
   const handleSkipOnboarding = () => {
     setShowOnboarding(false);
-    // If user skips onboarding, redirect to dashboard
-    history.push('/dashboard');
+    // If user skips onboarding, redirect to overview
+    history.push('/overview');
   };
 
   return (

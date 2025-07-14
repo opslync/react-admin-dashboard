@@ -37,6 +37,12 @@ const ProjectDetailPage = () => {
     storage: { used: 0, total: 1, percentage: 0 }
   });
   const wsRef = useRef(null);
+  const appsRef = useRef(apps);
+
+  // Keep appsRef.current in sync with apps state
+  useEffect(() => {
+    appsRef.current = apps;
+  }, [apps]);
 
   useEffect(() => {
     const connectWebSocket = () => {
@@ -51,24 +57,52 @@ const ProjectDetailPage = () => {
         try {
           const data = JSON.parse(event.data);
           
-          if (!data.resourceQuota || !data.usage) {
-            console.error('Invalid data format received:', data);
+          console.log('ProjectDetailPage - Received WebSocket data:', data);
+          
+          // Check if we have the required data structure
+          if (!data.resourceQuota) {
+            console.error('Invalid data format received: missing resourceQuota', data);
             return;
+          }
+          
+          // If usage data is not available, use default values or calculate from resourceQuota
+          const usage = data.usage || {
+            cpu: '0',
+            memory: '0',
+            storage: '0'
+          };
+          
+          // Validate resourceQuota structure
+          if (!data.resourceQuota.cpu || !data.resourceQuota.memory || !data.resourceQuota.storage) {
+            console.warn('ProjectDetailPage - Incomplete resourceQuota data:', data.resourceQuota);
+            // Use default values for missing quota data
+            const defaultQuota = {
+              cpu: data.resourceQuota.cpu || '1',
+              memory: data.resourceQuota.memory || '1Gi',
+              storage: data.resourceQuota.storage || '1Gi'
+            };
+            data.resourceQuota = { ...data.resourceQuota, ...defaultQuota };
           }
 
           // Use new formatters for CPU, memory, and storage
           const cpuTotal = parseCPU(data.resourceQuota.cpu);
-          const cpuUsed = parseCPU(data.usage.cpu);
+          const cpuUsed = parseCPU(usage.cpu);
 
           const memTotalMi = parseMemory(data.resourceQuota.memory);
-          const memUsedMi = parseMemory(data.usage.memory);
+          const memUsedMi = parseMemory(usage.memory);
           const memTotalDisplay = formatMemoryDisplay(data.resourceQuota.memory);
-          const memUsedDisplay = formatMemoryDisplay(data.usage.memory);
+          const memUsedDisplay = formatMemoryDisplay(usage.memory);
 
           const storageTotalMi = parseMemory(data.resourceQuota.storage);
-          const storageUsedMi = parseMemory(data.usage.storage);
+          const storageUsedMi = parseMemory(usage.storage);
           const storageTotalDisplay = formatMemoryDisplay(data.resourceQuota.storage);
-          const storageUsedDisplay = formatMemoryDisplay(data.usage.storage);
+          const storageUsedDisplay = formatMemoryDisplay(usage.storage);
+          
+          console.log('ProjectDetailPage - Parsed metrics:', {
+            cpu: { total: cpuTotal, used: cpuUsed },
+            memory: { total: memTotalMi, used: memUsedMi },
+            storage: { total: storageTotalMi, used: storageUsedMi }
+          });
 
           setMetrics({
             cpu: {
@@ -93,6 +127,28 @@ const ProjectDetailPage = () => {
         } catch (error) {
           console.error('Error parsing WebSocket message:', error);
           console.log('Raw message:', event.data);
+          
+          // Set default metrics if parsing fails
+          setMetrics({
+            cpu: {
+              used: 0,
+              total: 1,
+              percentage: 0,
+              allocated: '0.00/1.00 Cores'
+            },
+            ram: {
+              used: 0,
+              total: 1,
+              percentage: 0,
+              allocated: '0.00/1.00 MiB'
+            },
+            storage: {
+              used: 0,
+              total: 1,
+              percentage: 0,
+              allocated: '0.00/1.00 MiB'
+            }
+          });
         }
       };
 
@@ -130,7 +186,6 @@ const ProjectDetailPage = () => {
         }));
         setApps(initialApps);
         setLoading(false);
-        
         // Fetch pod statuses separately
         fetchPodStatuses(initialApps);
       } catch (err) {
@@ -140,41 +195,32 @@ const ProjectDetailPage = () => {
     };
 
     fetchProjectDetails();
-    
-    // Set up interval to refresh pod status
-    const statusInterval = setInterval(() => fetchPodStatuses(apps), 10000);
 
+    // Set up interval to refresh pod status using latest apps
+    const statusInterval = setInterval(() => fetchPodStatuses(appsRef.current), 10000);
     return () => {
       clearInterval(statusInterval);
     };
   }, [projectId]);
 
   const fetchPodStatuses = async (currentApps) => {
-    const updatedApps = [...currentApps];
-    
     // Fetch pod status for each app in parallel
     const statusPromises = currentApps.map(async (app) => {
       try {
         const podResponse = await getMethod(`app/${app.ID}/pod/list`);
+        let status = 'Unknown';
         if (podResponse.data && podResponse.data.length > 0) {
-          const pod = podResponse.data[0];
-          const index = updatedApps.findIndex(a => a.ID === app.ID);
-          if (index !== -1) {
-            updatedApps[index] = {
-              ...updatedApps[index],
-              status: pod.status || 'Unknown'
-            };
-            // Update state for each status change
-            setApps([...updatedApps]);
-          }
+          status = podResponse.data[0].status || 'Unknown';
         }
+        return { ...app, status };
       } catch (err) {
         console.error(`Failed to fetch pod status for app ${app.ID}:`, err);
+        return { ...app, status: 'Unknown' };
       }
     });
-
     // Wait for all status updates to complete
-    await Promise.all(statusPromises);
+    const updatedApps = await Promise.all(statusPromises);
+    setApps(updatedApps);
   };
 
   const getStatusColor = (status) => {
@@ -259,7 +305,7 @@ const ProjectDetailPage = () => {
   }
 
   return (
-    <div className="flex flex-col lg:ml-64 p-6 bg-gray-50 min-h-screen">
+    <div className="flex flex-col p-6 bg-gray-50 min-h-screen">
       <div className="mb-8">
         <div className="flex items-center gap-4 mb-6">
           <Button
@@ -339,9 +385,11 @@ const ProjectDetailPage = () => {
                     className="flex items-center justify-between group"
                   >
                     <div className="flex items-center gap-4">
-                      <Badge className={`${getStatusColor(app.status)} px-2 py-0.5 text-xs font-medium`}>
-                        {app.status || 'Unknown'}
-                      </Badge>
+                      {app.status && app.status !== 'Unknown' && (
+                        <Badge className={`${getStatusColor(app.status)} px-2 py-0.5 text-xs font-medium`}>
+                          {app.status}
+                        </Badge>
+                      )}
                       <span className="font-medium text-gray-900">{app.name}</span>
                     </div>
                     <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-gray-600" />

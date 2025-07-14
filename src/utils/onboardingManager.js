@@ -23,15 +23,35 @@ class OnboardingManager {
       const response = await getMethod('onboarding/status');
       const status = response.data;
       
+      console.log('OnboardingManager - Raw status from API:', status);
+      
+      // Determine if onboarding is needed based on completion status
+      const needsOnboarding = !status.completed;
+      
+      // Determine current step based on completed steps
+      let currentStep = 0;
+      if (status.completed_steps && status.completed_steps.length > 0) {
+        if (status.completed_steps.includes("organization")) {
+          if (status.completed_steps.includes("cluster")) {
+            currentStep = 2; // Project step
+          } else {
+            currentStep = 1; // Cluster step
+          }
+        } else {
+          currentStep = 0; // Organization step
+        }
+      }
+      
       this.onboardingStatus = {
-        needsOnboarding: !status.completed,
-        currentStep: status.current_step || 0,
+        needsOnboarding: needsOnboarding,
+        currentStep: currentStep,
         completedSteps: status.completed_steps || [],
         data: status.data || {},
         lastUpdated: Date.now(),
         isNewUser: status.is_new_user || false
       };
       
+      console.log('OnboardingManager - Processed status:', this.onboardingStatus);
       this.notifyListeners();
       return this.onboardingStatus;
     } catch (error) {

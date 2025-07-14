@@ -1,236 +1,313 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { useDeployments } from '../../hooks/useDeployments';
-import { useClusterMetrics } from '../../hooks/useClusterMetrics';
-import { Card, CardContent } from '../../components/ui/card';
-import { Button } from '../../components/ui/button';
-import { Alert, AlertDescription } from '../../components/ui/alert';
-import { ChevronRight, Server, Users, Cloud, Activity, Rocket, X } from 'lucide-react';
+import { MetricsGrid } from '../../components/dashboard/MetricsGrid';
+import { CPUMemoryCharts } from '../../components/dashboard/CPUMemoryCharts';
+import { RecentDeployments } from '../../components/dashboard/RecentDeployments';
+import { ClusterHealth } from '../../components/dashboard/ClusterHealth';
+import { OnboardingBanner } from '../../components/dashboard/OnboardingBanner';
 import { getMethod } from '../../library/api';
-import onboardingManager from '../../utils/onboardingManager';
-import OnboardingFlow from '../../components/onboarding/OnboardingFlow';
+import CreateProjectForm from '../../components/CreateProjectForm';
+import { DeploymentModal } from '../../components/dashboard/DeploymentModal';
 
-const OverviewPage = () => {
-  const { deployments, loading: deploymentsLoading } = useDeployments();
-  const { clusterMetrics } = useClusterMetrics();
-  const [totalNodes, setTotalNodes] = useState(sessionStorage.getItem('totalNodes') || 0);
-  const [totalApps, setTotalApps] = useState(sessionStorage.getItem('totalApps') || 0);
+const Overview = () => {
+  const [summary, setSummary] = useState(null);
+  const [trends, setTrends] = useState(null);
+  const [performance, setPerformance] = useState(null);
+  const [deployments, setDeployments] = useState([]);
+  const [clusterHealth, setClusterHealth] = useState(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showOnboardingBanner, setShowOnboardingBanner] = useState(false);
-  const [onboardingStatus, setOnboardingStatus] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [showCreateProjectModal, setShowCreateProjectModal] = useState(false);
+  const [availableResources, setAvailableResources] = useState(null);
+  const [organizationId, setOrganizationId] = useState(null);
+  const [clusters, setClusters] = useState([]);
+  const [showDeploymentModal, setShowDeploymentModal] = useState(false);
+
+  // Get userId from localStorage (assumes user object is stored as JSON with id or userId)
+  let userId = null;
+  try {
+    const user = JSON.parse(localStorage.getItem('user'));
+    userId = user?.id || user?.userId || null;
+  } catch (e) {
+    userId = null;
+  }
+  const onboardingKey = userId ? `hasSeenOnboarding_${userId}` : 'hasSeenOnboarding';
 
   useEffect(() => {
-    const fetchClusterResources = async () => {
+    const hasSeenOnboarding = localStorage.getItem(onboardingKey);
+    if (!hasSeenOnboarding) {
+      setShowOnboardingBanner(true);
+    }
+
+    const fetchDashboardData = async () => {
+      setLoading(true);
       try {
-        const response = await getMethod('cluster/resources');
-        if (response.data && response.data.total) {
-          const { total_nodes } = response.data.total;
-          setTotalNodes(total_nodes);
-          sessionStorage.setItem('totalNodes', total_nodes);
+        const [summaryRes, trendsRes, perfRes, deploymentsRes, clusterHealthRes, clustersRes] = await Promise.all([
+          getMethod('dashboard/summary'),
+          getMethod('metrics/trends'),
+          getMethod('metrics/performance'),
+          getMethod('deployments/recent?limit=10'),
+          getMethod('cluster/health'),
+          getMethod('clusters'),
+        ]);
+        setSummary(summaryRes.data);
+        setTrends(trendsRes.data);
+        const perfData = perfRes.data;
+        let chartData = [];
+        if (perfData && perfData.cpu && perfData.memory) {
+          const cpuMap = new Map(perfData.cpu.map(item => [item.time, item.value]));
+          const memoryMap = new Map(perfData.memory.map(item => [item.time, item.value]));
+          const allTimes = Array.from(new Set([
+            ...perfData.cpu.map(item => item.time),
+            ...perfData.memory.map(item => item.time)
+          ])).sort();
+          // Get the 5 most recent time points
+          const last5Times = allTimes.slice(-5);
+          chartData = last5Times.map(time => {
+            const date = new Date(time);
+            const formattedTime = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+            return {
+              time: formattedTime,
+              cpu: cpuMap.has(time) ? Math.round(cpuMap.get(time)) : null,
+              memory: memoryMap.has(time) ? Math.round(memoryMap.get(time)) : null
+            };
+          });
         }
+        setPerformance(chartData);
+        setDeployments(deploymentsRes.data);
+        setClusterHealth(clusterHealthRes.data);
+        setClusters(Array.isArray(clustersRes.data) ? clustersRes.data : []);
       } catch (error) {
-        console.error('Error fetching cluster resources:', error);
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setLoading(false);
       }
     };
 
-    const fetchTotalApps = async () => {
+    fetchDashboardData();
+  }, []);
+
+  // Refresh only performance data every 5 minutes
+  React.useEffect(() => {
+    const fetchPerformance = async () => {
       try {
-        const response = await getMethod('apps');
-        if (response.data) {
-          const appsCount = response.data.length;
-          setTotalApps(appsCount);
-          sessionStorage.setItem('totalApps', appsCount);
+        const perfRes = await getMethod('metrics/performance');
+        const perfData = perfRes.data;
+        let chartData = [];
+        if (perfData && perfData.cpu && perfData.memory) {
+          const cpuMap = new Map(perfData.cpu.map(item => [item.time, item.value]));
+          const memoryMap = new Map(perfData.memory.map(item => [item.time, item.value]));
+          const allTimes = Array.from(new Set([
+            ...perfData.cpu.map(item => item.time),
+            ...perfData.memory.map(item => item.time)
+          ])).sort();
+          // Get the 5 most recent time points
+          const last5Times = allTimes.slice(-5);
+          chartData = last5Times.map(time => {
+            const date = new Date(time);
+            const formattedTime = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+            return {
+              time: formattedTime,
+              cpu: cpuMap.has(time) ? Math.round(cpuMap.get(time)) : null,
+              memory: memoryMap.has(time) ? Math.round(memoryMap.get(time)) : null
+            };
+          });
         }
+        setPerformance(chartData);
       } catch (error) {
-        console.error('Error fetching total apps:', error);
+        console.error('Error refreshing performance data:', error);
       }
     };
-
-    const checkOnboardingStatus = async () => {
-      try {
-        const status = await onboardingManager.checkOnboardingStatus();
-        setOnboardingStatus(status);
-        // Don't automatically show banner - onboarding is only for new signups
-        // Banner can be shown manually if needed
-        const bannerDismissed = localStorage.getItem('onboarding-banner-dismissed');
-        if (status.needsOnboarding && totalApps == 0 && !bannerDismissed) {
-          // Only show if user explicitly hasn't dismissed it
-          setShowOnboardingBanner(false); // Disabled auto-show
-        }
-      } catch (error) {
-        console.error('Error checking onboarding status:', error);
-      }
-    };
-
-    fetchClusterResources();
-    fetchTotalApps();
-    checkOnboardingStatus();
-  }, [totalApps]);
+    const interval = setInterval(fetchPerformance, 300000); // 5 minutes
+    return () => clearInterval(interval);
+  }, []);
 
   const handleStartOnboarding = () => {
     setShowOnboarding(true);
     setShowOnboardingBanner(false);
-  };
-
-  const handleOnboardingComplete = () => {
-    onboardingManager.markCompleted();
-    setShowOnboarding(false);
-    setShowOnboardingBanner(false);
-  };
-
-  const handleOnboardingClose = () => {
-    setShowOnboarding(false);
+    localStorage.setItem(onboardingKey, 'true');
   };
 
   const handleDismissBanner = () => {
     setShowOnboardingBanner(false);
-    localStorage.setItem('onboarding-banner-dismissed', 'true');
+    localStorage.setItem(onboardingKey, 'true');
   };
 
-  if (deploymentsLoading) {
+  // Handler for project creation (replace with real API call if needed)
+  const handleCreateProject = async (projectData) => {
+    // TODO: Implement actual project creation logic (API call)
+    // For now, just close the modal
+    setShowCreateProjectModal(false);
+    // Optionally, refresh dashboard data here
+  };
+
+  if (loading || !summary || !trends || !performance || !clusterHealth) {
     return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <p className="text-gray-600">Loading dashboard...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col lg:ml-64 p-6 bg-gray-50 min-h-screen">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Overview</h1>
-
-      {/* Onboarding Banner */}
-      {showOnboardingBanner && (
-        <Alert className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
-          <Rocket className="h-5 w-5 text-blue-600" />
-          <AlertDescription className="flex items-center justify-between w-full">
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto p-6">
+        {/* Header Section */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
             <div>
-              <p className="font-semibold text-blue-900 mb-1">Welcome to Opslync! 🎉</p>
-              <p className="text-blue-700">
-                Get started quickly by setting up your GitHub integration, connecting a cluster, and creating your first project.
-              </p>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard Overview</h1>
+              <p className="text-gray-600">Monitor your projects and deployments</p>
             </div>
-            <div className="flex items-center space-x-2 ml-4">
-              <Button
-                onClick={handleStartOnboarding}
-                className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2"
-              >
-                Start Setup Guide
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleDismissBanner}
-                className="text-blue-600 hover:text-blue-700 hover:bg-blue-100"
-              >
-                <X className="h-4 w-4" />
-              </Button>
+            <div className="flex items-center gap-3">
+              <div className="text-right">
+                <p className="text-sm text-gray-500">Welcome back!</p>
+                <p className="font-medium text-gray-900">{summary.organizationName}</p>
+              </div>
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                <span className="text-white font-semibold text-sm">
+                  {summary.organizationName.charAt(0)}
+                </span>
+              </div>
             </div>
-          </AlertDescription>
-        </Alert>
-      )}
+          </div>
+        </div>
 
-      {/* Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2 mb-2">
-                <Server className="w-5 h-5 text-blue-500" />
-                <h3 className="font-medium text-gray-600">Total Nodes</h3>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold text-gray-900">{totalNodes}</span>
-                <span className="text-sm text-gray-500">nodes</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Onboarding Banner */}
+        {showOnboardingBanner && (
+          <OnboardingBanner
+            onStartOnboarding={handleStartOnboarding}
+            onDismiss={handleDismissBanner}
+          />
+        )}
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2 mb-2">
-                <Users className="w-5 h-5 text-green-500" />
-                <h3 className="font-medium text-gray-600">Active Developers</h3>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold text-gray-900">24</span>
-                <span className="text-sm text-gray-500">users</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Metrics Grid */}
+        <div className="mb-8">
+          <MetricsGrid
+            totalProjects={summary.totalProjects}
+            totalApps={summary.totalApps}
+            activeUsers={summary.activeUsers}
+            organizationName={summary.organizationName}
+            trends={trends}
+          />
+        </div>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2 mb-2">
-                <Cloud className="w-5 h-5 text-purple-500" />
-                <h3 className="font-medium text-gray-600">Total Apps</h3>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold text-gray-900">{totalApps}</span>
-                <span className="text-sm text-gray-500">apps</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Performance Charts */}
+        <div className="mb-8">
+          <div className="mb-4">
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">System Performance</h2>
+            <p className="text-gray-600">Real-time CPU and memory usage across your infrastructure</p>
+          </div>
+          <CPUMemoryCharts data={performance} />
+        </div>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2 mb-2">
-                <Activity className="w-5 h-5 text-red-500" />
-                <h3 className="font-medium text-gray-600">Cluster Load</h3>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold text-gray-900">67%</span>
-                <span className="text-sm text-gray-500">utilization</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+        {/* Bottom Section - Deployments and Health */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <RecentDeployments deployments={deployments || []} />
+          </div>
+          <div>
+            <ClusterHealth health={clusterHealth} />
+          </div>
+        </div>
 
-      {/* Recent Deployments */}
-      <Card>
-        <div className="p-6 border-b">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-gray-900">Recent Deployments</h2>
-            <button className="text-sm text-blue-600 hover:text-blue-700">
-              View all
+        {/* Quick Actions Section */}
+        <div className="mt-8 bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <button
+              className="flex items-center gap-3 p-4 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+              onClick={async () => {
+                setShowCreateProjectModal(true);
+                try {
+                  // Fetch onboarding status
+                  const onboardingRes = await getMethod('onboarding/status');
+                  const onboardingData = onboardingRes.data?.data || {};
+                  // Extract organizationId
+                  let orgId = null;
+                  if (onboardingData.organization && onboardingData.organization.id) {
+                    orgId = onboardingData.organization.id;
+                  } else if (onboardingData.cluster && onboardingData.cluster.organizationId) {
+                    orgId = onboardingData.cluster.organizationId;
+                  }
+                  setOrganizationId(orgId);
+                  // Extract clusters (support single or array)
+                  let clustersArr = [];
+                  if (Array.isArray(onboardingData.clusters)) {
+                    clustersArr = onboardingData.clusters;
+                  } else if (onboardingData.cluster && onboardingData.cluster.id) {
+                    clustersArr = [onboardingData.cluster];
+                  }
+                  setClusters(clustersArr);
+                  // Fetch available resources for the first cluster (if any)
+                  if (clustersArr.length > 0) {
+                    const res = await getMethod('cluster/available-resources');
+                    setAvailableResources(res.data.availableResources);
+                  } else {
+                    setAvailableResources(null);
+                  }
+                } catch (err) {
+                  setAvailableResources(null);
+                  setOrganizationId(null);
+                  setClusters([]);
+                }
+              }}
+            >
+              <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
+                <span className="text-white text-lg">+</span>
+              </div>
+              <div className="text-left">
+                <p className="font-medium text-gray-900">New Project</p>
+                <p className="text-sm text-gray-600">Create a new project</p>
+              </div>
+            </button>
+            
+            <button
+              className="flex items-center gap-3 p-4 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
+              onClick={() => setShowDeploymentModal(true)}
+            >
+              <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
+                <span className="text-white text-lg">↗</span>
+              </div>
+              <div className="text-left">
+                <p className="font-medium text-gray-900">Deploy App</p>
+                <p className="text-sm text-gray-600">Deploy to Environment</p>
+              </div>
+            </button>
+            
+            <button className="flex items-center gap-3 p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors"
+              onClick={() => { window.location.href = 'http://localhost:3000/settings/git-account'; }}
+            >
+              <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
+                <span className="text-white text-lg">⚙</span>
+              </div>
+              <div className="text-left">
+                <p className="font-medium text-gray-900">Settings</p>
+                <p className="text-sm text-gray-600">Manage preferences</p>
+              </div>
             </button>
           </div>
         </div>
-        <div className="divide-y divide-gray-100">
-          {deployments?.slice(0, 3).map((deployment) => (
-            <div key={deployment.id} className="p-4 hover:bg-gray-50">
-              <Link to={`/deployment/${deployment.id}`} className="flex items-center justify-between group">
-                <div className="flex items-center gap-4">
-                  <div className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    deployment.status === 'Deployed' ? 'bg-green-100 text-green-700' : 
-                    'bg-gray-100 text-gray-700'
-                  }`}>
-                    {deployment.status}
-                  </div>
-                  <span className="font-medium text-gray-900">{deployment.name}</span>
-                </div>
-                <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-gray-600" />
-              </Link>
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      {/* Onboarding Flow */}
-      <OnboardingFlow
-        open={showOnboarding}
-        onClose={handleOnboardingClose}
-        onComplete={handleOnboardingComplete}
-      />
+        {/* Create Project Modal */}
+        {showCreateProjectModal && (
+          <CreateProjectForm
+            onSubmit={handleCreateProject}
+            onClose={() => setShowCreateProjectModal(false)}
+            availableResources={availableResources}
+            organizationId={organizationId}
+            clusters={clusters}
+          />
+        )}
+        {/* Deployment Modal */}
+        {showDeploymentModal && (
+          <DeploymentModal isOpen={showDeploymentModal} onClose={() => setShowDeploymentModal(false)} />
+        )}
+      </div>
     </div>
   );
 };
 
-export default OverviewPage;
+export default Overview;

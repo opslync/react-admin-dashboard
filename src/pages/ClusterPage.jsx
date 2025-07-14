@@ -31,8 +31,6 @@ const ClusterPage = () => {
             sx={{
                 flexGrow: 1,
                 p: 3,
-                ml: { sm: '240px' },
-                width: { sm: `calc(100% - 240px)` },
                 backgroundColor: 'background.default',
                 minHeight: '100vh'
             }}

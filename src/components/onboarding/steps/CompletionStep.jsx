@@ -58,7 +58,7 @@ const CompletionStep = ({ onFinish, stepData }) => {
   ];
 
   return (
-    <div className="max-w-4xl mx-auto text-center">
+    <div className="max-w-4xl mx-auto text-center ">
       {/* Success Header */}
       <div className="mb-8">
         <div className="relative">

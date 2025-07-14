@@ -60,7 +60,7 @@ export const ServicesPage = () => {
   };
 
   return (
-    <div className="ml-64 flex-1 p-8">
+    <div className="flex-1 p-8">
       <div className="max-w-7xl mx-auto">
         <ServiceHeader onCreateService={() => setIsCreateDialogOpen(true)} />
         <ServiceFilters 

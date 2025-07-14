@@ -126,14 +126,29 @@ const AppListPage = () => {
         name: app.name,
         repository: app.repoUrl,
         status: 'Not Deployed',
-        project: app.project?.name || 'Default',
+        project: app.projectName || 'Unknown Project',
         projectId: app.project?.id
       }));
       setApps(initialApps);
       setLoading(false);
 
+      // Fetch latest build for each app in parallel to get branch info
+      const appsWithBranch = await Promise.all(initialApps.map(async (app) => {
+        try {
+          const buildsRes = await getMethod(`app/${app.id}/workflows/builds`);
+          const latestBuild = Array.isArray(buildsRes.data) && buildsRes.data.length > 0 ? buildsRes.data[0] : null;
+          return {
+            ...app,
+            branch: latestBuild?.branch || '',
+          };
+        } catch (err) {
+          return { ...app, branch: '' };
+        }
+      }));
+      setApps(appsWithBranch);
+
       // Then update status for each app
-      const updatedApps = [...initialApps];
+      const updatedApps = [...appsWithBranch];
       for (const app of response.data) {
         try {
           const podResponse = await getMethod(`app/${app.ID}/pod/list`);
@@ -228,7 +243,7 @@ const AppListPage = () => {
   };
 
   return (
-    <div className="ml-64 flex-1 p-8">
+    <div className="flex-1 p-8">
       <div className="max-w-7xl mx-auto">
         <AppHeader onCreateApp={() => setIsCreateDialogOpen(true)} />
         <AppFilters 

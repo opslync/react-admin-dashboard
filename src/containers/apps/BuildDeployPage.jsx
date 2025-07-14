@@ -165,15 +165,13 @@ const BuildDeployPage = () => {
         />
       </div>
 
-      {showBuildModal && (
-        <BuildModal
-          open={showBuildModal}
-          onClose={() => setShowBuildModal(false)}
-          onBuildStart={handleBuildStart}
-          appId={appId}
-          appDetails={appDetails}
-        />
-      )}
+      <BuildModal
+        open={showBuildModal}
+        onClose={() => setShowBuildModal(false)}
+        onStartBuild={handleBuildStart}
+        appId={appId}
+        appDetails={appDetails}
+      />
     </div>
   );
 };

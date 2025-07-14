@@ -16,8 +16,10 @@ import {
   IconButton,
   Dialog,
   DialogContent,
+  Tooltip,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import { Terminal, Play, RotateCw, Code2, GitBranch, Clock, Activity, Database, Layers, ChevronDown, ChevronUp, Search, Download, Trash2, Pause, Play as PlayIcon, RotateCcw, Filter } from 'lucide-react';
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -25,6 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { PodShell } from '../../components/app-detail/PodShell';
 import { formatUptime, formatCommitHash, formatCommitMessage, formatTimeAgo } from '../../utils/formatters';
 import githubTokenManager from '../../utils/githubTokenManager';
+import PodEventsModal from '../../components/app-detail/PodEventsModal';
 
 const AppDetailPage = () => {
   const { appId } = useParams();
@@ -53,6 +56,9 @@ const AppDetailPage = () => {
     storage: 0
   });
   const [metricsWsConnection, setMetricsWsConnection] = useState(null);
+  const [isPodEventsOpen, setIsPodEventsOpen] = useState(false);
+  const [podStatusWsConnection, setPodStatusWsConnection] = useState(null);
+  const [podWarnings, setPodWarnings] = useState([]);
 
   const detectLogLevel = (message) => {
     if (!message || typeof message !== 'string') return 'info';
@@ -123,7 +129,7 @@ const AppDetailPage = () => {
 
     const wsBaseUrl = API_BASE_URL.replace(/^http/, 'ws').replace(/\/?$/, '/');
     const token = localStorage.getItem('token');
-    const wsUrl = `${wsBaseUrl}app/${appId}/pods/logs?token=${token}`;
+    const wsUrl = `${wsBaseUrl}api/app/${appId}/pods/logs?token=${token}`;
     const ws = new WebSocket(wsUrl);
     
     console.log('Connecting to WebSocket:', wsUrl);
@@ -148,7 +154,6 @@ const AppDetailPage = () => {
       console.log('📤 Request JSON:', JSON.stringify(request));
       
       ws.send(JSON.stringify(request));
-      setLogs(prev => [...prev, 'Connected to logs...']);
       
       console.log('✅ Initial request sent successfully');
       console.groupEnd();
@@ -296,53 +301,62 @@ const AppDetailPage = () => {
     setWsConnection(ws);
   };
 
-  const shouldPollStatus = (status) => {
-    const pollingStates = ['pending', 'containerCreating', 'waiting'];
-    return pollingStates.includes(status?.toLowerCase());
-  };
-
-  const fetchPodStatus = async () => {
-    try {
-      const response = await getMethod(`app/${appId}/pod/list`);
-      setPods(response.data);
-      
-      // Check if we should continue polling based on pod status
-      const podStatus = response.data[0]?.status?.toLowerCase();
-      if (!shouldPollStatus(podStatus)) {
-        // Stop polling if we reach a final state
-        if (pollingInterval) {
-          clearInterval(pollingInterval);
-          setPollingInterval(null);
-        }
-      }
-      
-      if (response.data && response.data.length > 0) {
-        const pod = response.data[0];
-        console.log('Pod details:', pod);
-        if (pod.name && !wsConnection) {
-          connectToLogs(pod.name, 'opslync-chart');
-        }
-      }
-    } catch (err) {
-      console.error('Failed to fetch pod status:', err);
-      // Stop polling on error
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-        setPollingInterval(null);
-      }
+  const setupPodStatusWebSocket = () => {
+    if (podStatusWsConnection) {
+      podStatusWsConnection.close();
     }
+    const token = localStorage.getItem('token');
+    const wsBaseUrl = API_BASE_URL.replace(/^http/, 'ws').replace(/\/?$/, '/');
+    const wsUrl = `${wsBaseUrl}api/app/${appId}/pod/status/stream?token=${token}`;
+    const ws = new WebSocket(wsUrl);
+
+    ws.onopen = () => {
+      console.log('🟢 Pod Status WebSocket connected:', wsUrl);
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data && Array.isArray(data.pods)) {
+          // Map backend pod fields to frontend expected fields
+          const mappedPods = data.pods.map(pod => ({
+            name: pod.pod_name,
+            Namespace: pod.namespace,
+            status: pod.status,
+            ready: pod.ready,
+            restartCount: pod.restart_count,
+            uptime: pod.age, // 'age' is a string like '2h30m'
+            timestamp: pod.timestamp,
+            containers: pod.containers || ['opslync-chart'], // fallback if not present
+          }));
+          setPods(mappedPods);
+        }
+      } catch (err) {
+        console.error('Failed to parse pod status WebSocket message:', err, event.data);
+      }
+    };
+
+    ws.onerror = (error) => {
+      console.error('Pod Status WebSocket error:', error);
+    };
+
+    ws.onclose = () => {
+      console.log('Pod Status WebSocket closed');
+    };
+
+    setPodStatusWsConnection(ws);
   };
 
   useEffect(() => {
     fetchAppDetails();
-    fetchPodStatus();
+    setupPodStatusWebSocket();
     
     return () => {
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-      }
       if (wsConnection) {
         wsConnection.close();
+      }
+      if (podStatusWsConnection) {
+        podStatusWsConnection.close();
       }
     };
   }, [appId]);
@@ -367,28 +381,43 @@ const AppDetailPage = () => {
     };
   }, [pods]);
 
-  // Start polling when pod status changes to a state that needs polling
-  useEffect(() => {
-    const podStatus = pods[0]?.status?.toLowerCase();
-    
-    if (shouldPollStatus(podStatus) && !pollingInterval) {
-      const interval = setInterval(fetchPodStatus, 10000);
-      setPollingInterval(interval);
-    }
-
-    return () => {
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-      }
-    };
-  }, [pods[0]?.status]);
-
   // Auto-scroll to bottom when new logs arrive
   useEffect(() => {
     if (autoScroll && logsEndRef.current) {
       logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [logs, autoScroll]);
+
+  useEffect(() => {
+    // Fetch pod events for warnings
+    let ignore = false;
+    setPodWarnings([]);
+    getMethod(`app/${appId}/pod/events`).then(res => {
+      if (ignore) return;
+      const pods = res.data?.pods || [];
+      if (pods.length > 0 && pods[0].issues && pods[0].issues.length > 0) {
+        setPodWarnings(pods[0].issues);
+      }
+    }).catch(() => {
+      if (!ignore) setPodWarnings([]);
+    });
+    return () => { ignore = true; };
+  }, [appId]);
+
+  // Auto-connect/disconnect logs WebSocket when showLogs changes
+  useEffect(() => {
+    if (showLogs && pods.length > 0) {
+      // Only connect if not already connected/open
+      if (!wsConnection || wsConnection.readyState !== WebSocket.OPEN) {
+        const pod = pods[0];
+        connectToLogs(pod.name, pod.containers[0]);
+      }
+    } else if (!showLogs && wsConnection) {
+      // Disconnect when hiding logs
+      wsConnection.close();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showLogs, pods]);
 
   const fetchAppDetails = async () => {
     try {
@@ -417,7 +446,7 @@ const AppDetailPage = () => {
   const handleStartApp = async () => {
     try {
       await putMethod(`app/${appId}/start`);
-      fetchPodStatus();
+      setupPodStatusWebSocket();
     } catch (err) {
       setError('Failed to start application');
     }
@@ -426,7 +455,7 @@ const AppDetailPage = () => {
   const handleRebuildDeploy = async () => {
     try {
       await putMethod(`app/${appId}/rebuild`);
-      fetchPodStatus();
+      setupPodStatusWebSocket();
     } catch (err) {
       setError('Failed to rebuild and deploy');
     }
@@ -471,7 +500,7 @@ const AppDetailPage = () => {
         branch: appDetails.branch || 'main'
       };
 
-      const response = await postMethod('api/user/github/commits', payload);
+      const response = await postMethod('user/github/commits', payload);
       if (response.data && response.data.length > 0) {
         setLatestCommit(response.data[0]);
       }
@@ -523,12 +552,16 @@ const AppDetailPage = () => {
       metricsWsConnection.close();
     }
 
-    const namespace = 'argo'; // or get from pod details
+    // Use the namespace from the first pod if available, otherwise fallback to 'argo'
+    const namespace = pods[0]?.Namespace || 'argo';
     const token = localStorage.getItem('token');
-    const ws = new WebSocket(`ws://localhost:8080/api/pods/metrics/stream?namespace=${namespace}&token=${token}`);
+    // Use API_BASE_URL and convert to ws protocol, consistent with logs WebSocket
+    const wsBaseUrl = API_BASE_URL.replace(/^http/, 'ws').replace(/\/?$/, '/');
+    const wsUrl = `${wsBaseUrl}api/pods/metrics/stream?namespace=${namespace}&token=${token}`;
+    const ws = new WebSocket(wsUrl);
 
     ws.onopen = () => {
-      console.log('📊 Metrics WebSocket connected');
+      console.log('📊 Metrics WebSocket connected:', wsUrl);
     };
 
     ws.onmessage = (event) => {
@@ -585,7 +618,7 @@ const AppDetailPage = () => {
   );
 
   return (
-    <div className="flex flex-col lg:ml-64 p-4 bg-gray-100 min-h-screen">
+    <div className="flex flex-col p-4 bg-gray-100 min-h-screen">
       {/* App Name Header with Status */}
       <div className="flex items-center gap-2 mb-6">
         <h1 className="text-2xl font-semibold">{appDetails?.name}</h1>
@@ -594,6 +627,11 @@ const AppDetailPage = () => {
             pods[0]?.status === 'Running' ? 'animate-pulse' : ''
           }`} />
           <span className="text-sm font-medium">{pods[0]?.status || 'Unknown'}</span>
+          {podWarnings.length > 0 && (
+            <Tooltip title={podWarnings[0]} placement="right">
+              <WarningAmberIcon color="warning" fontSize="small" style={{ marginLeft: 4 }} />
+            </Tooltip>
+          )}
         </div>
       </div>
 
@@ -948,13 +986,13 @@ const AppDetailPage = () => {
                     Open Shell
                   </Button>
                 )}
-                
+
                 <Button
-                  className="w-full bg-green-600 hover:bg-green-700 text-white"
-                  onClick={handleStartApp}
+                  variant="outline"
+                  className="w-full border border-blue-200 text-blue-700 hover:bg-blue-50"
+                  onClick={() => setIsPodEventsOpen(true)}
                 >
-                  <Play className="w-4 h-4 mr-2" />
-                  Start Application
+                  View Pod Events
                 </Button>
 
                 <Button
@@ -1017,6 +1055,13 @@ const AppDetailPage = () => {
           </Card>
         </div>
       </div>
+
+      {/* Pod Events Modal */}
+      <PodEventsModal
+        open={isPodEventsOpen}
+        onClose={() => setIsPodEventsOpen(false)}
+        appId={appId}
+      />
 
       {/* Shell Modal */}
       <Dialog
