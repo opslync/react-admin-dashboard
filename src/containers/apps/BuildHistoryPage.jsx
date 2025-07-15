@@ -169,16 +169,14 @@ const BuildHistoryPage = () => {
   useEffect(() => {
     fetchAppDetails();
         fetchBuildHistory();
-    fetchPodStatus();
-    const statusInterval = setInterval(fetchPodStatus, 10000);
-
+    fetchPodStatus(); // Only call once on mount/appId change
+    // Remove the interval polling for pod status
     return () => {
-      clearInterval(statusInterval);
       if (wsConnection) {
         wsConnection.close();
       }
     };
-    }, [appId]);
+  }, [appId]);
 
   useEffect(() => {
     const paths = [
@@ -364,6 +362,28 @@ const BuildHistoryPage = () => {
     setWsConnection(ws);
   };
 
+  // Helper to fetch logs from the new REST endpoint for completed builds
+  const fetchLogsFromDb = async (workflowId) => {
+    setLogs([]);
+    try {
+      const response = await getMethod(`/workflow/${workflowId}/logs/db`);
+      // logs is a string with newlines, not an array
+      const logString = response.data.logs || '';
+      const lines = logString.split('\n').filter(Boolean); // remove empty lines
+      // Use startTime or endTime from response for timestamp if available
+      const timestamp = response.data.startTime || response.data.endTime || new Date().toISOString();
+      const formattedLogs = lines.map((line, idx) => ({
+        id: idx,
+        timestamp: timestamp,
+        message: line,
+        level: detectLogLevel(line)
+      }));
+      setLogs(formattedLogs);
+    } catch (err) {
+      setLogs([{ id: 0, timestamp: new Date().toLocaleTimeString(), message: 'Failed to fetch logs from database.', level: 'error' }]);
+    }
+  };
+
   const fetchBuildHistory = async () => {
     setError(null); // Clear error at the start of fetch
     try {
@@ -411,7 +431,20 @@ const BuildHistoryPage = () => {
     setSelectedWorkflowId(buildId);
     setLogs([]); // Clear existing logs
     setShowLogs(true); // Show logs when a build is selected
-    connectWebSocket(buildId); // Connect WebSocket when build is selected
+    // Find the build and its status
+    const build = buildHistory.find(b => b.id === buildId);
+    const status = buildStatus[buildId]?.status || build?.status;
+    // If running or pending, use WebSocket
+    if (status === 'running' || status === 'pending') {
+      connectWebSocket(buildId);
+    } else {
+      // Otherwise, fetch from DB and close any open WebSocket
+      if (wsConnection) {
+        wsConnection.close();
+        setWsConnection(null);
+      }
+      fetchLogsFromDb(buildId);
+    }
   };
 
   const handleBuildClick = () => {
@@ -420,16 +453,10 @@ const BuildHistoryPage = () => {
 
   const handleBuildStart = (commit, workflowId) => {
     setShowBuildModal(false);
-    // Wait 2 seconds before refreshing build history
+    // Wait 2 seconds before reloading the page
     setTimeout(() => {
-      fetchBuildHistory();
-      // If workflowId is present, select and show logs for the new build
-      if (workflowId) {
-        setSelectedWorkflowId(workflowId);
-        setShowLogs(true);
-        connectWebSocket(workflowId);
-      }
-    }, 2000);
+      window.location.reload();
+    }, 1000);
   };
 
   const handleDeploy = async () => {

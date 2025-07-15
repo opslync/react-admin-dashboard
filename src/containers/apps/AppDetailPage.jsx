@@ -29,6 +29,34 @@ import { formatUptime, formatCommitHash, formatCommitMessage, formatTimeAgo } fr
 import githubTokenManager from '../../utils/githubTokenManager';
 import PodEventsModal from '../../components/app-detail/PodEventsModal';
 
+// Helper functions to parse resource units
+function parseCpu(cpu) {
+  if (!cpu) return 0;
+  if (typeof cpu === 'number') return cpu;
+  if (cpu.endsWith('m')) return parseFloat(cpu.replace('m', ''));
+  return parseFloat(cpu) * 1000; // Assume cores, convert to millicores
+}
+
+function parseMemory(mem) {
+  if (!mem) return 0;
+  if (typeof mem === 'number') return mem;
+  const lower = mem.toLowerCase();
+  if (lower.includes('mi')) return parseFloat(mem) * 1024 * 1024;
+  if (lower.includes('gi')) return parseFloat(mem) * 1024 * 1024 * 1024;
+  if (lower.includes('ki')) return parseFloat(mem) * 1024;
+  return parseFloat(mem);
+}
+
+function parseStorage(storage) {
+  if (!storage) return 0;
+  if (typeof storage === 'number') return storage;
+  const lower = storage.toLowerCase();
+  if (lower.includes('gi')) return parseFloat(storage) * 1024 * 1024 * 1024;
+  if (lower.includes('mi')) return parseFloat(storage) * 1024 * 1024;
+  if (lower.includes('ki')) return parseFloat(storage) * 1024;
+  return parseFloat(storage);
+}
+
 const AppDetailPage = () => {
   const { appId } = useParams();
   const history = useHistory();
@@ -574,13 +602,35 @@ const AppDetailPage = () => {
             // Find metrics for current app's pod
             const currentPod = data.pods.find(pod => 
               pods[0] && pod.name && pod.name.includes(pods[0].name?.split('-')[0])
-            );
-            
-            if (currentPod) {
+            ) || data.pods[0];
+
+            if (currentPod && currentPod.usage && currentPod.limits) {
+              // Parse CPU
+              const cpuUsage = parseCpu(currentPod.usage.cpu);
+              const cpuLimit = parseCpu(currentPod.limits.cpu);
+              const cpuPercent = cpuLimit > 0 ? (cpuUsage / cpuLimit) * 100 : 0;
+
+              // Parse Memory
+              const memUsage = parseMemory(currentPod.usage.memory);
+              const memLimit = parseMemory(currentPod.limits.memory);
+              const memPercent = memLimit > 0 ? (memUsage / memLimit) * 100 : 0;
+
+              // Parse Storage (if available)
+              let storagePercent = 0;
+              if (currentPod.usage.storage && currentPod.limits.storage) {
+                const storageUsage = parseStorage(currentPod.usage.storage);
+                const storageLimit = parseStorage(currentPod.limits.storage);
+                storagePercent = storageLimit > 0 ? (storageUsage / storageLimit) * 100 : 0;
+              } else if (currentPod.usage.storage) {
+                // If no limit, just show usage as a percent of 1 GiB for demo
+                const storageUsage = parseStorage(currentPod.usage.storage);
+                storagePercent = (storageUsage / (1024 * 1024 * 1024)) * 100;
+              }
+
               setResourceMetrics({
-                cpu: Math.min(100, Math.max(0, parseFloat(currentPod.cpu || 0))),
-                memory: Math.min(100, Math.max(0, parseFloat(currentPod.memory || 0))),
-                storage: Math.min(100, Math.max(0, parseFloat(currentPod.storage || 0)))
+                cpu: Math.min(100, Math.max(0, cpuPercent)),
+                memory: Math.min(100, Math.max(0, memPercent)),
+                storage: Math.min(100, Math.max(0, storagePercent))
               });
             } else {
               // Use mock data if no specific pod found
