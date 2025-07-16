@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: opslync-frontend-ingress
+  annotations:
+    cert-manager.io/issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "1800"
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - demo.opslync.io
+    secretName: poc-demo-opslync-frontend
+  rules:
+  - host: demo.opslync.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: opslync-frontend-service
+            port: 
+             number: 3000

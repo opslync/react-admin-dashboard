@@ -1,0 +1,50 @@
+/* Sidebar Menu Styles */
+.sidebar-menu-item {
+  transition: all 0.2s ease-in-out;
+}
+
+.sidebar-menu-item:hover {
+  transform: scale(1.02);
+}
+
+/* Custom scrollbar styles */
+.overflow-y-auto {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+}
+
+.overflow-y-auto::-webkit-scrollbar {
+  width: 4px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.5);
+  border-radius: 20px;
+}
+
+/* Sidebar Layout Styles */
+.sidebar-layout {
+  @apply h-full flex flex-col;
+}
+
+.sidebar-logo {
+  @apply p-6 mb-2;
+}
+
+.sidebar-menu {
+  @apply flex-1 px-3 space-y-1 overflow-y-auto;
+}
+
+.sidebar-footer {
+  @apply p-4 border-t border-gray-700;
+}
+
+.sidebar-user {
+  @apply flex items-center space-x-3;
+}
+
+/* Add existing menu.css styles here */ 

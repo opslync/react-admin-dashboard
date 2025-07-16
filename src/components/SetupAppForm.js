@@ -12,6 +12,7 @@ const SetupAppForm = ({ onSubmit, onClose }) => {
   const [selectedProject, setSelectedProject] = useState('');
   const [selectedGitAccount, setSelectedGitAccount] = useState('github-public');
   const [selectedRegistry, setSelectedRegistry] = useState('docker-hub');
+  const [port, setPort] = useState(''); // New state for port
   const [projects, setProjects] = useState([]);
   const [gitAccounts, setGitAccounts] = useState([{ id: 'github-public', username: 'GitHub Public' }]);
   const [containerRegistries, setContainerRegistries] = useState([{ id: 'docker-hub', username: 'Docker Hub' }]);
@@ -81,8 +82,24 @@ const SetupAppForm = ({ onSubmit, onClose }) => {
       finalRepoUrl = `https://github.com${selectedGitAccount}/${repoUrl}.git`;
     }
 
+    // Validation
+    if (selectedGitAccount === 'github-public') {
+      const urlPattern = /^https:\/\/github\.com\/.+\.git$/;
+      if (!urlPattern.test(repoUrl)) {
+        setError('Repo URL must start with "https" and end with ".git".');
+        setLoading(false);
+        return;
+      }
+    }
+
+    if (isNaN(port) || port === '') {
+      setError('Port must be a number.');
+      setLoading(false);
+      return;
+    }
+
     try {
-      await onSubmit({ name, description: appDescription, repoUrl: finalRepoUrl, projectId: selectedProject, gitAccount: selectedGitAccount, containerRegistry: selectedRegistry });
+      await onSubmit({ name, description: appDescription, repoUrl: finalRepoUrl, projectId: selectedProject, gitAccount: selectedGitAccount, containerRegistry: selectedRegistry, port });
       if (isMounted.current) onClose();
     } catch (err) {
       if (isMounted.current) setError('Failed to setup app. Please try again.');
@@ -121,7 +138,7 @@ const SetupAppForm = ({ onSubmit, onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 overflow-auto">
       <div className="bg-white p-6 rounded shadow-md w-full max-w-md">
         <h2 className="text-xl mb-4">Setup App</h2>
         <form onSubmit={handleSubmit}>
@@ -166,7 +183,7 @@ const SetupAppForm = ({ onSubmit, onClose }) => {
               <Select
                 value={selectedGitAccount}
                 onChange={handleGitAccountChange}
-                className="w-full border border-gray-300  rounded"
+                className="w-full border border-gray-300 rounded"
                 required
               >
                 <MenuItem value="github-public">
@@ -204,7 +221,7 @@ const SetupAppForm = ({ onSubmit, onClose }) => {
                 <Select
                   value={repoUrl}
                   onChange={(e) => setRepoUrl(e.target.value)}
-                  className="w-full border border-gray-300  rounded"
+                  className="w-full border border-gray-300 rounded"
                   required
                 >
                   <MenuItem value="" disabled>Select a repository</MenuItem>
@@ -218,12 +235,22 @@ const SetupAppForm = ({ onSubmit, onClose }) => {
             )}
           </div>
           <div className="mb-4">
+            <label className="block text-sm font-medium mb-1">Port</label>
+            <input
+              type="text"
+              value={port}
+              onChange={(e) => setPort(e.target.value)}
+              className="w-full border border-gray-300 p-2 rounded"
+              required
+            />
+          </div>
+          <div className="mb-4">
             <label className="block text-sm font-medium mb-1">Container Registry</label>
             <FormControl fullWidth>
               <Select
                 value={selectedRegistry}
                 onChange={(e) => setSelectedRegistry(e.target.value)}
-                className="w-full border border-gray-300  rounded"
+                className="w-full border border-gray-300 rounded"
                 required
               >
                 <MenuItem value="docker-hub">

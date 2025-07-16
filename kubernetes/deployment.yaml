@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opslync-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: opslync-frontend
+  template:
+    metadata:
+      labels:
+        app: opslync-frontend
+    spec:
+      containers:
+        - name: opslync-frontend
+          image: opslync/opslync-frontend:v0.0.2  # Use the image name and tag you built earlier
+          ports:
+            - containerPort: 3000
+          env:
+          - name: REACT_APP_BASE_URL
+            value: "https://api.staging.opslync.io/api/"
+          - name: REACT_APP_WS_BASE_URL
+            value: "wss://api.staging.opslync.io/api/"
+          imagePullPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: opslync-frontend-service
+spec:
+  selector:
+    app: opslync-frontend
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000
+  type: ClusterIP

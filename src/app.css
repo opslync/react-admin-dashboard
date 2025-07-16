@@ -72,3 +72,19 @@
   border-bottom-color: #fff;
 }
 /* pop up notification */
+
+/* Add this at the end of the file for responsive sidebar/main layout */
+@media (min-width: 1024px) {
+  .sectionContent {
+    margin-left: 16rem; /* width of the sidebar (w-64 = 16rem) */
+    transition: margin-left 0.2s;
+  }
+}
+
+@media (max-width: 1023px) {
+  .sectionContent {
+    margin-left: 0 !important;
+    width: 100vw;
+    min-width: 0;
+  }
+}
