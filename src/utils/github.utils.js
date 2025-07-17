@@ -1,4 +1,4 @@
-import { APP_BASE_URL, API_ENDPOINTS } from '../config/github.config';
+import { GITHUB_BASE_URL, API_ENDPOINTS } from '../config/github.config';
 
 function generateRandomName() {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -11,16 +11,16 @@ function generateRandomName() {
 
 export const createGitHubManifest = () => ({
   name: generateRandomName(),
-  url: APP_BASE_URL,
+  url: GITHUB_BASE_URL,
   hook_attributes: {
     url: API_ENDPOINTS.WEBHOOK,
     active: true
   },
   redirect_url: API_ENDPOINTS.SETUP,
-  callback_urls: [APP_BASE_URL],
+  callback_urls: [GITHUB_BASE_URL],
   public: false,
   request_oauth_on_install: false,
-  setup_url: `${APP_BASE_URL}/github-source`,
+  setup_url: `${GITHUB_BASE_URL}/github-source`,
   setup_on_update: true,
   default_permissions: {
     contents: "read",
