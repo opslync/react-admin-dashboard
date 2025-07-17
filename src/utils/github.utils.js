@@ -1,4 +1,5 @@
-import { GITHUB_BASE_URL, API_ENDPOINTS } from '../config/github.config';
+import { API_ENDPOINTS } from '../config/github.config';
+import { GITHUB_BASE_URL } from '../library/constant';
 
 function generateRandomName() {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
