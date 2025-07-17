@@ -1,6 +1,6 @@
 import { API_BASE_URL } from '../library/constant';
 
-export const GITHUB_BASE_URL = process.env.REACT_GITHUB_BASE_URL;
+export const GITHUB_BASE_URL = process.env.REACT_APP_GITHUB_BASE_URL || 'http://localhost:3000';
 
 export const GITHUB_APP_CREATION_URL = 'https://github.com/settings/apps/new';
 
