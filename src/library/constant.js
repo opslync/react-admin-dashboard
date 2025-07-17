@@ -5,6 +5,7 @@
 // Export base URL from environment variable, defaulting to a system environment variable or hardcoded value if not set
 export const baseUrl = process.env.REACT_APP_BASE_URL || process.env.BASE_URL || "http://localhost:8080/api/";
 export const API_BASE_URL = process.env.REACT_APP_BASE_URL || process.env.BASE_URL || "http://localhost:8080";
+export const GITHUB_BASE_URL = process.env.REACT_APP_GITHUB_BASE_URL || "http://localhost:3000";
 
 export const WsbaseUrl = process.env.REACT_APP_WS_BASE_URL || "ws://localhost:8080/api/";
 
