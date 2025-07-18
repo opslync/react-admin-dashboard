@@ -284,7 +284,7 @@ const BuildHistoryPage = () => {
     const wsBase = API_BASE_URL.replace(/^http/, 'ws');
     const token = localStorage.getItem('token');
     // Ensure there is always a slash between base and path
-    const wsUrl = `${wsBase.endsWith('/') ? wsBase : wsBase + '/'}api/app/${appId}/workflows/build/logs?workflowID=${workflowId}&token=${token}`;
+    const wsUrl = `${wsBase.endsWith('/') ? wsBase : wsBase + '/'}app/${appId}/workflows/build/logs?workflowID=${workflowId}&token=${token}`;
     
     const ws = new WebSocket(wsUrl);
 
