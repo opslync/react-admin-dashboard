@@ -23,13 +23,20 @@ const Overview = () => {
   const [clusters, setClusters] = useState([]);
   const [showDeploymentModal, setShowDeploymentModal] = useState(false);
 
-  // Get userId from localStorage (assumes user object is stored as JSON with id or userId)
+  // Get userId and username from localStorage
   let userId = null;
+  let username = null;
   try {
     const user = JSON.parse(localStorage.getItem('user'));
     userId = user?.id || user?.userId || null;
+    username = user?.username || user?.name || null;
   } catch (e) {
     userId = null;
+    username = null;
+  }
+  // Fallback to username stored separately in localStorage
+  if (!username) {
+    username = localStorage.getItem('username');
   }
   const onboardingKey = userId ? `hasSeenOnboarding_${userId}` : 'hasSeenOnboarding';
 

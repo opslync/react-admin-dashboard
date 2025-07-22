@@ -284,7 +284,7 @@ const BuildHistoryPage = () => {
     const wsBase = API_BASE_URL.replace(/^http/, 'ws');
     const token = localStorage.getItem('token');
     // Ensure there is always a slash between base and path
-    const wsUrl = `${wsBase.endsWith('/') ? wsBase : wsBase + '/'}app/${appId}/workflows/build/logs?workflowID=${workflowId}&token=${token}`;
+    const wsUrl = `${wsBase.endsWith('/') ? wsBase : wsBase + '/'}api/app/${appId}/workflows/build/logs?workflowID=${workflowId}&token=${token}`;
     
     const ws = new WebSocket(wsUrl);
 
@@ -324,6 +324,7 @@ const BuildHistoryPage = () => {
       if (!content || content.trim() === '') return;
       // Filter out unwanted log lines
       if (content.includes('level=info msg="sub-process exited" argo=true error="<nil>"')) return;
+      if (content.includes('Error finding pod') || content.includes('Error getting logs from pod')) return;
       // Detect log level
       const detectedLevel = detectLogLevel(content);
       const newLog = {
@@ -369,10 +370,12 @@ const BuildHistoryPage = () => {
       const response = await getMethod(`/workflow/${workflowId}/logs/db`);
       // logs is a string with newlines, not an array
       const logString = response.data.logs || '';
-      const lines = logString.split('\n').filter(Boolean); // remove empty lines
+      const filteredLines = logString.split('\n')
+        .filter(Boolean)
+        .filter(line => !line.includes('Error finding pod') && !line.includes('Error getting logs from pod'));
       // Use startTime or endTime from response for timestamp if available
       const timestamp = response.data.startTime || response.data.endTime || new Date().toISOString();
-      const formattedLogs = lines.map((line, idx) => ({
+      const formattedLogs = filteredLines.map((line, idx) => ({
         id: idx,
         timestamp: timestamp,
         message: line,

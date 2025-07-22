@@ -1,11 +1,88 @@
+/* Modern Login Page Styles */
+
+/* Blob animation */
+@keyframes blob {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+.animate-blob {
+  animation: blob 7s infinite;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+
+/* Glass morphism effect */
+.glass-effect {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Custom input styles */
+.custom-input {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  transition: all 0.2s ease;
+}
+
+.custom-input:focus {
+  outline: none;
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+
+.custom-input::placeholder {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Button hover effects */
+.gradient-button {
+  background: linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%);
+  transition: all 0.2s ease;
+}
+
+.gradient-button:hover {
+  background: linear-gradient(135deg, #7c3aed 0%, #2563eb 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(139, 92, 246, 0.3);
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .animate-blob {
+    animation: none;
+  }
+}
+
+/* Original form styles for backward compatibility */
 .form-box .card {
   width: 100%;
   min-width: 450px;
   max-width: 550px;
 }
+
 .form-box .card form {
   margin-top: 2rem;
 }
+
 .form-box .card .p-field {
   margin-bottom: 1.5rem;
 }
@@ -26,6 +103,7 @@
     width: 80%;
   }
 }
+
 @media screen and (max-width: 640px) {
   .form-box .card {
     width: 100%;
