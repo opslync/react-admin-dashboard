@@ -8,6 +8,8 @@
 # testing
 /coverage
 
+/src/config/github.config.js
+
 # production
 /build
 

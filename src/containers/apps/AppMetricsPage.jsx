@@ -77,7 +77,7 @@ const AppMetricsPage = () => {
         }
 
         const token = localStorage.getItem('token');
-        const ws = new WebSocket(`ws://localhost:8080/api/pods/metrics/stream?namespace=${namespace}&token=${token}`);
+        const ws = new WebSocket(`/api/pods/metrics/stream?namespace=${namespace}&token=${token}`);
 
         ws.onopen = () => {
             console.log(`Connected to WebSocket for namespace: ${namespace}`);

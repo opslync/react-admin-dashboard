@@ -300,7 +300,7 @@ const ProjectCreateStep = forwardRef(({
       });
       
       // Redirect and refresh the page after project creation
-      window.location.href = "/dashboard";
+      window.location.href = "/overview";
       
       console.log("ProjectCreateStep - onComplete called successfully");
       

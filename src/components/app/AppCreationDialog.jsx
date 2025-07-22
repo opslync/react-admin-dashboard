@@ -195,7 +195,13 @@ export const AppCreationDialog = ({ open, onOpenChange, onAppCreated }) => {
     try {
       setLoadingBranches(true);
       setError(null);
-      const response = await getMethod(`app/github/branch?username=${username}&repoName=${repoName}`);
+      let url = `app/github/branch?username=${username}&repoName=${repoName}`;
+      if (repoType === 'private') {
+        url += '&useAuth=true';
+      }
+      const response = await getMethod(url);
+      
+      console.log('Branch response:', response);
       
       if (response?.data?.status === 'success' && Array.isArray(response.data.data)) {
         const branchNames = response.data.data.map(branch => branch.name);
@@ -214,6 +220,7 @@ export const AppCreationDialog = ({ open, onOpenChange, onAppCreated }) => {
           setSelectedBranch(defaultBranch);
         }
       } else {
+        console.log('Invalid response structure:', response);
         setBranches([]);
         setSelectedBranch('');
       }
@@ -426,6 +433,32 @@ export const AppCreationDialog = ({ open, onOpenChange, onAppCreated }) => {
                 {error && (
                   <div className="text-sm text-red-500 mt-1">
                     {error}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Branch Selection */}
+            {branches.length > 0 && (
+              <div className="space-y-2">
+                <Label htmlFor="branch">Branch</Label>
+                <select
+                  id="branch"
+                  value={selectedBranch}
+                  onChange={(e) => setSelectedBranch(e.target.value)}
+                  className="w-full h-10 px-3 py-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-gray-950"
+                  required
+                >
+                  <option value="" disabled>Select a branch</option>
+                  {branches.map((branchName, index) => (
+                    <option key={index} value={branchName}>
+                      {branchName}
+                    </option>
+                  ))}
+                </select>
+                {loadingBranches && (
+                  <div className="text-sm text-gray-500 mt-1">
+                    Loading branches...
                   </div>
                 )}
               </div>
