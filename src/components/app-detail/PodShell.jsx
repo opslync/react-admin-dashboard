@@ -4,7 +4,7 @@ import { FitAddon } from 'xterm-addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { Terminal as TerminalIcon, Wifi, WifiOff, RefreshCw, Maximize2, Copy, Download } from 'lucide-react';
 import 'xterm/css/xterm.css';
-import { API_BASE_URL } from '../../library/constant';
+import { wsBaseUrl } from '../../library/constant';
 
 export const PodShell = ({ podDetails, appId }) => {
     const terminalRef = useRef(null);
@@ -169,7 +169,7 @@ export const PodShell = ({ podDetails, appId }) => {
             window.addEventListener('resize', handleResize);
 
             // Connect to WebSocket
-            const wsBaseUrl = API_BASE_URL.replace(/^http/, 'ws').replace(/\/?$/, '/');
+            // const wsBaseUrl = API_BASE_URL.replace(/^http/, 'ws').replace(/\/?$/, '/');
             const token = localStorage.getItem('token');
             const wsUrl = `${wsBaseUrl}api/app/${appId}/pods/shell?pod_name=${podDetails.podName}&container=${podDetails.container}&token=${token}`;
             console.log('Attempting WebSocket connection to:', wsUrl);
