@@ -7,7 +7,7 @@ export const baseUrl = process.env.REACT_APP_BASE_URL || process.env.BASE_URL ||
 export const API_BASE_URL = process.env.REACT_APP_BASE_URL || process.env.BASE_URL || "http://localhost:8080";
 export const GITHUB_BASE_URL = process.env.REACT_APP_GITHUB_BASE_URL || "http://localhost:3000";
 
-export const wsBaseUrl = process.env.REACT_APP_WS_BASE_URL || "ws://localhost:8080/";
+export const wsBaseUrl = process.env.REACT_APP_WS_BASE_URL || "ws://localhost:8080/"; 
 
 export const loginUrl = process.env.REACT_APP_LOGIN_URL || process.env.LOGIN_URL || "http://localhost:8080/api/users/signin"; 
 export const RegisterUrl = "users/signup"
