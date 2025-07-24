@@ -32,8 +32,13 @@ export default function WorkflowCanvas({ onBuildClick, appId }) {
 
         // Fetch recent builds
         const buildsResponse = await getMethod(`app/${appId}/workflows/builds`);
-        const recentBuilds = buildsResponse.data.slice(0, 4); // Get last 4 builds
+        const recentBuilds = buildsResponse.data.slice(0, 4).map(build => ({
+          ...build,
+          status: build.status ? build.status.toLowerCase() : build.status,
+        })); // Normalize status to lowercase
         setRecentBuilds(recentBuilds);
+
+        console.log(recentBuilds, "checkin build status ------ workflowcanvas");
 
         const workflowSteps = [
           {

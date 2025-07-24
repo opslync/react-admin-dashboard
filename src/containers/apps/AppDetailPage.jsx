@@ -157,7 +157,7 @@ const AppDetailPage = () => {
 
     const wsBaseUrl = API_BASE_URL.replace(/^http/, 'ws').replace(/\/?$/, '/');
     const token = localStorage.getItem('token');
-    const wsUrl = `${wsBaseUrl}app/${appId}/pods/logs?token=${token}`;
+    const wsUrl = `${wsBaseUrl}api/app/${appId}/pods/logs?token=${token}`;
     const ws = new WebSocket(wsUrl);
     
     console.log('Connecting to WebSocket:', wsUrl);

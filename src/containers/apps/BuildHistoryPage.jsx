@@ -219,21 +219,23 @@ const BuildHistoryPage = () => {
         console.warn('[BuildHistory] checkBuildStatus: status is undefined for workflowId', workflowId, 'response:', response);
         return;
       }
-      const { phase, startedAt, finishedAt } = statusObj;
-      if (!phase) {
-        console.warn('[BuildHistory] checkBuildStatus: phase is undefined for workflowId', workflowId, 'response:', response);
+
+      console.log(statusObj, "checkin statusObj ------ buildhistorypage");
+      // Support both phase and status fields from backend
+      const { phase, status, startedAt, finishedAt, endAt } = statusObj;
+      const normalizedStatus = (phase || status || '').toLowerCase() || 'unknown';
+      if (!phase && !status) {
+        console.warn('[BuildHistory] checkBuildStatus: phase and status are undefined for workflowId', workflowId, 'response:', response);
       }
-      const status = phase ? phase.toLowerCase() : 'unknown';
-      
-      const buildTime = calculateBuildTime(startedAt, finishedAt);
-      
+      // Use finishedAt or fallback to endAt
+      const buildTime = calculateBuildTime(startedAt, finishedAt || endAt);
       setBuildStatus(prev => ({
         ...prev,
         [workflowId]: {
-          status,
+          status: normalizedStatus,
           buildTime,
           startedAt,
-          finishedAt
+          finishedAt: finishedAt || endAt
         }
       }));
 
@@ -242,23 +244,21 @@ const BuildHistoryPage = () => {
         if (build.id === workflowId) {
           return {
             ...build,
-            status: status === 'succeeded' ? 'success' : status,
+            status: normalizedStatus, // keep as 'succeeded', do not convert to 'success'
             duration: buildTime
           };
         }
         return build;
       }));
-
       // Add final status message to logs
-      if (status === 'succeeded' || status === 'failed') {
+      if (normalizedStatus === 'succeeded' || normalizedStatus === 'failed') {
         setLogs(prev => [...prev, {
           id: Date.now(),
           timestamp: new Date().toLocaleTimeString(),
-          message: `Build ${status} (Duration: ${buildTime})`,
-          level: status === 'succeeded' ? 'success' : 'error'
+          message: `Build ${normalizedStatus} (Duration: ${buildTime})`,
+          level: normalizedStatus === 'succeeded' ? 'success' : 'error'
         }]);
       }
-
     } catch (error) {
       console.error('Error checking build status:', error);
     }
@@ -323,8 +323,11 @@ const BuildHistoryPage = () => {
       // Skip empty content
       if (!content || content.trim() === '') return;
       // Filter out unwanted log lines
-      if (content.includes('level=info msg="sub-process exited" argo=true error="<nil>"')) return;
-      if (content.includes('Error finding pod') || content.includes('Error getting logs from pod')) return;
+      if (
+        content.includes('level=info msg="sub-process exited" argo=true error="<nil>"') ||
+        content.includes('Error finding pod') ||
+        content.includes('Error getting logs from pod')
+      ) return;
       // Detect log level
       const detectedLevel = detectLogLevel(content);
       const newLog = {
@@ -368,16 +371,29 @@ const BuildHistoryPage = () => {
     setLogs([]);
     try {
       const response = await getMethod(`/workflow/${workflowId}/logs/db`);
-      // logs is a string with newlines, not an array
       const logString = response.data.logs || '';
       const filteredLines = logString.split('\n')
         .filter(Boolean)
-        .filter(line => !line.includes('Error finding pod') && !line.includes('Error getting logs from pod'));
-      // Use startTime or endTime from response for timestamp if available
+        .filter(line =>
+          !line.includes('Error finding pod') &&
+          !line.includes('Error getting logs from pod') &&
+          !line.includes('level=info msg="sub-process exited" argo=true error="<nil>"')
+        );
       const timestamp = response.data.startTime || response.data.endTime || new Date().toISOString();
+
+      if (filteredLines.length === 0) {
+        setLogs([{
+          id: 0,
+          timestamp,
+          message: response.data.message || "No logs found for this workflow.",
+          level: 'info'
+        }]);
+        return;
+      }
+
       const formattedLogs = filteredLines.map((line, idx) => ({
         id: idx,
-        timestamp: timestamp,
+        timestamp,
         message: line,
         level: detectLogLevel(line)
       }));
@@ -395,7 +411,9 @@ const BuildHistoryPage = () => {
         id: build.workflowId,
         commitHash: build.commitId,
         commitMessage: build.commitMessage,
-        startTime: new Date(build.startTime).toLocaleString(),
+        startTime: build.startTime, // keep as ISO string
+        finishedAt: build.finishedAt, // add if available
+        endAt: build.endAt, // add if available
         status: build.status ? build.status.toLowerCase() : 'pending',
         duration: '...'
       }));
