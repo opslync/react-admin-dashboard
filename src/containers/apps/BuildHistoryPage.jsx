@@ -5,7 +5,7 @@ import BuildLogs from '../../components/workflow/buildDetails/BuildLogs';
 import BuildModal from '../../components/workflow/BuildModal';
 import { getMethod, postMethod } from '../../library/api';
 import { useParams, useHistory, useLocation } from 'react-router-dom';
-import { API_BASE_URL } from '../../library/constant';
+import { API_BASE_URL, wsBaseUrl } from '../../library/constant';
 import {
     AppBar,
     Tabs,
