@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useHistory, useLocation } from 'react-router-dom';
 import { getMethod, putMethod, postMethod } from '../../library/api';
-import { API_BASE_URL, WsbaseUrl } from '../../library/constant';
+import { API_BASE_URL, wsBaseUrl } from '../../library/constant';
 import moment from 'moment';
 import {
   Card,
