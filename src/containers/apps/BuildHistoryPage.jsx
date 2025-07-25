@@ -1,4 +1,4 @@
-import React, { useState, useEffect, memo } from 'react';
+import React, { useState, useEffect, memo, useRef } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import BuildHistoryList from '../../components/workflow/buildDetails/BuildHistoryList';
 import BuildLogs from '../../components/workflow/buildDetails/BuildLogs';
@@ -474,9 +474,24 @@ const BuildHistoryPage = () => {
 
   const handleBuildStart = (commit, workflowId) => {
     setShowBuildModal(false);
-    // Wait 2 seconds before reloading the page
+    
+    // Add the new build optimistically to the UI immediately
+    const optimisticBuild = {
+      id: workflowId,
+      commitHash: commit.hash,
+      commitMessage: commit.message,
+      startTime: new Date().toISOString(),
+      status: 'pending',
+      duration: '...',
+      branch: appDetails?.branch || 'main'
+    };
+    
+    setBuildHistory(prev => [optimisticBuild, ...prev]);
+    setSelectedWorkflowId(workflowId);
+    
+    // Fetch the actual build data after a short delay to allow backend processing
     setTimeout(() => {
-      window.location.reload();
+      fetchBuildHistory();
     }, 1000);
   };
 
@@ -510,6 +525,18 @@ const BuildHistoryPage = () => {
       setShowDeployModal(true);
     }
   };
+
+  const firstRender = useRef(true);
+
+  useEffect(() => {
+    // Only refetch if not the first render (to avoid double-fetch on mount)
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    fetchBuildHistory();
+    // eslint-disable-next-line
+  }, [location.key]); // location.key changes on navigation
 
   if (loading) {
     return (

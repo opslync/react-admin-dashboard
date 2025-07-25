@@ -77,6 +77,8 @@ const AppConfigurationPage = () => {
     const dispatch = useDispatch();
     const [pendingDomain, setPendingDomain] = useState("");
     const [dialogOpen, setDialogOpen] = useState(false);
+    const [envVarsPasteText, setEnvVarsPasteText] = useState("");
+    const [showPasteSection, setShowPasteSection] = useState(false);
 
     const getStatusColor = (status) => {
         switch (status?.toLowerCase()) {
@@ -300,6 +302,56 @@ const AppConfigurationPage = () => {
         return parseFloat(val);
     }
 
+    // Validate environment variables format (key=value)
+    const validateEnvVarFormat = (value) => {
+        if (!value) return false;
+        const lines = value.split('\n').filter(line => line.trim());
+        return lines.every(line => {
+            const trimmedLine = line.trim();
+            if (!trimmedLine) return true; // Skip empty lines
+            const parts = trimmedLine.split('=');
+            return parts.length >= 2 && parts[0].trim() && parts.slice(1).join('=').trim();
+        });
+    };
+
+    // Parse pasted environment variables
+    const parseEnvVars = () => {
+        if (!envVarsPasteText.trim()) return;
+        
+        const lines = envVarsPasteText.trim().split('\n');
+        const newEntries = [];
+        
+        lines.forEach(line => {
+            const trimmedLine = line.trim();
+            if (trimmedLine && trimmedLine.includes('=')) {
+                const equalIndex = trimmedLine.indexOf('=');
+                const key = trimmedLine.substring(0, equalIndex).trim();
+                const value = trimmedLine.substring(equalIndex + 1).trim();
+                
+                if (key && value) {
+                    newEntries.push({ key, value });
+                }
+            }
+        });
+        
+        if (newEntries.length > 0) {
+            // If configMapEntries only has one empty entry, replace it
+            if (configMapEntries.length === 1 && !configMapEntries[0].key && !configMapEntries[0].value) {
+                setConfigMapEntries(newEntries);
+            } else {
+                // Otherwise, append to existing entries
+                setConfigMapEntries([...configMapEntries, ...newEntries]);
+            }
+            setEnvVarsPasteText("");
+            dispatch(toastMessage({
+                severity: 'success',
+                summary: 'Variables Added',
+                detail: `${newEntries.length} environment variable(s) added successfully`,
+            }));
+        }
+    };
+
+
     if (loading) return <CircularProgress />;
 
     return (
@@ -326,6 +378,8 @@ const AppConfigurationPage = () => {
                     </DialogContent>
                 </Dialog>
             )}
+
+
 
             {/* Main Content (blurred when dialogOpen) */}
             <div className={`flex flex-col p-4 bg-gray-100 min-h-screen transition-all duration-300 ${dialogOpen ? 'blur-sm pointer-events-none select-none' : ''}`}>
@@ -551,16 +605,53 @@ const AppConfigurationPage = () => {
                                                     </Button>
                                                 </div>
                                             ))}
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                onClick={() => setConfigMapEntries([...configMapEntries, { key: '', value: '' }])}
-                                            >
-                                                + Add Variable
-                                            </Button>
+                                            <div className="flex gap-2">
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    onClick={() => setConfigMapEntries([...configMapEntries, { key: '', value: '' }])}
+                                                >
+                                                    + Add Variable
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    onClick={() => setShowPasteSection(!showPasteSection)}
+                                                    className="flex items-center gap-1"
+                                                >
+                                                    {showPasteSection ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+                                                    Quick Add from .env Paste
+                                                </Button>
+                                            </div>
                                             <Typography variant="body2" color="textSecondary">
-                                                Enter one key-value pair per line in the format "KEY: value"
+                                                Enter key-value pairs for your environment variables
                                             </Typography>
+                                            {showPasteSection && (
+                                                <div className="space-y-3 mt-4 p-4 bg-gray-50 rounded-lg">
+                                                    <Label>Paste Environment Variables</Label>
+                                                    <div className="flex gap-2">
+                                                        <textarea
+                                                            placeholder="Paste environment variables here (one per line, key=value format):&#10;env=staging&#10;backend_url=http://localhost:4000&#10;gemini_api_key=132i40fkjandfkbabefiandkjfand"
+                                                            value={envVarsPasteText}
+                                                            onChange={e => setEnvVarsPasteText(e.target.value)}
+                                                            className="flex-1 min-h-[100px] p-2 border border-gray-300 rounded-md resize-vertical"
+                                                            rows={4}
+                                                        />
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            onClick={parseEnvVars}
+                                                            disabled={!envVarsPasteText.trim() || !validateEnvVarFormat(envVarsPasteText)}
+                                                            className="self-start"
+                                                        >
+                                                            Parse & Add
+                                                        </Button>
+                                                    </div>
+                                                    <Typography variant="body2" color="textSecondary" className="text-xs">
+                                                        Paste your environment variables in key=value format, one per line. They will be automatically parsed and added to your configuration.
+                                                    </Typography>
+                                                </div>
+                                            )}
                                         </div>
                                     </CardContent>
                                 </Card>
