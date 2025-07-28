@@ -4,11 +4,12 @@ import { FitAddon } from 'xterm-addon-fit';
 import { WebLinksAddon } from '@xterm/addon-web-links';
 import { Terminal as TerminalIcon, Wifi, WifiOff, RefreshCw, Maximize2, Copy, Download } from 'lucide-react';
 import 'xterm/css/xterm.css';
-import { API_BASE_URL } from '../../library/constant';
+import { wsBaseUrl } from '../../library/constant';
 
 export const PodShell = ({ podDetails, appId }) => {
     const terminalRef = useRef(null);
     const containerRef = useRef(null);
+    const fitAddonRef = useRef(null); // <-- Add fitAddon ref
     const [terminal, setTerminal] = useState(null);
     const [wsConnection, setWsConnection] = useState(null);
     const [connectionStatus, setConnectionStatus] = useState('connecting');
@@ -79,6 +80,7 @@ export const PodShell = ({ podDetails, appId }) => {
     };
 
     useEffect(() => {
+        console.log('PodShell useEffect triggered', { appId, podDetails });
         // Debug pod details and app ID
         console.log('Pod Details:', podDetails);
         console.log('App ID:', appId);
@@ -119,19 +121,32 @@ export const PodShell = ({ podDetails, appId }) => {
         });
 
         const fitAddon = new FitAddon();
+        fitAddonRef.current = fitAddon; // <-- Store in ref
         term.loadAddon(fitAddon);
         term.loadAddon(new WebLinksAddon());
 
         // Helper to fit terminal only when container is visible and sized
         const fitTerminal = () => {
-            if (containerRef.current && containerRef.current.offsetWidth > 0 && containerRef.current.offsetHeight > 0) {
+            if (
+                fitAddonRef.current &&
+                containerRef.current &&
+                containerRef.current.offsetWidth > 0 &&
+                containerRef.current.offsetHeight > 0 &&
+                term &&
+                !term._disposed
+            ) {
                 try {
-                    fitAddon.fit();
+                    fitAddonRef.current.fit();
                     console.log('Terminal fitted successfully');
                 } catch (error) {
                     console.error('Error fitting terminal:', error);
                 }
             } else {
+                if (!fitAddonRef.current) console.warn('fitAddonRef.current is missing');
+                if (!containerRef.current) console.warn('containerRef.current is missing');
+                if (containerRef.current && (containerRef.current.offsetWidth === 0 || containerRef.current.offsetHeight === 0)) console.warn('containerRef.current has zero size');
+                if (!term) console.warn('terminal is missing');
+                if (term && term._disposed) console.warn('terminal is disposed');
                 // Retry after a short delay if container is not ready
                 setTimeout(fitTerminal, 100);
             }
@@ -154,7 +169,7 @@ export const PodShell = ({ podDetails, appId }) => {
             window.addEventListener('resize', handleResize);
 
             // Connect to WebSocket
-            const wsBaseUrl = API_BASE_URL.replace(/^http/, 'ws').replace(/\/?$/, '/');
+            // const wsBaseUrl = API_BASE_URL.replace(/^http/, 'ws').replace(/\/?$/, '/');
             const token = localStorage.getItem('token');
             const wsUrl = `${wsBaseUrl}api/app/${appId}/pods/shell?pod_name=${podDetails.podName}&container=${podDetails.container}&token=${token}`;
             console.log('Attempting WebSocket connection to:', wsUrl);
@@ -232,6 +247,7 @@ export const PodShell = ({ podDetails, appId }) => {
                     console.log('Closing WebSocket connection');
                     ws.close();
                 }
+                fitAddonRef.current = null; // Clean up fitAddon ref
             };
         } else {
             console.error('Terminal container not found in DOM');
@@ -240,21 +256,28 @@ export const PodShell = ({ podDetails, appId }) => {
 
     // Refit terminal on fullscreen toggle
     useEffect(() => {
-        if (terminal && containerRef.current) {
-            if (containerRef.current.offsetWidth > 0 && containerRef.current.offsetHeight > 0) {
-                try {
-                    terminal?.resize && terminal?.element && terminal?.element.offsetWidth > 0 && terminal?.element.offsetHeight > 0 && terminal?.fit && terminal.fit();
-                } catch (error) {
-                    // fallback: use fitAddon if available
-                    try {
-                        if (terminal._core && terminal._core._renderService) {
-                            terminal._core._renderService._onResize();
-                        }
-                    } catch (e) {}
-                }
+        if (
+            fitAddonRef.current &&
+            containerRef.current &&
+            containerRef.current.offsetWidth > 0 &&
+            containerRef.current.offsetHeight > 0 &&
+            terminal &&
+            !terminal._disposed
+        ) {
+            try {
+                fitAddonRef.current.fit();
+                console.log('Terminal fitted successfully (fullscreen toggle)');
+            } catch (error) {
+                console.error('Error fitting terminal on fullscreen toggle:', error);
             }
+        } else {
+            if (!fitAddonRef.current) console.warn('fitAddonRef.current is missing (fullscreen)');
+            if (!containerRef.current) console.warn('containerRef.current is missing (fullscreen)');
+            if (containerRef.current && (containerRef.current.offsetWidth === 0 || containerRef.current.offsetHeight === 0)) console.warn('containerRef.current has zero size (fullscreen)');
+            if (!terminal) console.warn('terminal is missing (fullscreen)');
+            if (terminal && terminal._disposed) console.warn('terminal is disposed (fullscreen)');
         }
-    }, [isFullscreen]);
+    }, [isFullscreen, terminal]);
 
     return (
         <div className={`bg-gray-900 rounded-lg border border-gray-700 overflow-hidden shadow-2xl ${

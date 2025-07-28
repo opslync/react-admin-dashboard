@@ -4,7 +4,7 @@ import BuildHistoryList from './BuildHistoryList';
 import BuildLogs from './BuildLogs';
 import { useParams } from 'react-router-dom';
 import { getMethod } from '../../../library/api';
-import { API_BASE_URL } from '../../../library/constant';
+import { API_BASE_URL, wsBaseUrl } from '../../../library/constant';
 
 
 export default function BuildDetailsPage({ onBack, workflowId: initialWorkflowId }) {
@@ -39,8 +39,8 @@ export default function BuildDetailsPage({ onBack, workflowId: initialWorkflowId
     }
 
     // Replace http/https with ws/wss in the API URL
-    const wsBase = API_BASE_URL.replace(/^http/, 'ws');
-    const wsUrl = `${wsBase}app/${appId}/workflows/build/logs?workflowID=${workflowId}`;
+    // const wsBase = API_BASE_URL.replace(/^http/, 'ws');
+    const wsUrl = `${wsBaseUrl}api/app/${appId}/workflows/build/logs?workflowID=${workflowId}`;
     
     const ws = new WebSocket(wsUrl);
 

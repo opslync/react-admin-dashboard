@@ -3,6 +3,7 @@ import { X, Play, GitCommit } from 'lucide-react';
 import { postMethod, getMethod } from '../../library/api';
 import { useParams } from 'react-router-dom';
 import githubTokenManager from '../../utils/githubTokenManager';
+import axios from 'axios';
 
 export default function BuildModal({ open, onClose, onStartBuild, appId: propAppId, appDetails: propAppDetails }) {
   const { appId: routeAppId } = useParams();
@@ -31,28 +32,51 @@ export default function BuildModal({ open, onClose, onStartBuild, appId: propApp
 
   const fetchCommits = async (appData) => {
     try {
-      // Wait for GitHub token to be available
-      const githubToken = await githubTokenManager.waitForToken(5000);
-      if (!githubToken) {
-        setError('GitHub token not available. Please setup GitHub integration in Settings.');
-        setLoading(false);
-        return;
-      }
-
       const repoUrl = appData.repoUrl.replace(/\.git$/, '');
-
-      const payload = {
-        github_token: githubToken,
-        repo_url: repoUrl,
-        branch: appData.branch || 'main'
-      };
-
-      const response = await postMethod('user/github/commits', payload);
-      setCommits(response.data);
-      setSelectedCommit(response.data[0]);
+      const branch = appData.branch || 'main';
+      let commits = [];
+      if (appData.repoType === 'public' || (!appData.repoType && repoUrl.includes('github.com'))) {
+        // Public repo: fetch from GitHub API
+        const match = repoUrl.match(/github\.com\/([^\/]+)\/([^\/]+)/);
+        if (match) {
+          const [, owner, repo] = match;
+          const apiUrl = `https://api.github.com/repos/${owner}/${repo}/commits?sha=${branch}&per_page=10`;
+          const response = await axios.get(apiUrl);
+          commits = response.data.map(commit => ({
+            id: commit.sha,
+            hash: commit.sha,
+            message: commit.commit.message,
+            author: commit.commit.author.name,
+            date: commit.commit.author.date
+          }));
+        }
+      } else {
+        // Private repo: use backend
+        const githubToken = await githubTokenManager.waitForToken(5000);
+        if (!githubToken) {
+          setError('GitHub token not available. Please setup GitHub integration in Settings.');
+          setLoading(false);
+          return;
+        }
+        const payload = {
+          github_token: githubToken,
+          repo_url: repoUrl,
+          branch: branch
+        };
+        const response = await postMethod('user/github/commits', payload);
+        commits = response.data.map(commit => ({
+          id: commit.hash,
+          hash: commit.hash,
+          message: commit.message,
+          author: commit.author,
+          date: commit.date
+        }));
+      }
+      setCommits(commits);
+      setSelectedCommit(commits[0]);
       setLoading(false);
     } catch (err) {
-      setError('Failed to fetch commits. Please check your GitHub integration.');
+      setError('Failed to fetch commits. Please check your GitHub integration or repo URL.');
       setLoading(false);
     }
   };
@@ -182,7 +206,7 @@ export default function BuildModal({ open, onClose, onStartBuild, appId: propApp
                     <div>
                       <p className="font-medium text-gray-900">{commit.message}</p>
                       <p className="text-sm text-gray-500">
-                        <code className="bg-gray-100 px-1 py-0.5 rounded">{commit.hash}</code> • {commit.author} • {commit.date}
+                        <code className="bg-gray-100 px-1 py-0.5 rounded">{commit.hash.slice(0, 7)}</code> • {commit.author} • {commit.date}
                       </p>
                     </div>
                   </div>
@@ -195,7 +219,7 @@ export default function BuildModal({ open, onClose, onStartBuild, appId: propApp
         {/* Footer */}
         <div className="p-4 border-t bg-gray-50 rounded-b-lg flex justify-between items-center">
           <div className="text-sm text-gray-600">
-            Selected commit: <code className="bg-gray-100 px-1 py-0.5 rounded">{selectedCommit?.hash}</code>
+            Selected commit: <code className="bg-gray-100 px-1 py-0.5 rounded">{selectedCommit?.hash.slice(0, 7)}</code>
           </div>
           <button
             onClick={handleStartBuild}

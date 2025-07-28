@@ -15,12 +15,12 @@ export const OnboardingBanner = ({ onStartOnboarding, onDismiss }) => {
           </p>
         </div>
         <div className="flex items-center space-x-2 ml-4">
-          <Button
+          {/* <Button
             onClick={onStartOnboarding}
             className="bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2"
           >
             Start Setup Guide
-          </Button>
+          </Button> */}
           <Button
             variant="ghost"
             size="icon"

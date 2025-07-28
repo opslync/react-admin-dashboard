@@ -23,13 +23,20 @@ const Overview = () => {
   const [clusters, setClusters] = useState([]);
   const [showDeploymentModal, setShowDeploymentModal] = useState(false);
 
-  // Get userId from localStorage (assumes user object is stored as JSON with id or userId)
+  // Get userId and username from localStorage
   let userId = null;
+  let username = null;
   try {
     const user = JSON.parse(localStorage.getItem('user'));
     userId = user?.id || user?.userId || null;
+    username = user?.username || user?.name || null;
   } catch (e) {
     userId = null;
+    username = null;
+  }
+  // Fallback to username stored separately in localStorage
+  if (!username) {
+    username = localStorage.getItem('username');
   }
   const onboardingKey = userId ? `hasSeenOnboarding_${userId}` : 'hasSeenOnboarding';
 
@@ -285,7 +292,7 @@ const Overview = () => {
             </button>
             
             <button className="flex items-center gap-3 p-4 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors"
-              onClick={() => { window.location.href = 'http://localhost:3000/settings/git-account'; }}
+              onClick={() => { window.location.href = '/settings/git-account'; }}
             >
               <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
                 <span className="text-white text-lg">⚙</span>

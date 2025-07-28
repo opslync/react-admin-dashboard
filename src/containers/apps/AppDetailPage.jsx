@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useHistory, useLocation } from 'react-router-dom';
 import { getMethod, putMethod, postMethod } from '../../library/api';
-import { API_BASE_URL } from '../../library/constant';
+import { API_BASE_URL, wsBaseUrl } from '../../library/constant';
 import moment from 'moment';
 import {
   Card,
@@ -155,7 +155,7 @@ const AppDetailPage = () => {
       wsConnection.close();
     }
 
-    const wsBaseUrl = API_BASE_URL.replace(/^http/, 'ws').replace(/\/?$/, '/');
+    // const wsBaseUrl = API_BASE_URL.replace(/^http/, 'ws').replace(/\/?$/, '/');
     const token = localStorage.getItem('token');
     const wsUrl = `${wsBaseUrl}api/app/${appId}/pods/logs?token=${token}`;
     const ws = new WebSocket(wsUrl);
@@ -334,7 +334,7 @@ const AppDetailPage = () => {
       podStatusWsConnection.close();
     }
     const token = localStorage.getItem('token');
-    const wsBaseUrl = API_BASE_URL.replace(/^http/, 'ws').replace(/\/?$/, '/');
+    // const wsBaseUrl = API_BASE_URL.replace(/^http/, 'ws').replace(/\/?$/, '/');
     const wsUrl = `${wsBaseUrl}api/app/${appId}/pod/status/stream?token=${token}`;
     const ws = new WebSocket(wsUrl);
 
@@ -584,7 +584,7 @@ const AppDetailPage = () => {
     const namespace = pods[0]?.Namespace || 'argo';
     const token = localStorage.getItem('token');
     // Use API_BASE_URL and convert to ws protocol, consistent with logs WebSocket
-    const wsBaseUrl = API_BASE_URL.replace(/^http/, 'ws').replace(/\/?$/, '/');
+    // const wsBaseUrl = API_BASE_URL.replace(/^http/, 'ws').replace(/\/?$/, '/');
     const wsUrl = `${wsBaseUrl}api/pods/metrics/stream?namespace=${namespace}&token=${token}`;
     const ws = new WebSocket(wsUrl);
 

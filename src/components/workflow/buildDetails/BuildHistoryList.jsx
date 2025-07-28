@@ -1,19 +1,43 @@
 import React from 'react';
 import { CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { formatTimeAgo } from '../../../utils/formatters';
 
 export default function BuildHistoryList({ builds, currentBuildId, onBuildSelect }) {
+  console.log(builds, "checkin builds ------ buildhistorylist");
   const getStatusIcon = (status) => {
-    switch (status) {
+    const normalizedStatus = (status || '').toLowerCase();
+    switch (normalizedStatus) {
       case 'success':
+      case 'succeeded':
         return <CheckCircle2 className="w-5 h-5 text-green-500" />;
       case 'failed':
         return <XCircle className="w-5 h-5 text-red-500" />;
       case 'running':
+      case 'pending':
         return <Clock className="w-5 h-5 text-blue-500 animate-spin" />;
+      case '':
+        return <Clock className="w-5 h-5 text-gray-400" />; // Neutral icon for unknown
       default:
-        return null;
+        return <Clock className="w-5 h-5 text-gray-400" />; // Neutral icon for unknown
     }
   };
+
+  function getStatusText(status, duration) {
+    const normalizedStatus = (status || '').toLowerCase();
+    if (normalizedStatus === 'succeeded' || normalizedStatus === 'success') {
+      return `Success${duration && duration !== '...' ? ' • ' + duration : ''}`;
+    }
+    if (normalizedStatus === 'failed') {
+      return `Failed${duration && duration !== '...' ? ' • ' + duration : ''}`;
+    }
+    if (normalizedStatus === 'running' || normalizedStatus === 'pending') {
+      return 'In progress...';
+    }
+    if (!status) {
+      return 'Status Unknown';
+    }
+    return duration || 'Status Unknown';
+  }
 
   return (
     <div className="space-y-2">
@@ -35,11 +59,11 @@ export default function BuildHistoryList({ builds, currentBuildId, onBuildSelect
                   {build.commitMessage}
                 </p>
                 <p className="text-sm text-gray-500">
-                  {build.commitHash} • {build.branch} • {build.duration}
+                  {build.commitHash} • {build.branch} • {getStatusText(build.status, build.duration)}
                 </p>
               </div>
             </div>
-            <div className="text-sm text-gray-500">{build.startTime}</div>
+            <div className="text-sm text-gray-500">{formatTimeAgo(build.finishedAt || build.endAt || build.startTime)}</div>
           </div>
         </div>
       ))}
