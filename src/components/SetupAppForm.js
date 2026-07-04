@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { listProject } from '../library/constant';
 import { getMethod } from "../library/api";
-import { MenuItem, Select, InputLabel, FormControl } from '@mui/material';
+import { MenuItem, Select, FormControl } from '@mui/material';
 import { useHistory } from 'react-router-dom';
 
 const SetupAppForm = ({ onSubmit, onClose }) => {

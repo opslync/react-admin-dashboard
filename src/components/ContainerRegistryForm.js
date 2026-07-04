@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useFormik, FormikProvider, Form } from 'formik';
 import { TextField, Button } from '@mui/material';
 import * as Yup from 'yup';
-import { getMethod } from '../library/api';
 
 const ContainerRegistryForm = ({ onSubmit, onClose }) => {
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+    const [loading] = useState(false);
+    const [error] = useState(null);
 
     const formik = useFormik({
         initialValues: {

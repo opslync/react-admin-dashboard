@@ -6,7 +6,6 @@ import {
   DialogContent,
   DialogHeader as ModalHeader,
   DialogTitle,
-  DialogClose,
 } from '../ui/dialog';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';

@@ -4,7 +4,7 @@ import { Card, CardContent } from "../../ui/card";
 import { Input } from "../../ui/input";
 import { Label } from "../../ui/label";
 import { RadioGroup, RadioGroupItem } from "../../ui/radio-group";
-import { Server, CheckCircle, Info } from "lucide-react";
+import { Server, CheckCircle } from "lucide-react";
 import { postMethod } from "../../../library/api";
 
 const ClusterSetupStep = ({

@@ -7,7 +7,6 @@ import '@xterm/xterm/css/xterm.css';
 import { wsBaseUrl } from '../../library/constant';
 
 export const PodShell = ({ podDetails, appId }) => {
-    const terminalRef = useRef(null);
     const containerRef = useRef(null);
     const fitAddonRef = useRef(null); // <-- Add fitAddon ref
     const [terminal, setTerminal] = useState(null);

@@ -1,14 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "../ui/dialog";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Button } from "../ui/button";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
-import { X } from 'lucide-react';
 import { postMethod, getMethod } from "../../library/api";
 import { listProject, appCreate } from "../../library/constant";
-import { ChevronDown } from 'lucide-react';
 import { useHistory } from 'react-router-dom';
 import githubTokenManager from '../../utils/githubTokenManager';
 import { toast } from 'react-toastify';

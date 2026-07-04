@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, CircularProgress, Typography } from '@mui/material';
+import { Box, CircularProgress } from '@mui/material';
 import { MetricsCard } from './MetricsCard';
 import { calculateMetrics } from '../utils/metricsCalculator';
 
