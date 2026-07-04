@@ -61,7 +61,7 @@ import OnboardingDevPage from "./components/onboarding/OnboardingDevPage";
 
 const App = () => {
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [onboardingStatus, setOnboardingStatus] = useState(null);
+  const [, setOnboardingStatus] = useState(null);
 
   // Initialize GitHub token manager when app starts
   useEffect(() => {

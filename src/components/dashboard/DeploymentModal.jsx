@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from './ui/Button';
-import { X, GitBranch, Package, ChevronRight, ChevronDown, Check } from 'lucide-react';
+import { X, GitBranch, Package, ChevronRight, Check } from 'lucide-react';
 import { getMethod, postMethod } from '../../library/api';
 import { listApps } from '../../library/constant';
-import { useHistory } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
 // Add a helper to format relative time
@@ -34,7 +33,6 @@ export const DeploymentModal = ({ isOpen, onClose }) => {
   const [builds, setBuilds] = useState([]);
   const [buildsLoading, setBuildsLoading] = useState(false);
   const [buildsError, setBuildsError] = useState('');
-  const history = useHistory();
 
   useEffect(() => {
     if (!isOpen) {

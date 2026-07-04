@@ -7,7 +7,6 @@ import {
   TableHead,
   TableRow,
   Paper,
-  Badge,
 } from '@mui/material';
 import { Check, X } from 'lucide-react';
 

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useHistory } from "react-router-dom";
 import { Dialog, DialogContent, DialogOverlay } from "../ui/dialog";
-import { Button } from "../ui/button";
 import { Progress } from "../ui/progress";
 import { getMethod, postMethod } from "../../library/api";
 import OrganizationSetupStep from "./steps/OrganizationSetupStep";
@@ -230,7 +229,6 @@ const OnboardingFlow = ({ open, onClose, onComplete }) => {
             {ONBOARDING_STEPS.map((step, idx) => {
               const isCompleted = completedSteps.has(step.id);
               const isCurrent = idx === currentStep;
-              const isUpcoming = idx > currentStep && !isCompleted;
               const isClickable = !isCompleted && idx <= currentStep + 1;
               return (
                 <React.Fragment key={step.id}>

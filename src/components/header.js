@@ -2,16 +2,12 @@ import React, { useRef } from "react";
 import "../assets/css/header.css";
 import Logo from "../assets/images/logo.png";
 import Avatar from "../assets/images/avatar.jpg";
-import { useDispatch } from "react-redux";
-import { openSideBar } from "../library/store/sidebar";
 import { Menu } from "primereact/menu";
 import { useHistory } from "react-router-dom";
 
 export default function Header() {
   const history = useHistory();
   const userMenuRef = useRef(null);
-
-  const dispatch = useDispatch();
 
   const userMenu = [
     {

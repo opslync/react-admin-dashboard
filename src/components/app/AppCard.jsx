@@ -1,7 +1,6 @@
 import React from 'react';
 import { Trash2, Github } from 'lucide-react';
 import { Button } from '../ui/button';
-import { Badge } from '../ui/badge';
 
 export function AppCard({ app, onViewDetails, LinkComponent, onDeleteClick }) {
   const getStatusColor = (status) => {
