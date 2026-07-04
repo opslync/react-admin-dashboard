@@ -1,15 +1,16 @@
 # base
 # Use an official Node.js runtime as the base image
-FROM node:alpine
+FROM node:22-alpine
 
 # Set the working directory in the container
 WORKDIR /app
 
-# Copy package.json and package-lock.json to the container
+# Copy package.json, package-lock.json and patches to the container
 COPY package*.json ./
+COPY patches ./patches
 
-# Install dependencies
-RUN npm install --legacy-peer-deps
+# Install dependencies (postinstall applies patch-package patches)
+RUN npm ci
 
 # Copy the rest of the application code to the container
 COPY . .
