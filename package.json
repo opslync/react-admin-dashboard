@@ -9,7 +9,6 @@
     "@fortawesome/free-solid-svg-icons": "^6.5.2",
     "@fortawesome/react-fontawesome": "^0.2.1",
     "@heroicons/react": "^1.0.6",
-    "@material-tailwind/react": "^2.1.9",
     "@mui/icons-material": "^5.15.21",
     "@mui/material": "^5.16.9",
     "@radix-ui/react-avatar": "^1.1.2",
@@ -20,35 +19,29 @@
     "@radix-ui/react-radio-group": "^1.2.2",
     "@radix-ui/react-scroll-area": "^1.2.2",
     "@radix-ui/react-select": "^2.2.5",
+    "@radix-ui/react-slot": "^1.2.0",
     "@radix-ui/react-switch": "^1.1.2",
     "@reduxjs/toolkit": "^1.9.7",
-    "@tailwindcss/forms": "^0.5.7",
-    "@tailwindcss/typography": "^0.5.13",
     "@testing-library/jest-dom": "^5.16.1",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
+    "@xterm/addon-fit": "^0.10.0",
     "@xterm/addon-web-links": "^0.11.0",
-    "ajv": "^8.12.0",
-    "axios": "^0.24.0",
-    "chart.js": "^3.7.0",
+    "@xterm/xterm": "^5.5.0",
+    "ajv": "^8.17.1",
+    "axios": "^1.18.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "cookie-parser": "^1.4.6",
     "dayjs": "^1.11.13",
-    "express-session": "^1.18.0",
     "formik": "^2.2.9",
-    "install": "^0.13.0",
     "js-cookie": "^3.0.5",
     "lucide-react": "^0.344.0",
     "moment": "^2.30.1",
-    "npm": "^10.8.1",
     "primeflex": "^2.0.0",
-    "primeicons": "^5.0.0",
-    "primereact": "^7.1.0",
+    "primeicons": "^7.0.0",
+    "primereact": "^10.9.5",
     "react": "^18.2.0",
-    "react-chartjs-3": "^2.7.7",
     "react-dom": "^18.2.0",
-    "react-quill": "^1.3.5",
     "react-redux": "^7.2.6",
     "react-router-dom": "^5.3.4",
     "react-scripts": "^5.0.1",
@@ -57,11 +50,7 @@
     "recharts": "^2.14.1",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
-    "uuid": "^8.3.2",
     "web-vitals": "^2.1.2",
-    "xterm": "^5.3.0",
-    "xterm-addon-fit": "^0.8.0",
-    "xterm-addon-web-links": "^0.9.0",
     "yup": "^0.32.11"
   },
   "scripts": {
@@ -70,7 +59,8 @@
     "cp_redirect": "cp ./_redirects ./build",
     "build_netlify": "npm run build && npm run cp_redirect",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "postinstall": "patch-package"
   },
   "eslintConfig": {
     "extends": [
@@ -91,7 +81,18 @@
     ]
   },
   "devDependencies": {
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "patch-package": "^8.0.1",
     "prettier": "^3.2.5",
     "tailwindcss": "^3.4.3"
+  },
+  "overrides": {
+    "@tootallnate/once": "^2.0.1",
+    "nth-check": "^2.1.1",
+    "postcss": "^8.5.16",
+    "serialize-javascript": "^7.0.5",
+    "underscore": "^1.13.8",
+    "uuid": "^11.1.1",
+    "webpack-dev-server": "^5.2.6"
   }
 }
